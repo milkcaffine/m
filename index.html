@@ -3,84 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marsko | Portfolio</title>
+    <title>Marsko</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
-        .hero { background: linear-gradient(135deg, #1a1a2e, #16213e); }
+        .plaza {
+            background:
+                radial-gradient(ellipse at 70% 80%, rgba(220, 80, 20, 0.18), transparent 22%),
+                linear-gradient(180deg, #1c2428 0%, #2a3338 42%, #15191c 100%);
+        }
+        .trellis {
+            background-image: repeating-linear-gradient(90deg, transparent 0 42px, rgba(255,255,255,0.16) 42px 44px);
+            mask-image: linear-gradient(180deg, #000 0%, transparent 100%);
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
-    <!-- Header -->
-    <header class="hero py-20 text-center">
-        <div class="max-w-2xl mx-auto px-6">
+    <header class="plaza relative min-h-[88vh] overflow-hidden">
+        <div class="trellis absolute inset-x-0 top-0 h-48"></div>
+        <div class="relative z-10 flex min-h-[88vh] flex-col justify-end max-w-2xl mx-auto px-6 pb-14">
+            <p class="text-xs tracking-[0.28em] uppercase text-zinc-400 mb-3">Tokyo, after rain</p>
             <h1 class="text-5xl font-bold mb-3">Marsko</h1>
-            <p class="text-xl text-zinc-400">Artist / Writer</p>
-            <div class="mt-6 flex justify-center gap-6 text-2xl">
-                <a href="https://x.com/marsko" target="_blank" class="hover:text-sky-400 transition-colors">
-                    <i class="fab fa-x-twitter"></i>
-                </a>
+            <p class="text-lg text-zinc-300 max-w-md">A cone left in a wet plaza. Poems, horror, and night writing after the walk.</p>
+            <div class="mt-6 flex gap-5 text-xl">
+                <a href="https://x.com/marsko" target="_blank" class="hover:text-sky-300" aria-label="X"><i class="fab fa-x-twitter"></i></a>
+                <a href="https://note.com/marsko" target="_blank" class="hover:text-sky-300" aria-label="Note"><i class="fas fa-sticky-note"></i></a>
             </div>
         </div>
     </header>
 
-    <!-- About -->
     <section class="max-w-2xl mx-auto px-6 py-16">
-        <h2 class="text-3xl font-semibold mb-6 border-b border-zinc-700 pb-3">About</h2>
+        <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-4">Note</h2>
         <p class="text-zinc-300 leading-relaxed text-lg">
             Tokyo suburb walker writing tanka and dark novels.<br>
             An ordinary salaryman who loves poems, horror, and SF — creating at night.
         </p>
     </section>
 
-    <!-- Work -->
-    <section class="max-w-2xl mx-auto px-6 py-12 bg-zinc-900">
-        <h2 class="text-3xl font-semibold mb-8">Work</h2>
-      
-        <div class="space-y-8">
-            <div>
-                <h3 class="text-xl font-medium mb-1">Dark Novels & Poetry</h3>
-                <p class="text-zinc-400">Cyberpunk & horror series serialized on X (@marsko)</p>
-                <a href="https://x.com/marsko" target="_blank" class="text-sky-400 hover:underline text-sm">→ View on X</a>
-            </div>
-            <div>
-                <h3 class="text-xl font-medium mb-1">Prose & Tanka in Japanese</h3>
-                <p class="text-zinc-400">Short essays, tanka collections, and other writings</p>
-                <a href="https://note.com/marsko" target="_blank" class="text-sky-400 hover:underline text-sm">→ View on Note</a>
-            </div>
-            <div>
-                <h3 class="text-xl font-medium mb-1">Film Photography</h3>
-                <p class="text-zinc-400">Caffenol B&W film photos</p>
-            </div>
-            <div>
-                <h3 class="text-xl font-medium mb-1">Illustration & Drawing</h3>
-                <p class="text-zinc-400">Pencil drawings and illustrations</p>
+    <section class="max-w-2xl mx-auto px-6 pb-16">
+        <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-6">Work</h2>
+        <div class="divide-y divide-zinc-800 border-y border-zinc-800">
+            <a href="https://x.com/marsko" target="_blank" class="block py-5 hover:bg-zinc-900/60 px-1">
+                <h3 class="text-xl font-medium">Dark novels & poetry</h3>
+                <p class="text-zinc-400 mt-1">Cyberpunk and horror, serialized on X.</p>
+            </a>
+            <a href="https://note.com/marsko" target="_blank" class="block py-5 hover:bg-zinc-900/60 px-1">
+                <h3 class="text-xl font-medium">Prose & tanka</h3>
+                <p class="text-zinc-400 mt-1">Short essays and tanka, in Japanese.</p>
+            </a>
+            <div class="py-5 px-1">
+                <h3 class="text-xl font-medium">Film & drawings</h3>
+                <p class="text-zinc-400 mt-1">Caffenol black-and-white, pencil, the walk itself.</p>
             </div>
         </div>
     </section>
 
-    <!-- Connect -->
-    <section class="max-w-2xl mx-auto px-6 py-16 text-center">
-        <h2 class="text-3xl font-semibold mb-8">Connect</h2>
-        <div class="flex flex-wrap justify-center gap-4">
-            <a href="https://x.com/marsko" target="_blank"
-               class="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-full flex items-center gap-2 transition-colors">
-                <i class="fab fa-x-twitter"></i>
-                <span>X (Twitter)</span>
-            </a>
-
-            <a href="https://note.com/marsko" target="_blank"
-               class="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-full flex items-center gap-2 transition-colors">
-                <i class="fas fa-sticky-note"></i>
-                <span>Note</span>
-            </a>
-        </div>
-    </section>
-
-    <footer class="text-center py-8 text-zinc-500 text-sm border-t border-zinc-800">
-        © 2026 Marsko. All Rights Reserved.<br>
-        Made with ❤️ for GitHub Pages
-    </footer>
+    <footer class="text-center py-8 text-zinc-600 text-sm">© 2026 Marsko</footer>
 </body>
 </html>
