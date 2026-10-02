@@ -8,24 +8,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
-        .plaza {
-            background:
-                radial-gradient(ellipse at 70% 80%, rgba(220, 80, 20, 0.18), transparent 22%),
-                linear-gradient(180deg, #1c2428 0%, #2a3338 42%, #15191c 100%);
-        }
-        .trellis {
-            background-image: repeating-linear-gradient(90deg, transparent 0 42px, rgba(255,255,255,0.16) 42px 44px);
-            mask-image: linear-gradient(180deg, #000 0%, transparent 100%);
-        }
+        .hero-img { filter: saturate(0.8) contrast(1.05); }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
-    <header class="plaza relative min-h-[88vh] overflow-hidden">
-        <div class="trellis absolute inset-x-0 top-0 h-48"></div>
+    <header class="relative min-h-[88vh] overflow-hidden">
+        <img src="images/cone.jpg" alt="Wet plaza, white trellis, one cone" class="hero-img absolute inset-0 h-full w-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-zinc-950/15"></div>
         <div class="relative z-10 flex min-h-[88vh] flex-col justify-end max-w-2xl mx-auto px-6 pb-14">
-            <p class="text-xs tracking-[0.28em] uppercase text-zinc-400 mb-3">Tokyo, after rain</p>
+            <p class="text-xs tracking-[0.28em] uppercase text-zinc-300/80 mb-3">Tokyo, after rain</p>
             <h1 class="text-5xl font-bold mb-3">Marsko</h1>
-            <p class="text-lg text-zinc-300 max-w-md">A cone left in a wet plaza. Poems, horror, and night writing after the walk.</p>
+            <p class="text-lg text-zinc-200 max-w-md">A cone left in a wet plaza. Poems, horror, and night writing after the walk.</p>
             <div class="mt-6 flex gap-5 text-xl">
                 <a href="https://x.com/marsko" target="_blank" class="hover:text-sky-300" aria-label="X"><i class="fab fa-x-twitter"></i></a>
                 <a href="https://note.com/marsko" target="_blank" class="hover:text-sky-300" aria-label="Note"><i class="fas fa-sticky-note"></i></a>
