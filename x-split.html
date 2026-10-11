@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>X / 트위터 이미지 분할기</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 500px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    .dropzone {
+      border: 2px dashed #007aff;
+      background: #f0f7ff;
+      border-radius: 14px;
+      padding: 24px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #007aff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    input[type="file"] { display: none; }
+    .control-panel {
+      margin-top: 14px;
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row select, .control-row input[type="number"] {
+      font-size: 0.95rem;
+      padding: 8px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      background: #fff;
+      min-height: 42px;
+    }
+    .control-row input[type="number"] { width: 75px; text-align: center; }
+    .segmented-control {
+      display: flex;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 3px;
+      width: 130px;
+    }
+    .segmented-control button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+    }
+    .segmented-control button.active {
+      background: #fff;
+      color: #007aff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    #previewArea { 
+      margin-top: 16px; 
+      display: none; 
+      width: 100%;
+    }
+    .preview-info {
+      font-size: 0.75rem;
+      color: #495057;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .preview-grid {
+      display: flex;
+      gap: 4px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #e9ecef;
+      width: 100%;
+    }
+    .preview-grid img { 
+      flex: 1; 
+      min-width: 0;
+      max-width: 100%; 
+      max-height: 180px;
+      object-fit: contain;
+      background: #f1f3f5;
+      display: block; 
+    }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn-primary { background: #007aff; color: #ffffff; }
+    .btn-secondary { background: #e9ecef; color: #212529; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
+    .back a { color: #007aff; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="back"><a href="index.html">← marsko</a></div>
+  <h1>X (트위터) 파노라마 분할기</h1>
+  <p class="sub">브라우저 내 자체 처리 · 서버 전송 없음</p>
+  <div class="dropzone" id="dropzone">
+    <span>📷 사진 선택 / 앨범에서 불러오기</span>
+    <small>가로 파노라마 이미지를 선택하세요</small>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+  <div class="control-panel">
+    <div class="control-row">
+      <label>분할 개수</label>
+      <div class="segmented-control" id="splitControl">
+        <button type="button" data-val="3">3분할</button>
+        <button type="button" data-val="4" class="active">4분할</button>
+      </div>
+    </div>
+    <div class="control-row">
+      <label for="maxHeightSelect">
+        높이(해상도) 제한
+        <span style="display:block; font-size:0.75rem; font-weight:400; color:#868e96;">X 최적화 및 용량 압축</span>
+      </label>
+      <select id="maxHeightSelect">
+        <option value="2048" selected>2048px (추천 / 최고화질)</option>
+        <option value="1200">1200px (가벼운 용량)</option>
+        <option value="0">원본 유지 (무손실)</option>
+      </select>
+    </div>
+    <div class="control-row">
+      <label for="gapPx">
+        간격(Gap) 보정
+        <span style="display:block; font-size:0.75rem; font-weight:400; color:#868e96;">트위터 이미지 사이 빈틀 제거</span>
+      </label>
+      <input type="number" id="gapPx" value="12" min="0" max="60" inputmode="numeric">
+    </div>
+  </div>
+  <div id="previewArea">
+    <div class="preview-info">
+      <span>미리보기 (왼쪽부터 차례대로 등록)</span>
+      <span id="resInfo"></span>
+    </div>
+    <div class="preview-grid" id="previewGrid"></div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" id="saveZipBtn" disabled>ZIP 압축파일로 받기</button>
+    <button class="btn btn-secondary" id="saveIndivBtn" disabled>사진 앱/앨범에 각각 저장</button>
+  </div>
+</div>
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const splitControl = document.getElementById('splitControl');
+  const maxHeightSelect = document.getElementById('maxHeightSelect');
+  const gapPxInput = document.getElementById('gapPx');
+  const previewArea = document.getElementById('previewArea');
+  const previewGrid = document.getElementById('previewGrid');
+  const resInfo = document.getElementById('resInfo');
+  const saveZipBtn = document.getElementById('saveZipBtn');
+  const saveIndivBtn = document.getElementById('saveIndivBtn');
+  let currentSplit = 4;
+  let loadedImage = null;
+  let sliceBlobs = [];
+  splitControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    splitControl.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    currentSplit = parseInt(e.target.dataset.val, 10);
+    if (loadedImage) processImage();
+  });
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+  });
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      loadedImage = new Image();
+      loadedImage.onload = processImage;
+      loadedImage.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  maxHeightSelect.addEventListener('change', () => { if (loadedImage) processImage(); });
+  gapPxInput.addEventListener('input', () => { if (loadedImage) processImage(); });
+  function processImage() {
+    const N = currentSplit;
+    const gap = Math.max(0, parseInt(gapPxInput.value, 10) || 0);
+    const maxH = parseInt(maxHeightSelect.value, 10);
+    let srcW = loadedImage.naturalWidth;
+    let srcH = loadedImage.naturalHeight;
+    let scale = 1;
+    if (maxH > 0 && srcH > maxH) {
+      scale = maxH / srcH;
+    }
+    const targetH = Math.round(srcH * scale);
+    const targetW = Math.round(srcW * scale);
+    const scaledGap = Math.round(gap * scale);
+    const sliceW = Math.floor((targetW - (N - 1) * scaledGap) / N);
+    if (sliceW <= 0) {
+      alert("간격 수치가 너무 큽니다.");
+      return;
+    }
+    resInfo.textContent = `각 조각: ${sliceW}×${targetH}px`;
+    sliceBlobs = [];
+    previewGrid.innerHTML = '';
+    for (let i = 0; i < N; i++) {
+      const canvas = document.createElement('canvas');
+      canvas.width = sliceW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      const srcSliceW = sliceW / scale;
+      const srcGap = scaledGap / scale;
+      const startX = i * (srcSliceW + srcGap);
+      ctx.drawImage(loadedImage, startX, 0, srcSliceW, srcH, 0, 0, sliceW, targetH);
+      canvas.toBlob((blob) => {
+        sliceBlobs[i] = blob;
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(blob);
+        previewGrid.appendChild(img);
+        if (sliceBlobs.filter(Boolean).length === N) {
+          saveZipBtn.disabled = false;
+          saveIndivBtn.disabled = false;
+          previewArea.style.display = 'block';
+        }
+      }, 'image/jpeg', 0.95);
+    }
+  }
+  saveZipBtn.addEventListener('click', async () => {
+    if (!sliceBlobs.length) return;
+    saveZipBtn.textContent = '압축 중...';
+    saveZipBtn.disabled = true;
+    const zip = new JSZip();
+    sliceBlobs.forEach((blob, idx) => {
+      zip.file(`x_split_${idx + 1}.jpg`, blob);
+    });
+    const content = await zip.generateAsync({ type: 'blob' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `twitter_${currentSplit}split_${Date.now()}.zip`;
+    link.click();
+    saveZipBtn.textContent = 'ZIP 압축파일로 받기';
+    saveZipBtn.disabled = false;
+  });
+  saveIndivBtn.addEventListener('click', () => {
+    sliceBlobs.forEach((blob, idx) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `x_split_${idx + 1}.jpg`;
+        link.click();
+      }, idx * 250);
+    });
+  });
+</script>
+</body>
+</html>
