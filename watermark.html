@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ffffff">
   <title>사진 워터마크 메이커</title>
-  <!-- 감성적인 구글 폰트 불러오기 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Playfair+Display:ital,wght@1,600&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
-
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
@@ -30,8 +28,6 @@
     }
     h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
     p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
-
-    /* 업로드 영역 */
     .dropzone {
       border: 2px dashed #007aff;
       background: #f0f7ff;
@@ -49,8 +45,6 @@
     }
     .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
     input[type="file"] { display: none; }
-
-    /* 설정 패널 */
     .control-panel {
       margin-top: 14px;
       background: #f8f9fa;
@@ -75,7 +69,6 @@
       background: #fff;
     }
     .control-row input[type="text"] { width: 180px; }
-
     .slider-box {
       display: flex;
       align-items: center;
@@ -83,8 +76,6 @@
     }
     .slider-box input[type="range"] { width: 110px; }
     .slider-box span { font-size: 0.8rem; color: #495057; width: 38px; text-align: right; }
-
-    /* 위치 9분할 선택 그리드 */
     .pos-grid {
       display: grid;
       grid-template-columns: repeat(3, 28px);
@@ -108,8 +99,6 @@
       color: #fff;
       border-color: #007aff;
     }
-
-    /* 컬러 & 효과 세팅 */
     .color-options {
       display: flex;
       align-items: center;
@@ -123,8 +112,6 @@
       background: none;
       cursor: pointer;
     }
-
-    /* 미리보기 뷰 */
     #previewArea {
       margin-top: 16px;
       display: none;
@@ -149,8 +136,6 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       border-radius: 6px;
     }
-
-    /* 하단 다운로드 버튼 */
     .btn-group { margin-top: 18px; }
     .btn {
       width: 100%;
@@ -167,32 +152,25 @@
       color: #ffffff;
     }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
     .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
     .back a { color: #007aff; text-decoration: none; }
   </style>
 </head>
 <body>
-
 <div class="container">
   <div class="back"><a href="index.html">← marsko</a></div>
   <h1>워터마크 메이커</h1>
-  <p class="sub">X 아이디 · 닉네임 · 커스텀 폰트 & 색상</p>
-
+  <p class="sub">X 아이디 · 닉네임 · 회전 · 커스텀 폰트 & 색상</p>
   <div class="dropzone" id="dropzone">
     <span>📷 사진 선택 / 불러오기</span>
     <small>워터마크를 넣을 사진을 선택하세요</small>
     <input type="file" id="fileInput" accept="image/*">
   </div>
-
   <div class="control-panel">
-    <!-- 문구 입력 -->
     <div class="control-row">
       <label for="wmText">워터마크 문구</label>
       <input type="text" id="wmText" value="@username" placeholder="예: @내아이디">
     </div>
-
-    <!-- 폰트 선택 -->
     <div class="control-row">
       <label for="wmFont">폰트 스타일</label>
       <select id="wmFont">
@@ -202,8 +180,6 @@
         <option value="'Noto Sans KR', sans-serif">깔끔한 고딕 (Noto Sans)</option>
       </select>
     </div>
-
-    <!-- 크기 조절 -->
     <div class="control-row">
       <label for="sizeRange">글자 크기</label>
       <div class="slider-box">
@@ -211,8 +187,6 @@
         <span id="sizeVal">48px</span>
       </div>
     </div>
-
-    <!-- 투명도(불투명도) 조절 -->
     <div class="control-row">
       <label for="alphaRange">불투명도</label>
       <div class="slider-box">
@@ -220,8 +194,13 @@
         <span id="alphaVal">85%</span>
       </div>
     </div>
-
-    <!-- 글자 색상 & 그림자 효과 -->
+    <div class="control-row">
+      <label for="rotateRange">회전</label>
+      <div class="slider-box">
+        <input type="range" id="rotateRange" min="-45" max="45" value="0">
+        <span id="rotateVal">0°</span>
+      </div>
+    </div>
     <div class="control-row">
       <label>글자 색상</label>
       <div class="color-options">
@@ -231,8 +210,6 @@
         <input type="color" id="textColor" value="#ffffff">
       </div>
     </div>
-
-    <!-- 9방향 위치 지정 -->
     <div class="control-row">
       <label>위치 선택</label>
       <div class="pos-grid" id="posGrid">
@@ -248,19 +225,16 @@
       </div>
     </div>
   </div>
-
   <div id="previewArea">
     <div class="preview-header">미리보기 (원본 해상도 유지)</div>
     <div class="canvas-container">
       <canvas id="previewCanvas"></canvas>
     </div>
   </div>
-
   <div class="btn-group">
     <button class="btn" id="downloadBtn" disabled>워터마크 이미지 다운로드</button>
   </div>
 </div>
-
 <script>
   const fileInput = document.getElementById('fileInput');
   const dropzone = document.getElementById('dropzone');
@@ -270,6 +244,8 @@
   const sizeVal = document.getElementById('sizeVal');
   const alphaRange = document.getElementById('alphaRange');
   const alphaVal = document.getElementById('alphaVal');
+  const rotateRange = document.getElementById('rotateRange');
+  const rotateVal = document.getElementById('rotateVal');
   const textColor = document.getElementById('textColor');
   const shadowCheck = document.getElementById('shadowCheck');
   const posButtons = document.querySelectorAll('.pos-btn');
@@ -277,11 +253,9 @@
   const canvas = document.getElementById('previewCanvas');
   const ctx = canvas.getContext('2d');
   const downloadBtn = document.getElementById('downloadBtn');
-
   let currentImg = null;
-  let currentPos = 'br'; // 기본 우측 하단 (Bottom-Right)
+  let currentPos = 'br';
 
-  // 위치 선택 버튼 토글
   posButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
       posButtons.forEach(b => b.classList.remove('active'));
@@ -291,7 +265,6 @@
     });
   });
 
-  // 파일 업로드
   dropzone.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -300,13 +273,11 @@
     reader.onload = (ev) => {
       currentImg = new Image();
       currentImg.onload = () => {
-        // 이미지 크기에 따라 슬라이더 추천값 자동 비례 세팅
         const baseDimension = Math.max(currentImg.naturalWidth, currentImg.naturalHeight);
-        const autoSize = Math.round(baseDimension * 0.035); // 3.5% 크기 추천
+        const autoSize = Math.round(baseDimension * 0.035);
         sizeRange.max = Math.max(120, Math.round(baseDimension * 0.15));
         sizeRange.value = autoSize;
         sizeVal.textContent = autoSize + 'px';
-
         renderWatermark();
       };
       currentImg.src = ev.target.result;
@@ -314,56 +285,45 @@
     reader.readAsDataURL(file);
   });
 
-  // 컨트롤 변경 이벤트
   [wmText, wmFont, textColor, shadowCheck].forEach(el => el.addEventListener('input', renderWatermark));
-  
   sizeRange.addEventListener('input', () => {
     sizeVal.textContent = sizeRange.value + 'px';
     renderWatermark();
   });
-
   alphaRange.addEventListener('input', () => {
     alphaVal.textContent = alphaRange.value + '%';
     renderWatermark();
   });
+  rotateRange.addEventListener('input', () => {
+    rotateVal.textContent = rotateRange.value + '°';
+    renderWatermark();
+  });
 
-  // 핵심 워터마크 그리기
   function renderWatermark() {
     if (!currentImg) return;
-
     const w = currentImg.naturalWidth;
     const h = currentImg.naturalHeight;
-
     canvas.width = w;
     canvas.height = h;
-
-    // 1. 원본 사진 100% 쿼리티로 그리기
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(currentImg, 0, 0, w, h);
-
     const text = wmText.value.trim();
     if (!text) {
       previewArea.style.display = 'block';
       downloadBtn.disabled = false;
       return;
     }
-
-    // 2. 폰트 및 스타일 세팅
     const fontSize = parseInt(sizeRange.value, 10);
     const alpha = parseInt(alphaRange.value, 10) / 100;
     const fontFam = wmFont.value;
     const color = textColor.value;
     const hasShadow = shadowCheck.checked;
-
+    const rotation = parseInt(rotateRange.value, 10) * Math.PI / 180;
     ctx.save();
     ctx.font = `bold ${fontSize}px ${fontFam}`;
     ctx.globalAlpha = alpha;
-
-    // 패딩 여백 (이미지 크기에 비례)
     const pad = Math.max(24, Math.round(Math.min(w, h) * 0.04));
     let x = 0, y = 0;
-
-    // 9방향 좌표 및 텍스트 정렬 계산
     if (currentPos.includes('l')) {
       ctx.textAlign = 'left';
       x = pad;
@@ -374,7 +334,6 @@
       ctx.textAlign = 'center';
       x = w / 2;
     }
-
     if (currentPos.includes('t')) {
       ctx.textBaseline = 'top';
       y = pad;
@@ -385,10 +344,9 @@
       ctx.textBaseline = 'middle';
       y = h / 2;
     }
-
-    // 3. 그림자/외곽선 효과 (어떤 배경에서도 글자가 또렷하게 보이도록 지원)
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
     if (hasShadow) {
-      // 어두운 색 글자일 땐 흰색 그림자, 밝은 색 글자일 땐 검은색 그림자 자동 부여
       const isBrightColor = isLightColor(color);
       ctx.shadowColor = isBrightColor ? 'rgba(0, 0, 0, 0.75)' : 'rgba(255, 255, 255, 0.85)';
       ctx.shadowBlur = Math.round(fontSize * 0.15);
@@ -397,16 +355,13 @@
     } else {
       ctx.shadowColor = 'transparent';
     }
-
     ctx.fillStyle = color;
-    ctx.fillText(text, x, y);
+    ctx.fillText(text, 0, 0);
     ctx.restore();
-
     previewArea.style.display = 'block';
     downloadBtn.disabled = false;
   }
 
-  // 색상 명도 판단 유틸리티
   function isLightColor(hex) {
     const c = hex.substring(1);
     const rgb = parseInt(c, 16);
@@ -417,7 +372,6 @@
     return luma > 128;
   }
 
-  // 다운로드
   downloadBtn.addEventListener('click', () => {
     canvas.toBlob((blob) => {
       const link = document.createElement('a');
@@ -427,6 +381,5 @@
     }, 'image/jpeg', 0.98);
   });
 </script>
-
 </body>
 </html>
