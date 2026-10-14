@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>SNS 시 & 단가 카드 메이커</title>
+  <!-- 감성적인 시 전용 웹폰트 불러오기 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Serif+KR:wght@400;700&family=Noto+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    /* 텍스트 입력창 */
+    .input-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    textarea {
+      width: 100%;
+      height: 110px;
+      padding: 12px;
+      border: 1px solid #ced4da;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: vertical;
+      font-family: inherit;
+    }
+    textarea:focus { border-color: #007aff; outline: none; }
+    /* 컨트롤 패널 */
+    .control-panel {
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+    }
+    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row select, .control-row input[type="text"] {
+      font-size: 0.9rem;
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+    }
+    .control-row input[type="text"] { width: 170px; }
+    /* 세그먼트 버튼 (가로 / 세로) */
+    .segmented-control {
+      display: flex;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 3px;
+      width: 150px;
+    }
+    .segmented-control button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+    }
+    .segmented-control button.active {
+      background: #fff;
+      color: #007aff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    /* 슬라이더 박스 */
+    .slider-box { display: flex; align-items: center; gap: 8px; }
+    .slider-box input[type="range"] { width: 110px; }
+    .slider-box span { font-size: 0.8rem; color: #495057; width: 36px; text-align: right; }
+    /* 배경 설정 영역 */
+    .bg-options {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .color-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #ced4da;
+      cursor: pointer;
+    }
+    .color-btn.active { border-color: #007aff; transform: scale(1.15); }
+    .btn-file {
+      padding: 5px 9px;
+      border: 1px solid #ced4da;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #bgFileInput { display: none; }
+    /* 미리보기 캔버스 뷰 */
+    #previewArea {
+      margin-top: 16px;
+      width: 100%;
+      text-align: center;
+    }
+    .preview-header { font-size: 0.75rem; color: #868e96; margin-bottom: 6px; text-align: left; }
+    .canvas-container {
+      width: 100%;
+      max-height: 420px;
+      background: #e9ecef;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 400px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+      border-radius: 6px;
+    }
+    /* 다운로드 버튼 */
+    .btn-group { margin-top: 18px; }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #007aff;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>감성 시 & 단가 카드 메이커</h1>
+  <p class="sub">가로·세로쓰기 · 사진/컬러 배경 · 닉네임 서명</p>
+  <div class="input-section">
+    <textarea id="poemInput" placeholder="시, 단가, 하이쿠를 입력하세요 (줄바꿈 지원)">여름밤 잔잔한 바람
+창가에 스치울 때
+마음은 어느덧 먼 바다로</textarea>
+  </div>
+  <div class="control-panel">
+    <!-- 쓰기 방향 -->
+    <div class="control-row">
+      <label>쓰기 방향</label>
+      <div class="segmented-control" id="dirControl">
+        <button type="button" data-dir="v" class="active">세로쓰기 (縦)</button>
+        <button type="button" data-dir="h">가로쓰기 (横)</button>
+      </div>
+    </div>
+    <!-- 폰트 선택 -->
+    <div class="control-row">
+      <label for="fontSelect">서체 (글꼴)</label>
+      <select id="fontSelect">
+        <option value="'Gowun Batang', serif" selected>고운바탕 (단아함/추천)</option>
+        <option value="'Nanum Myeongjo', serif">나눔명조 (클래식)</option>
+        <option value="'Noto Serif KR', serif">노토 세리프 (정갈함)</option>
+        <option value="'Noto Sans KR', sans-serif">모던 고딕 (깔끔함)</option>
+      </select>
+    </div>
+    <!-- 비율 선택 -->
+    <div class="control-row">
+      <label for="ratioSelect">카드 비율</label>
+      <select id="ratioSelect">
+        <option value="1:1" selected>1:1 (정사각형 - 피드)</option>
+        <option value="3:4">3:4 (X / 트위터 추천)</option>
+        <option value="9:16">9:16 (스토리 / 릴스)</option>
+        <option value="4:5">4:5 (인스타 피드)</option>
+      </select>
+    </div>
+    <!-- 서명 / 낙관 -->
+    <div class="control-row">
+      <label for="authorInput">
+        서명 / 닉네임
+        <span style="display:block; font-size:0.75rem; font-weight:400; color:#868e96;">낙관 스타일 출력</span>
+      </label>
+      <input type="text" id="authorInput" value="© Marsko" placeholder="예: 해민, @id">
+    </div>
+    <!-- 글자 크기 -->
+    <div class="control-row">
+      <label for="fontSizeRange">글자 크기</label>
+      <div class="slider-box">
+        <input type="range" id="fontSizeRange" min="28" max="70" value="44">
+        <span id="fontSizeVal">44px</span>
+      </div>
+    </div>
+    <!-- 배경 설정 -->
+    <div class="control-row">
+      <label>배경 스타일</label>
+      <div class="bg-options">
+        <div class="color-btn" data-color="#fcfbf7" style="background: #fcfbf7;" title="한지 아이보리"></div>
+        <div class="color-btn active" data-color="#ffffff" style="background: #ffffff;" title="순백색"></div>
+        <div class="color-btn" data-color="#18191a" style="background: #18191a;" title="먹색 다크"></div>
+        <button type="button" class="btn-file" id="bgFileBtn">📷 사진 배경</button>
+        <input type="file" id="bgFileInput" accept="image/*">
+      </div>
+    </div>
+    <!-- 사진 배경일 때 어둡기 딤드 슬라이더 (기본 숨김) -->
+    <div class="control-row" id="dimRow" style="display: none;">
+      <label for="dimRange">배경 어둡기 (가독성)</label>
+      <div class="slider-box">
+        <input type="range" id="dimRange" min="10" max="85" value="45">
+        <span id="dimVal">45%</span>
+      </div>
+    </div>
+  </div>
+  <div id="previewArea">
+    <div class="preview-header">미리보기 (고해상도 1600px 캔버스)</div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+  <div class="btn-group">
+    <button class="btn" id="downloadBtn">고화질 시 카드 저장</button>
+  </div>
+</div>
+<script>
+  const poemInput = document.getElementById('poemInput');
+  const authorInput = document.getElementById('authorInput');
+  const dirControl = document.getElementById('dirControl');
+  const fontSelect = document.getElementById('fontSelect');
+  const ratioSelect = document.getElementById('ratioSelect');
+  const fontSizeRange = document.getElementById('fontSizeRange');
+  const fontSizeVal = document.getElementById('fontSizeVal');
+  const colorBtns = document.querySelectorAll('.color-btn');
+  const bgFileBtn = document.getElementById('bgFileBtn');
+  const bgFileInput = document.getElementById('bgFileInput');
+  const dimRow = document.getElementById('dimRow');
+  const dimRange = document.getElementById('dimRange');
+  const dimVal = document.getElementById('dimVal');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('downloadBtn');
+  let writingDir = 'v'; // 'v': 세로쓰기, 'h': 가로쓰기
+  let bgColor = '#ffffff';
+  let bgImage = null;
+  // 방향 토글
+  dirControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    dirControl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    writingDir = e.target.dataset.dir;
+    renderPoemCard();
+  });
+  // 색상 선택
+  colorBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      colorBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      bgColor = e.target.dataset.color;
+      bgImage = null; // 사진 배경 해제
+      dimRow.style.display = 'none';
+      renderPoemCard();
+    });
+  });
+  // 사진 배경 선택
+  bgFileBtn.addEventListener('click', () => bgFileInput.click());
+  bgFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      bgImage = new Image();
+      bgImage.onload = () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        dimRow.style.display = 'flex';
+        renderPoemCard();
+      };
+      bgImage.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    bgFileInput.value = '';
+  });
+  // 슬라이더 및 입력 이벤트
+  [poemInput, authorInput, fontSelect, ratioSelect].forEach(el => el.addEventListener('input', renderPoemCard));
+  fontSizeRange.addEventListener('input', () => {
+    fontSizeVal.textContent = fontSizeRange.value + 'px';
+    renderPoemCard();
+  });
+  dimRange.addEventListener('input', () => {
+    dimVal.textContent = dimRange.value + '%';
+    renderPoemCard();
+  });
+  // 핵심 카드 렌더링
+  function renderPoemCard() {
+    const text = poemInput.value;
+    const author = authorInput.value.trim();
+    const ratioStr = ratioSelect.value;
+    const [rw, rh] = ratioStr.split(':').map(Number);
+    const baseW = 1600;
+    const baseH = Math.round((baseW / rw) * rh);
+    canvas.width = baseW;
+    canvas.height = baseH;
+    // 1. 배경 렌더링
+    if (bgImage) {
+      // 이미지 Cover 모드로 그리기
+      const imgRatio = bgImage.naturalWidth / bgImage.naturalHeight;
+      const targetRatio = baseW / baseH;
+      let sx, sy, sw, sh;
+      if (imgRatio > targetRatio) {
+        sh = bgImage.naturalHeight; sw = sh * targetRatio;
+        sy = 0; sx = (bgImage.naturalWidth - sw) / 2;
+      } else {
+        sw = bgImage.naturalWidth; sh = sw / targetRatio;
+        sx = 0; sy = (bgImage.naturalHeight - sh) / 2;
+      }
+      ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, baseW, baseH);
+      // 반투명 딤드(오버레이) 레이어
+      const dimOpacity = parseInt(dimRange.value, 10) / 100;
+      ctx.fillStyle = `rgba(0, 0, 0, ${dimOpacity})`;
+      ctx.fillRect(0, 0, baseW, baseH);
+    } else {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, baseW, baseH);
+    }
+    // 2. 글자 색상 결정 (사진 배경이거나 어두운 배경이면 흰색)
+    const isDark = bgImage || (bgColor === '#18191a');
+    const mainTextColor = isDark ? '#ffffff' : '#1e1e1e';
+    const subTextColor = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.55)';
+    const fontSize = parseInt(fontSizeRange.value, 10);
+    const fontFam = fontSelect.value;
+    ctx.fillStyle = mainTextColor;
+    const lines = text.split('\n');
+    // 3. 본문 렌더링
+    if (writingDir === 'v') {
+      // ===== 세로쓰기 (Vertical-RL: 우측 줄부터 좌측으로) =====
+      const colSpacing = fontSize * 1.9; // 줄 간격
+      const charSpacing = fontSize * 1.35; // 글자 간격
+      // 가장 긴 줄 길이 파악
+      const maxChars = Math.max(...lines.map(l => l.length), 1);
+      const totalTextWidth = (lines.length - 1) * colSpacing;
+      const totalTextHeight = (maxChars - 1) * charSpacing;
+      // 캔버스 중앙 배치 좌표 계산
+      const startX = (baseW / 2) + (totalTextWidth / 2);
+      const startY = (baseH / 2) - (totalTextHeight / 2) + (fontSize * 0.4);
+      ctx.font = `400 ${fontSize}px ${fontFam}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      lines.forEach((line, colIdx) => {
+        const x = startX - (colIdx * colSpacing);
+        for (let rowIdx = 0; rowIdx < line.length; rowIdx++) {
+          const char = line[rowIdx];
+          const y = startY + (rowIdx * charSpacing);
+          ctx.fillText(char, x, y);
+        }
+      });
+      // 세로쓰기 서명/낙관: 맨 왼쪽 줄 옆 또는 왼쪽 아래에 정갈하게 배치
+      if (author) {
+        ctx.save();
+        ctx.font = `400 ${Math.round(fontSize * 0.58)}px ${fontFam}`;
+        ctx.fillStyle = subTextColor;
+        const authorX = startX - (lines.length * colSpacing) - (fontSize * 0.5);
+        const authorY = startY + (fontSize * 0.8);
+        // 글자를 세로로 한 글자씩 출력
+        for (let i = 0; i < author.length; i++) {
+          ctx.fillText(author[i], authorX, authorY + (i * fontSize * 0.8));
+        }
+        ctx.restore();
+      }
+    } else {
+      // ===== 가로쓰기 (Horizontal: 위에서 아래로 가운데 정렬) =====
+      const lineSpacing = fontSize * 1.85;
+      const totalHeight = (lines.length - 1) * lineSpacing;
+      const startY = (baseH / 2) - (totalHeight / 2);
+      ctx.font = `400 ${fontSize}px ${fontFam}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      lines.forEach((line, idx) => {
+        const y = startY + (idx * lineSpacing);
+        ctx.fillText(line, baseW / 2, y);
+      });
+      // 가로쓰기 서명: 본문 아래 여백에 가운데 정렬
+      if (author) {
+        ctx.save();
+        ctx.font = `400 ${Math.round(fontSize * 0.58)}px ${fontFam}`;
+        ctx.fillStyle = subTextColor;
+        const authorY = startY + (lines.length * lineSpacing) + (fontSize * 0.6);
+        ctx.fillText(author, baseW / 2, authorY);
+        ctx.restore();
+      }
+    }
+  }
+  // 초기 폰트 로드 후 렌더링
+  document.fonts.ready.then(() => {
+    renderPoemCard();
+  });
+  // 다운로드
+  downloadBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `poem_${Date.now()}.jpg`;
+      link.click();
+    }, 'image/jpeg', 0.98);
+  });
+</script>
+</body>
+</html>
