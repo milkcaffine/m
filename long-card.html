@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ffffff">
   <title>SNS 긴 글 카드 슬라이서</title>
-  <!-- JSZip 라이브러리 (ZIP 일괄 다운로드) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- 웹폰트: 고운바탕(에세이/소설), 프리텐다드/노토산스(정보/리뷰), 플레이페어(영문) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
@@ -31,7 +29,6 @@
     }
     h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
     p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
-    /* 입력 폼 섹션 */
     .input-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
     .input-title {
       width: 100%;
@@ -53,7 +50,6 @@
       resize: vertical;
       font-family: inherit;
     }
-    /* 컨트롤 패널 */
     .control-panel {
       background: #f8f9fa;
       padding: 14px;
@@ -80,7 +76,6 @@
     .slider-box { display: flex; align-items: center; gap: 8px; }
     .slider-box input[type="range"] { width: 110px; }
     .slider-box span { font-size: 0.8rem; color: #495057; width: 44px; text-align: right; }
-    /* 배경 테마 컬러 */
     .color-picker-group { display: flex; gap: 6px; }
     .color-btn {
       width: 24px;
@@ -90,7 +85,6 @@
       cursor: pointer;
     }
     .color-btn.active { border-color: #007aff; transform: scale(1.15); }
-    /* 미리보기 카드 가로 스크롤 캐러셀 */
     #previewArea {
       margin-top: 16px;
       width: 100%;
@@ -105,20 +99,23 @@
     }
     .card-carousel {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       overflow-x: auto;
       padding-bottom: 8px;
       scroll-snap-type: x mandatory;
+      max-height: 42vh;
     }
     .card-carousel canvas {
-      flex: 0 0 240px;
+      flex: 0 0 min(180px, 42vw);
+      max-height: 40vh;
+      width: auto;
       height: auto;
       border-radius: 10px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.08);
       scroll-snap-align: start;
       background: #fff;
+      object-fit: contain;
     }
-    /* 버튼 */
     .btn-group { margin-top: 18px; }
     .btn {
       width: 100%;
@@ -151,7 +148,6 @@
 혼자만의 공간에 작은 작업실을 만들고 내가 쓰기 편한 도구들을 채워 넣는 일은, 나만의 작은 피난처를 짓는 일과 닮아 있다. 타인의 평가나 복잡한 시스템에 얽매이지 않고, 순수하게 나의 취향과 필요만으로 채워진 공간.</textarea>
   </div>
   <div class="control-panel">
-    <!-- 카드 비율 -->
     <div class="control-row">
       <label for="ratioSelect">카드 비율</label>
       <select id="ratioSelect">
@@ -160,7 +156,6 @@
         <option value="4:5">4:5 (인스타 피드 세로)</option>
       </select>
     </div>
-    <!-- 서체 선택 -->
     <div class="control-row">
       <label for="fontSelect">서체 스타일</label>
       <select id="fontSelect">
@@ -168,7 +163,6 @@
         <option value="'Noto Sans KR', sans-serif">모던 고딕 (깔끔/정보성)</option>
       </select>
     </div>
-    <!-- 카드당 글자 수 분할 조절 -->
     <div class="control-row">
       <label for="splitRange">
         카드당 분량
@@ -179,7 +173,6 @@
         <span id="splitVal">약 160자</span>
       </div>
     </div>
-    <!-- 글자 크기 -->
     <div class="control-row">
       <label for="fontSizeRange">본문 글자 크기</label>
       <div class="slider-box">
@@ -187,12 +180,10 @@
         <span id="fontSizeVal">38px</span>
       </div>
     </div>
-    <!-- 서명 / 아이디 -->
     <div class="control-row">
       <label for="authorInput">작성자 / 닉네임</label>
       <input type="text" id="authorInput" value="@username" placeholder="예: @내아이디">
     </div>
-    <!-- 배경 테마 -->
     <div class="control-row">
       <label>배경 색상 테마</label>
       <div class="color-picker-group">
@@ -230,7 +221,6 @@
   let currentBg = '#ffffff';
   let currentTextColor = '#1a1a1a';
   let renderedCanvases = [];
-  // 컬러 테마 선택
   colorBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       colorBtns.forEach(b => b.classList.remove('active'));
@@ -240,7 +230,6 @@
       renderAllCards();
     });
   });
-  // 컨트롤 변경 이벤트
   [cardTitle, cardBody, ratioSelect, fontSelect, authorInput].forEach(el => {
     el.addEventListener('input', renderAllCards);
   });
@@ -252,10 +241,8 @@
     fontSizeVal.textContent = `${fontSizeRange.value}px`;
     renderAllCards();
   });
-  // 단락 및 문장 단위로 똑똑하게 자르는 슬라이서 함수
   function sliceTextIntoPages(fullText, targetCharsPerPage) {
     if (!fullText.trim()) return [];
-    // 문단(엔터) 기준으로 분리
     const paragraphs = fullText.split('\n');
     const pages = [];
     let currentPage = '';
@@ -264,7 +251,6 @@
         if (currentPage) currentPage += '\n\n';
         return;
       }
-      // 단락 자체가 기준치보다 길 경우 문장 단위 분할
       if (para.length > targetCharsPerPage) {
         const sentences = para.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [para];
         sentences.forEach(sentence => {
@@ -289,13 +275,12 @@
     }
     return pages;
   }
-  // 캔버스 줄바꿈 렌더링 헬퍼
   function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
     const paragraphs = text.split('\n');
     let currentY = y;
     paragraphs.forEach(para => {
       if (!para.trim()) {
-        currentY += lineHeight * 0.7; // 빈 줄 간격
+        currentY += lineHeight * 0.7;
         return;
       }
       const words = para.split('');
@@ -316,7 +301,6 @@
     });
     return currentY;
   }
-  // 전체 카드 렌더링
   function renderAllCards() {
     const text = cardBody.value;
     const title = cardTitle.value.trim();
@@ -344,10 +328,8 @@
       canvas.width = canvasW;
       canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
-      // 1. 배경
       ctx.fillStyle = currentBg;
       ctx.fillRect(0, 0, canvasW, canvasH);
-      // 2. 상단 타이틀 영역
       const padX = 110;
       const topY = 120;
       if (title) {
@@ -356,7 +338,6 @@
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillText(title, padX, topY);
-        // 타이틀 하단 얇은 구분선
         ctx.strokeStyle = currentBg === '#18191a' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -364,7 +345,6 @@
         ctx.lineTo(canvasW - padX, topY + 60);
         ctx.stroke();
       }
-      // 3. 본문 텍스트 렌더링
       const bodyStartY = title ? (topY + 100) : topY;
       const maxTextWidth = canvasW - (padX * 2);
       const lineHeight = Math.round(fontSize * 1.85);
@@ -373,10 +353,8 @@
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       wrapText(ctx, pageContent, padX, bodyStartY, maxTextWidth, lineHeight);
-      // 4. 하단 영역 (작성자 + 페이지 번호 1 / N)
       const bottomY = canvasH - 100;
       const subTextColor = currentBg === '#18191a' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
-      // 작성자 닉네임
       if (author) {
         ctx.fillStyle = subTextColor;
         ctx.font = `500 24px -apple-system, sans-serif`;
@@ -384,7 +362,6 @@
         ctx.textBaseline = 'middle';
         ctx.fillText(author, padX, bottomY);
       }
-      // 페이지 번호 (우측 하단)
       ctx.fillStyle = subTextColor;
       ctx.font = `600 24px -apple-system, sans-serif`;
       ctx.textAlign = 'right';
@@ -394,11 +371,9 @@
       renderedCanvases.push({ canvas, pageNum });
     });
   }
-  // 폰트 로드 후 초기 렌더링
   document.fonts.ready.then(() => {
     renderAllCards();
   });
-  // ZIP 일괄 다운로드
   zipDownloadBtn.addEventListener('click', async () => {
     if (!renderedCanvases.length) return;
     zipDownloadBtn.textContent = 'ZIP 압축 중...';
