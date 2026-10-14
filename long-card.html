@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>SNS 긴 글 카드 슬라이서</title>
+  <!-- JSZip 라이브러리 (ZIP 일괄 다운로드) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- 웹폰트: 고운바탕(에세이/소설), 프리텐다드/노토산스(정보/리뷰), 플레이페어(영문) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    /* 입력 폼 섹션 */
+    .input-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .input-title {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .input-title:focus, textarea:focus { border-color: #007aff; outline: none; }
+    textarea {
+      width: 100%;
+      height: 130px;
+      padding: 12px;
+      border: 1px solid #ced4da;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      resize: vertical;
+      font-family: inherit;
+    }
+    /* 컨트롤 패널 */
+    .control-panel {
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+    }
+    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row select, .control-row input[type="text"] {
+      font-size: 0.9rem;
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+    }
+    .control-row input[type="text"] { width: 170px; }
+    .slider-box { display: flex; align-items: center; gap: 8px; }
+    .slider-box input[type="range"] { width: 110px; }
+    .slider-box span { font-size: 0.8rem; color: #495057; width: 44px; text-align: right; }
+    /* 배경 테마 컬러 */
+    .color-picker-group { display: flex; gap: 6px; }
+    .color-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #ced4da;
+      cursor: pointer;
+    }
+    .color-btn.active { border-color: #007aff; transform: scale(1.15); }
+    /* 미리보기 카드 가로 스크롤 캐러셀 */
+    #previewArea {
+      margin-top: 16px;
+      width: 100%;
+    }
+    .preview-header {
+      font-size: 0.78rem;
+      color: #6c757d;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+    }
+    .card-carousel {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scroll-snap-type: x mandatory;
+    }
+    .card-carousel canvas {
+      flex: 0 0 240px;
+      height: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      scroll-snap-align: start;
+      background: #fff;
+    }
+    /* 버튼 */
+    .btn-group { margin-top: 18px; }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #007aff;
+      color: #ffffff;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
+    .back a { color: #007aff; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="back"><a href="index.html">← marsko</a></div>
+  <h1>SNS 긴 글 카드 슬라이서</h1>
+  <p class="sub">긴 문장 자동 분할 · 감성 서체 · ZIP 일괄 저장</p>
+  <div class="input-section">
+    <input type="text" id="cardTitle" class="input-title" placeholder="글 제목 / 주제 (선택)" value="어느 날의 단상">
+    <textarea id="cardBody" placeholder="여기에 긴 글을 붙여넣으세요. 분량에 따라 자동으로 카드가 쪼개집니다.">우리가 글을 쓰고 사진을 남기는 이유는 아마도 흐러가는 시간 속에서 붙잡고 싶은 찰나의 순간들이 존재하기 때문일 것이다.
+기억은 언제나 희미해지기 마련이지만, 정갈하게 기록된 문장이나 렌즈를 통해 담아낸 한 조각의 빛은 오래도록 그 자리에 머물며 당시의 공기와 온도를 고스란히 전해준다. 
+혼자만의 공간에 작은 작업실을 만들고 내가 쓰기 편한 도구들을 채워 넣는 일은, 나만의 작은 피난처를 짓는 일과 닮아 있다. 타인의 평가나 복잡한 시스템에 얽매이지 않고, 순수하게 나의 취향과 필요만으로 채워진 공간.</textarea>
+  </div>
+  <div class="control-panel">
+    <!-- 카드 비율 -->
+    <div class="control-row">
+      <label for="ratioSelect">카드 비율</label>
+      <select id="ratioSelect">
+        <option value="1:1">1:1 (정사각형 - 인스타/피드)</option>
+        <option value="3:4" selected>3:4 (X/트위터 세로 권장)</option>
+        <option value="4:5">4:5 (인스타 피드 세로)</option>
+      </select>
+    </div>
+    <!-- 서체 선택 -->
+    <div class="control-row">
+      <label for="fontSelect">서체 스타일</label>
+      <select id="fontSelect">
+        <option value="'Gowun Batang', serif" selected>고운바탕 (에세이/문학 추천)</option>
+        <option value="'Noto Sans KR', sans-serif">모던 고딕 (깔끔/정보성)</option>
+      </select>
+    </div>
+    <!-- 카드당 글자 수 분할 조절 -->
+    <div class="control-row">
+      <label for="splitRange">
+        카드당 분량
+        <span style="display:block; font-size:0.75rem; font-weight:400; color:#868e96;">1장에 담길 글자 수 조절</span>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="splitRange" min="80" max="350" value="160">
+        <span id="splitVal">약 160자</span>
+      </div>
+    </div>
+    <!-- 글자 크기 -->
+    <div class="control-row">
+      <label for="fontSizeRange">본문 글자 크기</label>
+      <div class="slider-box">
+        <input type="range" id="fontSizeRange" min="30" max="50" value="38">
+        <span id="fontSizeVal">38px</span>
+      </div>
+    </div>
+    <!-- 서명 / 아이디 -->
+    <div class="control-row">
+      <label for="authorInput">작성자 / 닉네임</label>
+      <input type="text" id="authorInput" value="@username" placeholder="예: @내아이디">
+    </div>
+    <!-- 배경 테마 -->
+    <div class="control-row">
+      <label>배경 색상 테마</label>
+      <div class="color-picker-group">
+        <div class="color-btn active" data-bg="#ffffff" data-text="#1a1a1a" style="background: #ffffff;" title="화이트"></div>
+        <div class="color-btn" data-bg="#fcfbf7" data-text="#2b2824" style="background: #fcfbf7;" title="원고지 아이보리"></div>
+        <div class="color-btn" data-bg="#18191a" data-text="#f1f3f5" style="background: #18191a;" title="다크 모드"></div>
+      </div>
+    </div>
+  </div>
+  <div id="previewArea">
+    <div class="preview-header">
+      <span>카드 미리보기 (좌우 스크롤)</span>
+      <span id="cardCountInfo">총 0장</span>
+    </div>
+    <div class="card-carousel" id="cardCarousel"></div>
+  </div>
+  <div class="btn-group">
+    <button class="btn" id="zipDownloadBtn" disabled>모든 카드 ZIP으로 다운로드</button>
+  </div>
+</div>
+<script>
+  const cardTitle = document.getElementById('cardTitle');
+  const cardBody = document.getElementById('cardBody');
+  const ratioSelect = document.getElementById('ratioSelect');
+  const fontSelect = document.getElementById('fontSelect');
+  const splitRange = document.getElementById('splitRange');
+  const splitVal = document.getElementById('splitVal');
+  const fontSizeRange = document.getElementById('fontSizeRange');
+  const fontSizeVal = document.getElementById('fontSizeVal');
+  const authorInput = document.getElementById('authorInput');
+  const colorBtns = document.querySelectorAll('.color-btn');
+  const cardCarousel = document.getElementById('cardCarousel');
+  const cardCountInfo = document.getElementById('cardCountInfo');
+  const zipDownloadBtn = document.getElementById('zipDownloadBtn');
+  let currentBg = '#ffffff';
+  let currentTextColor = '#1a1a1a';
+  let renderedCanvases = [];
+  // 컬러 테마 선택
+  colorBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      colorBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      currentBg = e.target.dataset.bg;
+      currentTextColor = e.target.dataset.text;
+      renderAllCards();
+    });
+  });
+  // 컨트롤 변경 이벤트
+  [cardTitle, cardBody, ratioSelect, fontSelect, authorInput].forEach(el => {
+    el.addEventListener('input', renderAllCards);
+  });
+  splitRange.addEventListener('input', () => {
+    splitVal.textContent = `약 ${splitRange.value}자`;
+    renderAllCards();
+  });
+  fontSizeRange.addEventListener('input', () => {
+    fontSizeVal.textContent = `${fontSizeRange.value}px`;
+    renderAllCards();
+  });
+  // 단락 및 문장 단위로 똑똑하게 자르는 슬라이서 함수
+  function sliceTextIntoPages(fullText, targetCharsPerPage) {
+    if (!fullText.trim()) return [];
+    // 문단(엔터) 기준으로 분리
+    const paragraphs = fullText.split('\n');
+    const pages = [];
+    let currentPage = '';
+    paragraphs.forEach(para => {
+      if (!para.trim()) {
+        if (currentPage) currentPage += '\n\n';
+        return;
+      }
+      // 단락 자체가 기준치보다 길 경우 문장 단위 분할
+      if (para.length > targetCharsPerPage) {
+        const sentences = para.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [para];
+        sentences.forEach(sentence => {
+          if ((currentPage.length + sentence.length) > targetCharsPerPage && currentPage.length > 30) {
+            pages.push(currentPage.trim());
+            currentPage = sentence;
+          } else {
+            currentPage += (currentPage ? ' ' : '') + sentence;
+          }
+        });
+      } else {
+        if ((currentPage.length + para.length) > targetCharsPerPage && currentPage.length > 30) {
+          pages.push(currentPage.trim());
+          currentPage = para;
+        } else {
+          currentPage += (currentPage ? '\n\n' : '') + para;
+        }
+      }
+    });
+    if (currentPage.trim()) {
+      pages.push(currentPage.trim());
+    }
+    return pages;
+  }
+  // 캔버스 줄바꿈 렌더링 헬퍼
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const paragraphs = text.split('\n');
+    let currentY = y;
+    paragraphs.forEach(para => {
+      if (!para.trim()) {
+        currentY += lineHeight * 0.7; // 빈 줄 간격
+        return;
+      }
+      const words = para.split('');
+      let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line, x, currentY);
+          line = words[n];
+          currentY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, currentY);
+      currentY += lineHeight;
+    });
+    return currentY;
+  }
+  // 전체 카드 렌더링
+  function renderAllCards() {
+    const text = cardBody.value;
+    const title = cardTitle.value.trim();
+    const author = authorInput.value.trim();
+    const targetChars = parseInt(splitRange.value, 10);
+    const fontSize = parseInt(fontSizeRange.value, 10);
+    const fontFam = fontSelect.value;
+    const [rw, rh] = ratioSelect.value.split(':').map(Number);
+    const canvasW = 1200;
+    const canvasH = Math.round((canvasW / rw) * rh);
+    const pages = sliceTextIntoPages(text, targetChars);
+    const totalPages = pages.length;
+    cardCarousel.innerHTML = '';
+    renderedCanvases = [];
+    if (totalPages === 0) {
+      cardCountInfo.textContent = '총 0장';
+      zipDownloadBtn.disabled = true;
+      return;
+    }
+    cardCountInfo.textContent = `총 ${totalPages}장의 카드`;
+    zipDownloadBtn.disabled = false;
+    pages.forEach((pageContent, idx) => {
+      const pageNum = idx + 1;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+      // 1. 배경
+      ctx.fillStyle = currentBg;
+      ctx.fillRect(0, 0, canvasW, canvasH);
+      // 2. 상단 타이틀 영역
+      const padX = 110;
+      const topY = 120;
+      if (title) {
+        ctx.fillStyle = currentTextColor;
+        ctx.font = `700 36px ${fontFam}`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(title, padX, topY);
+        // 타이틀 하단 얇은 구분선
+        ctx.strokeStyle = currentBg === '#18191a' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padX, topY + 60);
+        ctx.lineTo(canvasW - padX, topY + 60);
+        ctx.stroke();
+      }
+      // 3. 본문 텍스트 렌더링
+      const bodyStartY = title ? (topY + 100) : topY;
+      const maxTextWidth = canvasW - (padX * 2);
+      const lineHeight = Math.round(fontSize * 1.85);
+      ctx.fillStyle = currentTextColor;
+      ctx.font = `400 ${fontSize}px ${fontFam}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      wrapText(ctx, pageContent, padX, bodyStartY, maxTextWidth, lineHeight);
+      // 4. 하단 영역 (작성자 + 페이지 번호 1 / N)
+      const bottomY = canvasH - 100;
+      const subTextColor = currentBg === '#18191a' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+      // 작성자 닉네임
+      if (author) {
+        ctx.fillStyle = subTextColor;
+        ctx.font = `500 24px -apple-system, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(author, padX, bottomY);
+      }
+      // 페이지 번호 (우측 하단)
+      ctx.fillStyle = subTextColor;
+      ctx.font = `600 24px -apple-system, sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${pageNum} / ${totalPages}`, canvasW - padX, bottomY);
+      cardCarousel.appendChild(canvas);
+      renderedCanvases.push({ canvas, pageNum });
+    });
+  }
+  // 폰트 로드 후 초기 렌더링
+  document.fonts.ready.then(() => {
+    renderAllCards();
+  });
+  // ZIP 일괄 다운로드
+  zipDownloadBtn.addEventListener('click', async () => {
+    if (!renderedCanvases.length) return;
+    zipDownloadBtn.textContent = 'ZIP 압축 중...';
+    zipDownloadBtn.disabled = true;
+    const zip = new JSZip();
+    const titleSlug = (cardTitle.value.trim() || 'card').replace(/\s+/g, '_');
+    for (let i = 0; i < renderedCanvases.length; i++) {
+      const item = renderedCanvases[i];
+      const blob = await new Promise(resolve => item.canvas.toBlob(resolve, 'image/jpeg', 0.95));
+      zip.file(`${titleSlug}_${String(item.pageNum).padStart(2, '0')}.jpg`, blob);
+    }
+    const content = await zip.generateAsync({ type: 'blob' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `${titleSlug}_thread_${Date.now()}.zip`;
+    link.click();
+    zipDownloadBtn.textContent = '모든 카드 ZIP으로 다운로드';
+    zipDownloadBtn.disabled = false;
+  });
+</script>
+</body>
+</html>
