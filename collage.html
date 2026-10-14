@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>포토 콜라주 메이커</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 500px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    .dropzone {
+      border: 2px dashed #007aff;
+      background: #f0f7ff;
+      border-radius: 14px;
+      padding: 20px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #007aff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    input[type="file"] { display: none; }
+    .photo-manage-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .photo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8f9fa;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+    }
+    .photo-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .caption-input {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      background: #fff;
+    }
+    .caption-input:focus { border-color: #007aff; outline: none; }
+    .del-btn {
+      background: #e9ecef;
+      color: #495057;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .del-btn:hover { background: #dee2e6; color: #fa5252; }
+    .control-panel {
+      margin-top: 14px;
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+    }
+    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row select, .control-row input[type="range"], .control-row input[type="text"] {
+      font-size: 0.9rem;
+      border-radius: 8px;
+    }
+    .control-row select {
+      padding: 6px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+    }
+    .watermark-input {
+      width: 170px;
+      padding: 7px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+      font-size: 0.85rem;
+    }
+    .watermark-input:focus { border-color: #007aff; outline: none; }
+    .shape-control {
+      display: flex;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 3px;
+      width: 140px;
+    }
+    .shape-control button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+    }
+    .shape-control button.active {
+      background: #fff;
+      color: #007aff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    .color-picker-group { display: flex; gap: 6px; }
+    .color-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #ced4da;
+      cursor: pointer;
+    }
+    .color-btn.active { border-color: #007aff; transform: scale(1.1); }
+    #previewArea {
+      margin-top: 16px;
+      display: none;
+      width: 100%;
+      text-align: center;
+    }
+    .preview-header { font-size: 0.75rem; color: #868e96; margin-bottom: 6px; text-align: left; }
+    .canvas-container {
+      width: 100%;
+      max-height: 380px;
+      background: #e9ecef;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 360px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 6px;
+    }
+    .btn-group { margin-top: 18px; }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-primary { background: #007aff; color: #ffffff; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
+    .back a { color: #007aff; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="back"><a href="index.html">← marsko</a></div>
+  <h1>포토 콜라주 메이커</h1>
+  <p class="sub">동그라미 컷 · 타이틀 · 우측 하단 서명 지원</p>
+  <div class="dropzone" id="dropzone">
+    <span>📷 사진 선택 (여러 장 추가 가능)</span>
+    <small>터치하여 앨범에서 사진을 불러오세요</small>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+  </div>
+  <div class="photo-manage-list" id="photoManageList"></div>
+  <div class="control-panel">
+    <div class="control-row">
+      <label>사진 모양</label>
+      <div class="shape-control" id="shapeControl">
+        <button type="button" data-shape="rect" class="active">사각형</button>
+        <button type="button" data-shape="circle">동그라미</button>
+      </div>
+    </div>
+    <div class="control-row">
+      <label>레이아웃 스타일</label>
+      <select id="layoutSelect">
+        <option value="auto" selected>자동 그리드 (바둑판)</option>
+        <option value="strip">4컷 필름 (세로 스트립)</option>
+        <option value="mosaic">매거진 (1장 크게 + 서브)</option>
+        <option value="polaroid">폴라로이드 프레임</option>
+      </select>
+    </div>
+    <div class="control-row">
+      <label>출력 비율</label>
+      <select id="ratioSelect">
+        <option value="1:1" selected>1:1 (정사각형 - 인스타/X)</option>
+        <option value="3:4">3:4 (X/트위터 세로)</option>
+        <option value="4:5">4:5 (인스타그램 피드)</option>
+        <option value="9:16">9:16 (스토리/배경화면)</option>
+        <option value="16:9">16:9 (와이드 가로)</option>
+      </select>
+    </div>
+    <div class="control-row">
+      <label for="watermarkInput">
+        서명 / 닉네임 (선택)
+        <span style="display:block; font-size:0.75rem; font-weight:400; color:#868e96;">우측 하단 워터마크</span>
+      </label>
+      <input type="text" id="watermarkInput" class="watermark-input" placeholder="@username">
+    </div>
+    <div class="control-row" id="radiusRow">
+      <label>모서리 둥글기</label>
+      <input type="range" id="radiusRange" min="0" max="40" value="12" style="width: 140px;">
+    </div>
+    <div class="control-row">
+      <label>여백 & 간격</label>
+      <input type="range" id="spacingRange" min="4" max="40" value="16" style="width: 140px;">
+    </div>
+    <div class="control-row">
+      <label>배경 색상</label>
+      <div class="color-picker-group">
+        <div class="color-btn active" data-color="#ffffff" style="background: #ffffff;"></div>
+        <div class="color-btn" data-color="#f8f4ec" style="background: #f8f4ec;" title="아이보리"></div>
+        <div class="color-btn" data-color="#121212" style="background: #121212;" title="다크"></div>
+      </div>
+    </div>
+  </div>
+  <div id="previewArea">
+    <div class="preview-header">콜라주 완성 미리보기</div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" id="downloadBtn" disabled>고화질 콜라주 다운로드</button>
+  </div>
+</div>
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const photoManageList = document.getElementById('photoManageList');
+  const shapeControl = document.getElementById('shapeControl');
+  const layoutSelect = document.getElementById('layoutSelect');
+  const ratioSelect = document.getElementById('ratioSelect');
+  const watermarkInput = document.getElementById('watermarkInput');
+  const spacingRange = document.getElementById('spacingRange');
+  const radiusRange = document.getElementById('radiusRange');
+  const radiusRow = document.getElementById('radiusRow');
+  const colorBtns = document.querySelectorAll('.color-btn');
+  const previewArea = document.getElementById('previewArea');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('downloadBtn');
+  let photoItems = [];
+  let currentShape = 'rect';
+  let bgColor = '#ffffff';
+  shapeControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    shapeControl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    currentShape = e.target.dataset.shape;
+    radiusRow.style.display = currentShape === 'circle' ? 'none' : 'flex';
+    renderCollage();
+  });
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          photoItems.push({ img: img, caption: '' });
+          renderManageList();
+          renderCollage();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    fileInput.value = '';
+  });
+  function renderManageList() {
+    photoManageList.innerHTML = '';
+    photoItems.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'photo-item';
+      const thumb = document.createElement('img');
+      thumb.className = 'photo-thumb';
+      thumb.src = item.img.src;
+      const input = document.createElement('input');
+      input.className = 'caption-input';
+      input.type = 'text';
+      input.placeholder = `사진 ${idx + 1} 캡션 (선택)`;
+      input.value = item.caption;
+      input.addEventListener('input', (e) => {
+        item.caption = e.target.value;
+        renderCollage();
+      });
+      const delBtn = document.createElement('button');
+      delBtn.className = 'del-btn';
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', () => {
+        photoItems.splice(idx, 1);
+        renderManageList();
+        renderCollage();
+      });
+      row.appendChild(thumb);
+      row.appendChild(input);
+      row.appendChild(delBtn);
+      photoManageList.appendChild(row);
+    });
+  }
+  [layoutSelect, ratioSelect, spacingRange, radiusRange].forEach(el => {
+    el.addEventListener('input', renderCollage);
+  });
+  watermarkInput.addEventListener('input', renderCollage);
+  colorBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      colorBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      bgColor = e.target.dataset.color;
+      renderCollage();
+    });
+  });
+  function roundRect(ctx, x, y, width, height, radius) {
+    if (radius <= 0) { ctx.rect(x, y, width, height); return; }
+    radius = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, radius);
+    ctx.arcTo(x + width, y + height, x, y + height, radius);
+    ctx.arcTo(x, y + height, x, y, radius);
+    ctx.arcTo(x, y, x + width, y, radius);
+    ctx.closePath();
+  }
+  function drawCoverImage(ctx, img, x, y, w, h, radius, isCircle) {
+    ctx.save();
+    if (isCircle) {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const r = Math.min(w, h) / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.clip();
+    } else {
+      roundRect(ctx, x, y, w, h, radius);
+      ctx.clip();
+    }
+    const imgRatio = img.naturalWidth / img.naturalHeight;
+    const targetRatio = w / h;
+    let sx, sy, sw, sh;
+    if (imgRatio > targetRatio) {
+      sh = img.naturalHeight;
+      sw = sh * targetRatio;
+      sy = 0;
+      sx = (img.naturalWidth - sw) / 2;
+    } else {
+      sw = img.naturalWidth;
+      sh = sw / targetRatio;
+      sx = 0;
+      sy = (img.naturalHeight - sh) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    ctx.restore();
+  }
+  function drawPhotoCaption(ctx, text, x, y, w, h) {
+    if (!text || !text.trim()) return;
+    ctx.save();
+    ctx.fillStyle = bgColor === '#121212' ? '#f1f3f5' : '#212529';
+    ctx.font = '600 28px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const maxWidth = w - 20;
+    let renderedText = text;
+    if (ctx.measureText(renderedText).width > maxWidth) {
+      while (ctx.measureText(renderedText + '...').width > maxWidth && renderedText.length > 0) {
+        renderedText = renderedText.slice(0, -1);
+      }
+      renderedText += '...';
+    }
+    ctx.fillText(renderedText, x + w / 2, y + h / 2);
+    ctx.restore();
+  }
+  function drawSignature(ctx, text, canvasW, canvasH, pad) {
+    if (!text || !text.trim()) return;
+    ctx.save();
+    ctx.font = '500 26px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    if (bgColor === '#121212') {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    } else {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+    }
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    const posX = canvasW - Math.max(pad, 30);
+    const posY = canvasH - Math.max(pad / 2, 22);
+    ctx.fillText(text.trim(), posX, posY);
+    ctx.restore();
+  }
+  function renderCollage() {
+    const count = photoItems.length;
+    if (count === 0) {
+      previewArea.style.display = 'none';
+      downloadBtn.disabled = true;
+      return;
+    }
+    const ratioStr = ratioSelect.value;
+    const [rw, rh] = ratioStr.split(':').map(Number);
+    const baseW = 1600;
+    const baseH = Math.round((baseW / rw) * rh);
+    canvas.width = baseW;
+    canvas.height = baseH;
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, baseW, baseH);
+    const pad = parseInt(spacingRange.value, 10) * 2;
+    const gap = parseInt(spacingRange.value, 10) * 2;
+    const radius = parseInt(radiusRange.value, 10) * 2;
+    const isCircle = currentShape === 'circle';
+    const layout = layoutSelect.value;
+    const innerW = baseW - pad * 2;
+    const innerH = baseH - pad * 2;
+    const hasAnyCaption = photoItems.some(item => item.caption && item.caption.trim().length > 0);
+    const captionHeight = hasAnyCaption ? 54 : 0;
+    if (layout === 'strip') {
+      const slotH = (innerH - gap * (count - 1)) / count;
+      photoItems.forEach((item, i) => {
+        const slotY = pad + i * (slotH + gap);
+        const imgH = slotH - captionHeight;
+        drawCoverImage(ctx, item.img, pad, slotY, innerW, imgH, radius, isCircle);
+        if (captionHeight > 0) {
+          drawPhotoCaption(ctx, item.caption, pad, slotY + imgH, innerW, captionHeight);
+        }
+      });
+    } else if (layout === 'mosaic' && count >= 3) {
+      const mainW = (innerW - gap) * 0.6;
+      const subW = innerW - mainW - gap;
+      const mainImgH = innerH - captionHeight;
+      drawCoverImage(ctx, photoItems[0].img, pad, pad, mainW, mainImgH, radius, isCircle);
+      if (captionHeight > 0) {
+        drawPhotoCaption(ctx, photoItems[0].caption, pad, pad + mainImgH, mainW, captionHeight);
+      }
+      const subCount = count - 1;
+      const subSlotH = (innerH - gap * (subCount - 1)) / subCount;
+      for (let i = 1; i < count; i++) {
+        const slotY = pad + (i - 1) * (subSlotH + gap);
+        const subImgH = subSlotH - captionHeight;
+        drawCoverImage(ctx, photoItems[i].img, pad + mainW + gap, slotY, subW, subImgH, radius, isCircle);
+        if (captionHeight > 0) {
+          drawPhotoCaption(ctx, photoItems[i].caption, pad + mainW + gap, slotY + subImgH, subW, captionHeight);
+        }
+      }
+    } else if (layout === 'polaroid') {
+      const cols = count <= 2 ? count : Math.ceil(Math.sqrt(count));
+      const rows = Math.ceil(count / cols);
+      const cellW = (innerW - gap * (cols - 1)) / cols;
+      const cellH = (innerH - gap * (rows - 1)) / rows;
+      photoItems.forEach((item, i) => {
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        const x = pad + c * (cellW + gap);
+        const y = pad + r * (cellH + gap);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0,0,0,0.08)';
+        ctx.shadowBlur = 15;
+        roundRect(ctx, x, y, cellW, cellH, 6);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+        const pMargin = 14;
+        const pBottom = 48;
+        const imgH = cellH - pMargin * 2 - pBottom;
+        const imgW = cellW - pMargin * 2;
+        drawCoverImage(ctx, item.img, x + pMargin, y + pMargin, imgW, imgH, 4, isCircle);
+        ctx.save();
+        ctx.fillStyle = '#212529';
+        ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.caption || '', x + cellW / 2, y + cellH - (pBottom / 2));
+        ctx.restore();
+      });
+    } else {
+      let cols = 1;
+      if (count === 2) cols = (rw >= rh) ? 2 : 1;
+      else if (count >= 3 && count <= 4) cols = 2;
+      else if (count >= 5) cols = 3;
+      const rows = Math.ceil(count / cols);
+      const cellW = (innerW - gap * (cols - 1)) / cols;
+      const cellH = (innerH - gap * (rows - 1)) / rows;
+      photoItems.forEach((item, i) => {
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        const slotX = pad + c * (cellW + gap);
+        const slotY = pad + r * (cellH + gap);
+        const imgH = cellH - captionHeight;
+        drawCoverImage(ctx, item.img, slotX, slotY, cellW, imgH, radius, isCircle);
+        if (captionHeight > 0) {
+          drawPhotoCaption(ctx, item.caption, slotX, slotY + imgH, cellW, captionHeight);
+        }
+      });
+    }
+    drawSignature(ctx, watermarkInput.value, baseW, baseH, pad);
+    previewArea.style.display = 'block';
+    downloadBtn.disabled = false;
+  }
+  downloadBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `collage_${Date.now()}.jpg`;
+      link.click();
+    }, 'image/jpeg', 0.95);
+  });
+</script>
+</body>
+</html>
