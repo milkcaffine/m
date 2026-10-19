@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>이미지 컬러 팔레트 추출기</title>
+  <!-- 모노스페이스 및 산세리프 웹폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Apple SD Gothic Neo", sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    /* 업로드 드롭존 */
+    .dropzone {
+      border: 2px dashed #007aff;
+      background: #f0f7ff;
+      border-radius: 14px;
+      padding: 22px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #007aff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    input[type="file"] { display: none; }
+    /* 컨트롤 패널 */
+    .control-panel {
+      margin-top: 14px;
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+    }
+    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row select, .control-row input[type="text"] {
+      font-size: 0.9rem;
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+    }
+    .control-row input[type="text"] { width: 180px; }
+    /* 컬러 칩 모양 선택 버튼 */
+    .chip-control {
+      display: flex;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 3px;
+      width: 170px;
+    }
+    .chip-control button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 6px 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+    }
+    .chip-control button.active {
+      background: #fff;
+      color: #007aff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    /* 카드 배경 테마 */
+    .color-picker-group { display: flex; gap: 6px; }
+    .color-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #ced4da;
+      cursor: pointer;
+    }
+    .color-btn.active { border-color: #007aff; transform: scale(1.15); }
+    /* 미리보기 */
+    #previewArea {
+      margin-top: 16px;
+      display: none;
+      width: 100%;
+      text-align: center;
+    }
+    .preview-header { font-size: 0.75rem; color: #868e96; margin-bottom: 6px; text-align: left; }
+    .canvas-container {
+      width: 100%;
+      max-height: 440px;
+      background: #e9ecef;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 420px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      border-radius: 4px;
+    }
+    /* 다운로드 버튼 */
+    .btn-group { margin-top: 18px; }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #007aff;
+      color: #ffffff;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>이미지 컬러 팔레트 추출기</h1>
+  <p class="sub">지배적인 색상 분석 · 팬톤 칩 스타일 카드 생성</p>
+  <div class="dropzone" id="dropzone">
+    <span>📷 사진 선택 / 불러오기</span>
+    <small>풍경, 인물, 스냅 사진을 올려보세요</small>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+  <div class="control-panel">
+    <!-- 칩 모양 선택 -->
+    <div class="control-row">
+      <label>컬러 칩 모양</label>
+      <div class="chip-control" id="chipControl">
+        <button type="button" data-shape="circle" class="active">원형 (동그라미)</button>
+        <button type="button" data-shape="rect">사각형 (팬톤)</button>
+      </div>
+    </div>
+    <!-- 카드 타이틀 -->
+    <div class="control-row">
+      <label for="titleInput">카드 타이틀</label>
+      <input type="text" id="titleInput" value="COLOR PALETTE" placeholder="예: TOKYO SUNSET">
+    </div>
+    <!-- 서명 / 아이디 -->
+    <div class="control-row">
+      <label for="authorInput">작성자 / 서명</label>
+      <input type="text" id="authorInput" value="@username" placeholder="예: @marsko">
+    </div>
+    <!-- 배경 색상 테마 -->
+    <div class="control-row">
+      <label>카드 배경색</label>
+      <div class="color-picker-group">
+        <div class="color-btn active" data-color="#ffffff" data-text="#1a1a1a" style="background: #ffffff;" title="화이트"></div>
+        <div class="color-btn" data-color="#f8f4ec" data-text="#2b2824" style="background: #f8f4ec;" title="아이보리"></div>
+        <div class="color-btn" data-color="#141517" data-text="#f8f9fa" style="background: #141517;" title="매트 블랙"></div>
+      </div>
+    </div>
+  </div>
+  <div id="previewArea">
+    <div class="preview-header">미리보기 (고화질 추출)</div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+  <div class="btn-group">
+    <button class="btn" id="downloadBtn" disabled>팔레트 카드 다운로드</button>
+  </div>
+</div>
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const chipControl = document.getElementById('chipControl');
+  const titleInput = document.getElementById('titleInput');
+  const authorInput = document.getElementById('authorInput');
+  const colorBtns = document.querySelectorAll('.color-btn');
+  const previewArea = document.getElementById('previewArea');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('downloadBtn');
+  let currentImg = null;
+  let extractedColors = [];
+  let chipShape = 'circle';
+  let cardBg = '#ffffff';
+  let cardTextColor = '#1a1a1a';
+  // 칩 모양 토글
+  chipControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    chipControl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    chipShape = e.target.dataset.shape;
+    renderCard();
+  });
+  // 배경 테마 선택
+  colorBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      colorBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      cardBg = e.target.dataset.color;
+      cardTextColor = e.target.dataset.text;
+      renderCard();
+    });
+  });
+  // 파일 업로드
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      currentImg = new Image();
+      currentImg.onload = () => {
+        extractedColors = extractPalette(currentImg, 5);
+        renderCard();
+      };
+      currentImg.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+  [titleInput, authorInput].forEach(el => el.addEventListener('input', renderCard));
+  // 색상 거리 계산 (유클리드 거리)
+  function colorDist(c1, c2) {
+    return Math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2 + (c1[2]-c2[2])**2);
+  }
+  // RGB to HEX 변환
+  function rgbToHex(r, g, b) {
+    return "#" + [r, g, b].map(x => {
+      const hex = Math.round(x).toString(16);
+      return hex.length === 1 ? "0" + hex : hex;
+    }).join("").toUpperCase();
+  }
+  // K-Means 군집화로 대표 색상 추출
+  function extractPalette(img, k = 5) {
+    // 성능을 위해 150px 이하로 다운샘플링 후 분석
+    const tempCanvas = document.createElement('canvas');
+    const scale = Math.min(150 / img.naturalWidth, 150 / img.naturalHeight, 1);
+    const tw = Math.round(img.naturalWidth * scale);
+    const th = Math.round(img.naturalHeight * scale);
+    tempCanvas.width = tw;
+    tempCanvas.height = th;
+    const tCtx = tempCanvas.getContext('2d');
+    tCtx.drawImage(img, 0, 0, tw, th);
+    const imgData = tCtx.getImageData(0, 0, tw, th).data;
+    const pixels = [];
+    for (let i = 0; i < imgData.length; i += 16) { // 4픽셀 단위 샘플링
+      pixels.push([imgData[i], imgData[i+1], imgData[i+2]]);
+    }
+    if (pixels.length === 0) return [];
+    // 초기 중심점 선택
+    let centers = [];
+    for (let i = 0; i < k; i++) {
+      centers.push(pixels[Math.floor(Math.random() * pixels.length)]);
+    }
+    // 10회 반복 군집화
+    for (let iter = 0; iter < 10; iter++) {
+      const clusters = Array.from({ length: k }, () => []);
+      for (const p of pixels) {
+        let minDist = Infinity;
+        let bestIdx = 0;
+        for (let j = 0; j < k; j++) {
+          const d = colorDist(p, centers[j]);
+          if (d < minDist) {
+            minDist = d;
+            bestIdx = j;
+          }
+        }
+        clusters[bestIdx].push(p);
+      }
+      for (let j = 0; j < k; j++) {
+        if (clusters[j].length > 0) {
+          const sum = clusters[j].reduce((acc, cur) => [acc[0]+cur[0], acc[1]+cur[1], acc[2]+cur[2]], [0, 0, 0]);
+          centers[j] = [
+            sum[0] / clusters[j].length,
+            sum[1] / clusters[j].length,
+            sum[2] / clusters[j].length
+          ];
+        }
+      }
+    }
+    // 밝기(Luminance) 순으로 보기 좋게 정렬
+    centers.sort((a, b) => {
+      const lumA = 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+      const lumB = 0.2126 * b[0] + 0.7152 * b[1] + 0.0722 * b[2];
+      return lumA - lumB;
+    });
+    return centers.map(c => rgbToHex(c[0], c[1], c[2]));
+  }
+  // 카드 렌더링
+  function renderCard() {
+    if (!currentImg || extractedColors.length === 0) return;
+    const imgW = currentImg.naturalWidth;
+    const imgH = currentImg.naturalHeight;
+    // 가로 폭 1200px 기준 고화질 스케일링
+    const baseW = 1200;
+    const scale = baseW / imgW;
+    const renderedImgH = Math.round(imgH * scale);
+    const pad = 60;
+    const paletteAreaH = 260; // 하단 팔레트 영역 높이
+    const canvasW = baseW + (pad * 2);
+    const canvasH = renderedImgH + (pad * 2) + paletteAreaH;
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    // 1. 배경
+    ctx.fillStyle = cardBg;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+    // 2. 사진 렌더링
+    ctx.drawImage(currentImg, pad, pad, baseW, renderedImgH);
+    // 3. 상단 타이틀 & 서명 (사진과 팔레트 사이)
+    const title = titleInput.value.trim().toUpperCase();
+    const author = authorInput.value.trim();
+    const infoY = pad + renderedImgH + 50;
+    ctx.save();
+    if (title) {
+      ctx.fillStyle = cardTextColor;
+      ctx.font = '700 24px "Inter", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(title, pad, infoY);
+    }
+    if (author) {
+      ctx.fillStyle = cardBg === '#141517' ? '#868e96' : '#70777e';
+      ctx.font = '500 20px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText(author, canvasW - pad, infoY);
+    }
+    ctx.restore();
+    // 4. 컬러 칩 및 HEX 코드 렌더링
+    const chipsCount = extractedColors.length;
+    const chipsY = infoY + 54;
+    const availableWidth = baseW;
+    const chipSlotW = availableWidth / chipsCount;
+    const chipSize = 88;
+    extractedColors.forEach((hex, idx) => {
+      const centerX = pad + (idx * chipSlotW) + (chipSlotW / 2);
+      const topX = centerX - (chipSize / 2);
+      ctx.save();
+      ctx.fillStyle = hex;
+      // 은은한 칩 그림자
+      ctx.shadowColor = 'rgba(0,0,0,0.12)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 4;
+      if (chipShape === 'circle') {
+        // 원형 칩
+        ctx.beginPath();
+        ctx.arc(centerX, chipsY + (chipSize / 2), chipSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // 사각형 (팬톤 스타일 둥근 모서리)
+        ctx.beginPath();
+        ctx.roundRect(topX, chipsY, chipSize, chipSize, 12);
+        ctx.fill();
+      }
+      // 그림자 리셋
+      ctx.shadowColor = 'transparent';
+      // 칩 아래 HEX 코드 출력
+      ctx.fillStyle = cardTextColor;
+      ctx.font = '600 18px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(hex, centerX, chipsY + chipSize + 16);
+      ctx.restore();
+    });
+    previewArea.style.display = 'block';
+    downloadBtn.disabled = false;
+  }
+  // 다운로드
+  downloadBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `palette_${Date.now()}.jpg`;
+      link.click();
+    }, 'image/jpeg', 0.98);
+  });
+</script>
+</body>
+</html>
