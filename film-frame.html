@@ -170,22 +170,22 @@
     <!-- 카메라 바디 정보 -->
     <div class="control-row">
       <label for="cameraInput">카메라 바디</label>
-      <input type="text" id="cameraInput" value="Leica M" placeholder="예: Leica IIIf, Sony A7II">
+      <input type="text" id="cameraInput" value="" placeholder="예: Leica IIIf, Sony A7II">
     </div>
     <!-- 렌즈 정보 -->
     <div class="control-row">
       <label for="lensInput">렌즈 이름</label>
-      <input type="text" id="lensInput" value="50mm F2.0" placeholder="예: Helios 44-2 58mm F2">
+      <input type="text" id="lensInput" value="" placeholder="예: Helios 44-2 58mm F2">
     </div>
     <!-- 노출 설정 (조리개/셔터/ISO) -->
     <div class="control-row">
-      <label for="exposureInput">촬영 파라미터</label>
-      <input type="text" id="exposureInput" value="F2.0 · 1/500s · ISO 100" placeholder="f값, 셔터속도, ISO">
+      <label for="exposureInput">촬영 파라메터</label>
+      <input type="text" id="exposureInput" value="" placeholder="f값, 셔터속도, ISO">
     </div>
     <!-- 날짜 및 촬영지 -->
     <div class="control-row">
       <label for="dateInput">날짜 / 장소</label>
-      <input type="text" id="dateInput" value="2026.10 · TOKYO" placeholder="예: 2026.10 Daegu">
+      <input type="text" id="dateInput" value="" placeholder="예: 2026.10 Daegu">
     </div>
     <!-- 보더 두께 조절 -->
     <div class="control-row" id="borderWidthRow">
@@ -235,30 +235,58 @@
   fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    // 1. EXIF 데이터 파싱 시도 (exifr 사용)
+    // 기본값 초기화 (이전 값이 남지 않게)
+    cameraInput.value = '';
+    lensInput.value = '';
+    exposureInput.value = '';
+    dateInput.value = '';
+    // 1. EXIF 데이터 파싱 시도 (exifr 사용) - 더 많은 태그 후보
     try {
-      const exif = await exifr.parse(file, [
-        'Make', 'Model', 'LensModel', 'FocalLength', 'FNumber', 
-        'ExposureTime', 'ISO', 'DateTimeOriginal'
-      ]);
+      const exif = await exifr.parse(file, {
+        pick: [
+          'Make', 'Model', 'LensModel', 'Lens', 'LensMake',
+          'FocalLength', 'FocalLengthIn35mmFormat',
+          'FNumber', 'ApertureValue',
+          'ExposureTime', 'ShutterSpeedValue',
+          'ISO', 'ISOSpeedRatings',
+          'DateTimeOriginal', 'CreateDate', 'DateTimeDigitized'
+        ]
+      });
       if (exif) {
+        // 카메라 바디
         if (exif.Model) cameraInput.value = exif.Model;
         else if (exif.Make) cameraInput.value = exif.Make;
+        // 렌즈
         if (exif.LensModel) {
           lensInput.value = exif.LensModel;
+        } else if (exif.Lens) {
+          lensInput.value = exif.Lens;
         } else if (exif.FocalLength) {
-          lensInput.value = `${Math.round(exif.FocalLength)}mm`;
+          const fl = Math.round(exif.FocalLength);
+          const fl35 = exif.FocalLengthIn35mmFormat ? Math.round(exif.FocalLengthIn35mmFormat) : null;
+          lensInput.value = fl35 ? `${fl}mm (${fl35}mm)` : `${fl}mm`;
         }
+        // 촬영 파라메터
         const params = [];
-        if (exif.FNumber) params.push(`F${exif.FNumber}`);
-        if (exif.ExposureTime) {
-          params.push(exif.ExposureTime < 1 ? `1/${Math.round(1 / exif.ExposureTime)}s` : `${exif.ExposureTime}s`);
+        const fNumber = exif.FNumber || (exif.ApertureValue ? Math.pow(2, exif.ApertureValue / 2) : null);
+        if (fNumber) params.push(`F${Number(fNumber).toFixed(1).replace(/\.0$/, '')}`);
+        let exposureTime = exif.ExposureTime;
+        if (!exposureTime && exif.ShutterSpeedValue) {
+          exposureTime = Math.pow(2, -exif.ShutterSpeedValue);
         }
-        if (exif.ISO) params.push(`ISO ${exif.ISO}`);
+        if (exposureTime) {
+          params.push(exposureTime < 1 ? `1/${Math.round(1 / exposureTime)}s` : `${exposureTime}s`);
+        }
+        const iso = exif.ISO || exif.ISOSpeedRatings;
+        if (iso) params.push(`ISO ${iso}`);
         if (params.length) exposureInput.value = params.join(' · ');
-        if (exif.DateTimeOriginal) {
-          const d = new Date(exif.DateTimeOriginal);
-          dateInput.value = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+        // 날짜
+        const dateRaw = exif.DateTimeOriginal || exif.CreateDate || exif.DateTimeDigitized;
+        if (dateRaw) {
+          const d = new Date(dateRaw);
+          if (!isNaN(d.getTime())) {
+            dateInput.value = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+          }
         }
       }
     } catch (err) {
@@ -325,35 +353,40 @@
     const subColor = isDark ? '#868e96' : '#70777e';
     const infoY = photoY + imgH + Math.round(pad * 0.7);
     ctx.save();
+    const camText = cameraInput.value || '';
+    const lensText = lensInput.value || '';
+    const expText = exposureInput.value || '';
+    const dateText = dateInput.value || '';
     if (currentStyle === 'polaroid') {
       // 폴라로이드: 손글씨/모던 감성 정렬
       ctx.fillStyle = '#2b2b2b';
       ctx.font = `600 ${Math.round(26 * scale)}px "IBM Plex Mono", monospace`;
       ctx.textAlign = 'left';
-      ctx.fillText(cameraInput.value, photoX + 10, infoY + Math.round(18 * scale));
+      if (camText) ctx.fillText(camText, photoX + 10, infoY + Math.round(18 * scale));
       ctx.fillStyle = '#7a7a7a';
       ctx.font = `400 ${Math.round(20 * scale)}px "IBM Plex Mono", monospace`;
-      ctx.fillText(`${lensInput.value}  ${exposureInput.value}`, photoX + 10, infoY + Math.round(48 * scale));
+      const lensExp = [lensText, expText].filter(Boolean).join('  ');
+      if (lensExp) ctx.fillText(lensExp, photoX + 10, infoY + Math.round(48 * scale));
       ctx.textAlign = 'right';
-      ctx.fillText(dateInput.value, photoX + imgW - 10, infoY + Math.round(48 * scale));
+      if (dateText) ctx.fillText(dateText, photoX + imgW - 10, infoY + Math.round(48 * scale));
     } else {
       // 갤러리 화이트, 시네마 블랙, 35mm 필름: 라이카/핫셀블라드 갤러리 양식
       // 좌측: 카메라 바디 & 렌즈
       ctx.fillStyle = textColor;
       ctx.font = `700 ${Math.round(24 * scale)}px "Inter", sans-serif`;
       ctx.textAlign = 'left';
-      ctx.fillText(cameraInput.value.toUpperCase(), photoX, infoY);
+      if (camText) ctx.fillText(camText.toUpperCase(), photoX, infoY);
       ctx.fillStyle = subColor;
       ctx.font = `500 ${Math.round(18 * scale)}px "IBM Plex Mono", monospace`;
-      ctx.fillText(lensInput.value, photoX, infoY + Math.round(26 * scale));
+      if (lensText) ctx.fillText(lensText, photoX, infoY + Math.round(26 * scale));
       // 우측: 노출값 & 날짜/장소
       ctx.textAlign = 'right';
       ctx.fillStyle = textColor;
       ctx.font = `600 ${Math.round(20 * scale)}px "IBM Plex Mono", monospace`;
-      ctx.fillText(exposureInput.value, photoX + imgW, infoY);
+      if (expText) ctx.fillText(expText, photoX + imgW, infoY);
       ctx.fillStyle = subColor;
       ctx.font = `500 ${Math.round(17 * scale)}px "Inter", sans-serif`;
-      ctx.fillText(dateInput.value.toUpperCase(), photoX + imgW, infoY + Math.round(26 * scale));
+      if (dateText) ctx.fillText(dateText.toUpperCase(), photoX + imgW, infoY + Math.round(26 * scale));
     }
     ctx.restore();
     previewArea.style.display = 'block';
