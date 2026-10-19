@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ffffff">
   <title>필름 카메라 프레임 & 보더 생성기</title>
-  <!-- 클라이언트 EXIF 자동 추출 라이브러리 exifr -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/exifr/7.1.3/full.umd.js"></script>
-  <!-- 감성 폰트: 클래식 세리프 & 카메라 레이블용 모노스페이스 -->
+  <!-- ✅ 정상 작동하는 jsDelivr 공식 CDN으로 교체 -->
+  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+  <!-- 감성 폰트 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
@@ -31,6 +32,7 @@
     }
     h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
     p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+
     /* 업로드 영역 */
     .dropzone {
       border: 2px dashed #007aff;
@@ -49,6 +51,20 @@
     }
     .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
     input[type="file"] { display: none; }
+
+    /* EXIF 감지 상태 표시줄 */
+    .exif-status {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+    .exif-status.ok { background: #e6fcf5; color: #0ca678; }
+    .exif-status.warn { background: #fff9db; color: #f59f00; }
+
     /* 컨트롤 패널 */
     .control-panel {
       margin-top: 14px;
@@ -73,8 +89,9 @@
       border: 1px solid #ced4da;
       background: #fff;
     }
-    .control-row input[type="text"] { width: 190px; }
-    /* 세그먼트 버튼 (프레임 스타일) */
+    .control-row input[type="text"] { width: 195px; }
+
+    /* 세그먼트 버튼 */
     .segmented-control {
       display: flex;
       background: #e9ecef;
@@ -99,9 +116,11 @@
       color: #007aff;
       box-shadow: 0 1px 4px rgba(0,0,0,0.12);
     }
+
     .slider-box { display: flex; align-items: center; gap: 8px; }
     .slider-box input[type="range"] { width: 110px; }
     .slider-box span { font-size: 0.8rem; color: #495057; width: 36px; text-align: right; }
+
     /* 미리보기 뷰 */
     #previewArea {
       margin-top: 16px;
@@ -127,6 +146,7 @@
       box-shadow: 0 4px 14px rgba(0,0,0,0.12);
       border-radius: 4px;
     }
+
     /* 다운로드 버튼 */
     .btn-group { margin-top: 18px; }
     .btn {
@@ -143,23 +163,24 @@
       background: #007aff;
       color: #ffffff;
     }
-    .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
-    .back a { color: #007aff; text-decoration: none; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   </style>
 </head>
 <body>
+
 <div class="container">
-  <div class="back"><a href="index.html">← marsko</a></div>
   <h1>필름 카메라 프레임 생성기</h1>
   <p class="sub">EXIF 자동 읽기 · 카메라 & 렌즈 정보 보더</p>
+
   <div class="dropzone" id="dropzone">
     <span>📷 사진 선택 / 불러오기</span>
-    <small>EXIF 메타데이터가 있으면 자동으로 감지합니다</small>
-    <input type="file" id="fileInput" accept="image/*">
+    <small>모바일에서 EXIF를 유지하려면 '파일 선택'으로 원본을 고르세요</small>
+    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.heic">
   </div>
+
+  <div id="exifStatus" class="exif-status"></div>
+
   <div class="control-panel">
-    <!-- 프레임 스타일 선택 -->
     <label style="font-weight: 600; font-size: 0.88rem; color: #343a40;">보더(프레임) 스타일</label>
     <div class="segmented-control" id="styleControl">
       <button type="button" data-style="white" class="active">갤러리 화이트</button>
@@ -167,27 +188,27 @@
       <button type="button" data-style="film">35mm 필름</button>
       <button type="button" data-style="polaroid">폴라로이드</button>
     </div>
-    <!-- 카메라 바디 정보 -->
+
     <div class="control-row">
       <label for="cameraInput">카메라 바디</label>
-      <input type="text" id="cameraInput" value="" placeholder="예: Leica IIIf, Sony A7II">
+      <input type="text" id="cameraInput" value="Sony α7 II" placeholder="예: Leica IIIf, Sony A7II">
     </div>
-    <!-- 렌즈 정보 -->
+
     <div class="control-row">
       <label for="lensInput">렌즈 이름</label>
-      <input type="text" id="lensInput" value="" placeholder="예: Helios 44-2 58mm F2">
+      <input type="text" id="lensInput" value="Helios 44-2 58mm F2" placeholder="예: Helios 44-2 58mm F2">
     </div>
-    <!-- 노출 설정 (조리개/셔터/ISO) -->
+
     <div class="control-row">
-      <label for="exposureInput">촬영 파라메터</label>
-      <input type="text" id="exposureInput" value="" placeholder="f값, 셔터속도, ISO">
+      <label for="exposureInput">촬영 파라미터</label>
+      <input type="text" id="exposureInput" value="F2.0 · 1/500s · ISO 100" placeholder="f값, 셔터속도, ISO">
     </div>
-    <!-- 날짜 및 촬영지 -->
+
     <div class="control-row">
       <label for="dateInput">날짜 / 장소</label>
-      <input type="text" id="dateInput" value="" placeholder="예: 2026.10 Daegu">
+      <input type="text" id="dateInput" value="2026.10 · TOKYO" placeholder="예: 2026.10">
     </div>
-    <!-- 보더 두께 조절 -->
+
     <div class="control-row" id="borderWidthRow">
       <label for="borderRange">외곽 여백 두께</label>
       <div class="slider-box">
@@ -196,19 +217,23 @@
       </div>
     </div>
   </div>
+
   <div id="previewArea">
     <div class="preview-header">미리보기 (원본 고화질 유지)</div>
     <div class="canvas-container">
       <canvas id="previewCanvas"></canvas>
     </div>
   </div>
+
   <div class="btn-group">
     <button class="btn" id="downloadBtn" disabled>프레임 사진 저장</button>
   </div>
 </div>
+
 <script>
   const fileInput = document.getElementById('fileInput');
   const dropzone = document.getElementById('dropzone');
+  const exifStatus = document.getElementById('exifStatus');
   const styleControl = document.getElementById('styleControl');
   const cameraInput = document.getElementById('cameraInput');
   const lensInput = document.getElementById('lensInput');
@@ -216,12 +241,15 @@
   const dateInput = document.getElementById('dateInput');
   const borderRange = document.getElementById('borderRange');
   const borderVal = document.getElementById('borderVal');
+
   const previewArea = document.getElementById('previewArea');
   const canvas = document.getElementById('previewCanvas');
   const ctx = canvas.getContext('2d');
   const downloadBtn = document.getElementById('downloadBtn');
+
   let currentImg = null;
-  let currentStyle = 'white'; // 'white', 'black', 'film', 'polaroid'
+  let currentStyle = 'white';
+
   // 스타일 토글
   styleControl.addEventListener('click', (e) => {
     if (e.target.tagName !== 'BUTTON') return;
@@ -230,69 +258,74 @@
     currentStyle = e.target.dataset.style;
     renderFrame();
   });
+
   // 파일 업로드 및 EXIF 파싱
   dropzone.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
-    // 기본값 초기화 (이전 값이 남지 않게)
-    cameraInput.value = '';
-    lensInput.value = '';
-    exposureInput.value = '';
-    dateInput.value = '';
-    // 1. EXIF 데이터 파싱 시도 (exifr 사용) - 더 많은 태그 후보
+    if (!file) return;
+
+    exifStatus.style.display = 'block';
+    exifStatus.className = 'exif-status';
+    exifStatus.textContent = '사진 정보를 분석하는 중...';
+
+    // 1. EXIF 데이터 파싱 (옵션 제한 없이 전체 태그 읽기)
     try {
-      const exif = await exifr.parse(file, {
-        pick: [
-          'Make', 'Model', 'LensModel', 'Lens', 'LensMake',
-          'FocalLength', 'FocalLengthIn35mmFormat',
-          'FNumber', 'ApertureValue',
-          'ExposureTime', 'ShutterSpeedValue',
-          'ISO', 'ISOSpeedRatings',
-          'DateTimeOriginal', 'CreateDate', 'DateTimeDigitized'
-        ]
-      });
-      if (exif) {
-        // 카메라 바디
-        if (exif.Model) cameraInput.value = exif.Model;
-        else if (exif.Make) cameraInput.value = exif.Make;
-        // 렌즈
-        if (exif.LensModel) {
-          lensInput.value = exif.LensModel;
-        } else if (exif.Lens) {
-          lensInput.value = exif.Lens;
-        } else if (exif.FocalLength) {
-          const fl = Math.round(exif.FocalLength);
-          const fl35 = exif.FocalLengthIn35mmFormat ? Math.round(exif.FocalLengthIn35mmFormat) : null;
-          lensInput.value = fl35 ? `${fl}mm (${fl35}mm)` : `${fl}mm`;
-        }
-        // 촬영 파라메터
-        const params = [];
-        const fNumber = exif.FNumber || (exif.ApertureValue ? Math.pow(2, exif.ApertureValue / 2) : null);
-        if (fNumber) params.push(`F${Number(fNumber).toFixed(1).replace(/\.0$/, '')}`);
-        let exposureTime = exif.ExposureTime;
-        if (!exposureTime && exif.ShutterSpeedValue) {
-          exposureTime = Math.pow(2, -exif.ShutterSpeedValue);
-        }
-        if (exposureTime) {
-          params.push(exposureTime < 1 ? `1/${Math.round(1 / exposureTime)}s` : `${exposureTime}s`);
-        }
-        const iso = exif.ISO || exif.ISOSpeedRatings;
-        if (iso) params.push(`ISO ${iso}`);
-        if (params.length) exposureInput.value = params.join(' · ');
-        // 날짜
-        const dateRaw = exif.DateTimeOriginal || exif.CreateDate || exif.DateTimeDigitized;
-        if (dateRaw) {
-          const d = new Date(dateRaw);
-          if (!isNaN(d.getTime())) {
-            dateInput.value = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+      if (typeof window.exifr !== 'undefined') {
+        const exif = await window.exifr.parse(file);
+
+        if (exif && (exif.Model || exif.Make || exif.ExposureTime || exif.ISO || exif.FNumber || exif.DateTimeOriginal)) {
+          // 바디 모델명
+          if (exif.Model) {
+            cameraInput.value = exif.Model;
+          } else if (exif.Make) {
+            cameraInput.value = exif.Make;
           }
+
+          // 렌즈명 (수동 렌즈 등 LensModel이 없을 때는 수동 입력값 유지하거나 초점거리 표시)
+          if (exif.LensModel) {
+            lensInput.value = exif.LensModel;
+          } else if (exif.FocalLength) {
+            lensInput.value = `${Math.round(exif.FocalLength)}mm`;
+          }
+
+          // 노출 파라미터 조합
+          const params = [];
+          if (exif.FNumber) params.push(`F${exif.FNumber}`);
+          if (exif.ExposureTime) {
+            const exp = exif.ExposureTime;
+            params.push(exp < 1 ? `1/${Math.round(1 / exp)}s` : `${exp}s`);
+          }
+          const isoVal = exif.ISO || exif.ISOSpeedRatings;
+          if (isoVal) params.push(`ISO ${isoVal}`);
+
+          if (params.length > 0) {
+            exposureInput.value = params.join(' · ');
+          }
+
+          // 촬영 날짜
+          const dt = exif.DateTimeOriginal || exif.CreateDate;
+          if (dt instanceof Date && !isNaN(dt)) {
+            const yyyy = dt.getFullYear();
+            const mm = String(dt.getMonth() + 1).padStart(2, '0');
+            const dd = String(dt.getDate()).padStart(2, '0');
+            dateInput.value = `${yyyy}.${mm}.${dd}`;
+          }
+
+          exifStatus.className = 'exif-status ok';
+          exifStatus.textContent = '✨ 사진에서 EXIF 촬영 정보를 성공적으로 불러왔습니다!';
+        } else {
+          exifStatus.className = 'exif-status warn';
+          exifStatus.textContent = 'ℹ️ 사진에 EXIF 정보가 없어 기본/수동 입력값을 유지합니다.';
         }
       }
     } catch (err) {
-      console.log('No EXIF or parse error:', err);
+      console.warn('EXIF parse warning:', err);
+      exifStatus.className = 'exif-status warn';
+      exifStatus.textContent = 'ℹ️ EXIF를 읽을 수 없는 파일입니다. 직접 텍스트를 수정해 주세요.';
     }
-    // 2. 이미지 캔버스에 로드
+
+    // 2. 이미지 로드 및 캔버스 렌더링
     const reader = new FileReader();
     reader.onload = (ev) => {
       currentImg = new Image();
@@ -300,27 +333,31 @@
       currentImg.src = ev.target.result;
     };
     reader.readAsDataURL(file);
+    fileInput.value = '';
   });
-  // 설정값 변경 이벤트
+
+  // 실시간 텍스트 수정 반영
   [cameraInput, lensInput, exposureInput, dateInput].forEach(el => el.addEventListener('input', renderFrame));
   borderRange.addEventListener('input', () => {
     borderVal.textContent = borderRange.value + 'px';
     renderFrame();
   });
-  // 프레임 렌더링 엔진
+
+  // 프레임 렌더링
   function renderFrame() {
     if (!currentImg) return;
+
     const imgW = currentImg.naturalWidth;
     const imgH = currentImg.naturalHeight;
     const baseBorder = parseInt(borderRange.value, 10);
-    // 해상도 비례 스케일링
+
     const scale = Math.max(imgW, imgH) / 1000;
     const pad = Math.round(baseBorder * scale);
-    // 하단 정보창 여백
     const bottomBarH = currentStyle === 'polaroid' ? Math.round(pad * 2.8) : Math.round(pad * 1.8);
+
     let canvasW, canvasH, photoX, photoY;
+
     if (currentStyle === 'film') {
-      // 35mm 필름 퍼포레이션 (상하 필름 스트립 형태)
       const sprocketBarH = Math.round(pad * 1.5);
       canvasW = imgW + pad * 2;
       canvasH = imgH + sprocketBarH * 2 + bottomBarH;
@@ -332,94 +369,98 @@
       photoX = pad;
       photoY = pad;
     }
+
     canvas.width = canvasW;
     canvas.height = canvasH;
-    // 1. 프레임 배경 채우기
+
+    // 1. 프레임 배경
     if (currentStyle === 'white' || currentStyle === 'polaroid') {
       ctx.fillStyle = '#fdfdfd';
     } else {
-      ctx.fillStyle = '#0f1012'; // 다크 매트
+      ctx.fillStyle = '#0f1012';
     }
     ctx.fillRect(0, 0, canvasW, canvasH);
-    // 2. 35mm 필름 스타일일 때 스프로킷(구명) 및 네거티브 마킹 그리기
+
+    // 2. 35mm 필름 스타일 스프로킷
     if (currentStyle === 'film') {
       drawFilmSprockets(ctx, canvasW, canvasH, pad, photoY, imgH);
     }
-    // 3. 원본 사진 렌더링
+
+    // 3. 원본 사진
     ctx.drawImage(currentImg, photoX, photoY, imgW, imgH);
-    // 4. 메타데이터 텍스트 인쇄
+
+    // 4. 하단 텍스트
     const isDark = (currentStyle === 'black' || currentStyle === 'film');
     const textColor = isDark ? '#f8f9fa' : '#1a1a1a';
     const subColor = isDark ? '#868e96' : '#70777e';
     const infoY = photoY + imgH + Math.round(pad * 0.7);
+
     ctx.save();
-    const camText = cameraInput.value || '';
-    const lensText = lensInput.value || '';
-    const expText = exposureInput.value || '';
-    const dateText = dateInput.value || '';
     if (currentStyle === 'polaroid') {
-      // 폴라로이드: 손글씨/모던 감성 정렬
       ctx.fillStyle = '#2b2b2b';
       ctx.font = `600 ${Math.round(26 * scale)}px "IBM Plex Mono", monospace`;
       ctx.textAlign = 'left';
-      if (camText) ctx.fillText(camText, photoX + 10, infoY + Math.round(18 * scale));
+      ctx.fillText(cameraInput.value, photoX + 10, infoY + Math.round(18 * scale));
+
       ctx.fillStyle = '#7a7a7a';
       ctx.font = `400 ${Math.round(20 * scale)}px "IBM Plex Mono", monospace`;
-      const lensExp = [lensText, expText].filter(Boolean).join('  ');
-      if (lensExp) ctx.fillText(lensExp, photoX + 10, infoY + Math.round(48 * scale));
+      ctx.fillText(`${lensInput.value}  ${exposureInput.value}`, photoX + 10, infoY + Math.round(48 * scale));
+
       ctx.textAlign = 'right';
-      if (dateText) ctx.fillText(dateText, photoX + imgW - 10, infoY + Math.round(48 * scale));
+      ctx.fillText(dateInput.value, photoX + imgW - 10, infoY + Math.round(48 * scale));
     } else {
-      // 갤러리 화이트, 시네마 블랙, 35mm 필름: 라이카/핫셀블라드 갤러리 양식
-      // 좌측: 카메라 바디 & 렌즈
       ctx.fillStyle = textColor;
       ctx.font = `700 ${Math.round(24 * scale)}px "Inter", sans-serif`;
       ctx.textAlign = 'left';
-      if (camText) ctx.fillText(camText.toUpperCase(), photoX, infoY);
+      ctx.fillText(cameraInput.value.toUpperCase(), photoX, infoY);
+
       ctx.fillStyle = subColor;
       ctx.font = `500 ${Math.round(18 * scale)}px "IBM Plex Mono", monospace`;
-      if (lensText) ctx.fillText(lensText, photoX, infoY + Math.round(26 * scale));
-      // 우측: 노출값 & 날짜/장소
+      ctx.fillText(lensInput.value, photoX, infoY + Math.round(26 * scale));
+
       ctx.textAlign = 'right';
       ctx.fillStyle = textColor;
       ctx.font = `600 ${Math.round(20 * scale)}px "IBM Plex Mono", monospace`;
-      if (expText) ctx.fillText(expText, photoX + imgW, infoY);
+      ctx.fillText(exposureInput.value, photoX + imgW, infoY);
+
       ctx.fillStyle = subColor;
       ctx.font = `500 ${Math.round(17 * scale)}px "Inter", sans-serif`;
-      if (dateText) ctx.fillText(dateText.toUpperCase(), photoX + imgW, infoY + Math.round(26 * scale));
+      ctx.fillText(dateInput.value.toUpperCase(), photoX + imgW, infoY + Math.round(26 * scale));
     }
     ctx.restore();
+
     previewArea.style.display = 'block';
     downloadBtn.disabled = false;
   }
-  // 35mm 필름 퍼포레이션 스프로킷 구명 그리기 유틸
+
   function drawFilmSprockets(ctx, w, h, pad, photoY, imgH) {
     ctx.save();
     const holeW = Math.round(pad * 0.45);
     const holeH = Math.round(pad * 0.6);
     const holeGap = Math.round(holeW * 1.5);
     const radius = Math.round(holeW * 0.2);
+
     const topHoleY = Math.round((photoY - holeH) / 2);
     const bottomHoleY = photoY + imgH + Math.round(pad * 1.8) + Math.round((photoY - holeH) / 2) - 10;
-    ctx.fillStyle = '#22252a'; // 필름 구명 색상
+
+    ctx.fillStyle = '#22252a';
     for (let x = pad / 2; x < w - pad / 2; x += (holeW + holeGap)) {
-      // 상단 구명
       ctx.beginPath();
       ctx.roundRect(x, topHoleY, holeW, holeH, radius);
       ctx.fill();
-      // 하단 구명
+
       ctx.beginPath();
       ctx.roundRect(x, bottomHoleY, holeW, holeH, radius);
       ctx.fill();
     }
-    // 필름 네거티브 엣지 마킹 텍스트 (예: KODAK 400, 프레임 번호)
-    ctx.fillStyle = '#d97706'; // 필름 특유의 주황빛 텍스트
+
+    ctx.fillStyle = '#d97706';
     ctx.font = `700 ${Math.round(pad * 0.35)}px "IBM Plex Mono", monospace`;
     ctx.fillText('FILM 400', pad, topHoleY + holeH + 18);
     ctx.fillText('▶ 24A', w / 2, topHoleY + holeH + 18);
     ctx.restore();
   }
-  // 고화질 다운로드
+
   downloadBtn.addEventListener('click', () => {
     canvas.toBlob((blob) => {
       const link = document.createElement('a');
@@ -429,5 +470,6 @@
     }, 'image/jpeg', 0.98);
   });
 </script>
+
 </body>
 </html>
