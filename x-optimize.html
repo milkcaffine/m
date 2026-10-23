@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>X 사진 최적화 & 미니 다크룸</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+
+    /* 업로드 영역 */
+    .dropzone {
+      border: 2px dashed #007aff;
+      background: #f0f7ff;
+      border-radius: 14px;
+      padding: 20px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #007aff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    input[type="file"] { display: none; }
+
+    /* 미리보기 뷰 */
+    #previewArea {
+      margin-top: 14px;
+      display: none;
+      width: 100%;
+    }
+    .preview-info {
+      font-size: 0.75rem;
+      color: #495057;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+    }
+    .canvas-container {
+      width: 100%;
+      max-height: 380px;
+      background: #18191a;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 364px;
+      border-radius: 4px;
+      display: block;
+    }
+
+    /* 컨트롤 패널 */
+    .control-panel {
+      margin-top: 14px;
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+    }
+    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row select {
+      font-size: 0.88rem;
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+    }
+
+    /* 흑백 프리셋 세그먼트 */
+    .segmented-control {
+      display: flex;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 3px;
+      width: 100%;
+    }
+    .segmented-control button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 7px 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+    }
+    .segmented-control button.active {
+      background: #fff;
+      color: #007aff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    /* 슬라이더 */
+    .slider-box { display: flex; align-items: center; gap: 8px; }
+    .slider-box input[type="range"] { width: 130px; }
+    .slider-box span { font-size: 0.8rem; color: #495057; width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* 하단 버튼 그룹 */
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .btn {
+      flex: 1;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-reset { background: #e9ecef; color: #495057; flex: 0 0 90px; }
+    .btn-primary { background: #007aff; color: #ffffff; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>X 사진 최적화 & 미니 다크룸</h1>
+  <p class="sub">X 규격 리사이즈 · 흑백 현상 · 샤프니스 보정</p>
+
+  <div class="dropzone" id="dropzone">
+    <span>📷 편집할 사진 선택</span>
+    <small>터치하여 사진을 불러오세요</small>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div id="previewArea">
+    <div class="preview-info">
+      <span>실시간 미리보기</span>
+      <span id="resInfo">0 × 0 px</span>
+    </div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="control-panel">
+    <!-- 컬러 / 흑백 모드 -->
+    <label style="font-weight: 600; font-size: 0.88rem; color: #343a40;">컬러 / 흑백 프리셋</label>
+    <div class="segmented-control" id="modeControl">
+      <button type="button" data-mode="color" class="active">원본 컬러</button>
+      <button type="button" data-mode="bw">표준 흑백</button>
+      <button type="button" data-mode="highbw">필름 고대비 흑백</button>
+      <button type="button" data-mode="sepia">웜톤/세피아</button>
+    </div>
+
+    <!-- X(트위터) 해상도 최적화 -->
+    <div class="control-row">
+      <label for="sizeSelect">
+        X 크기 최적화
+        <span style="display:block; font-size:0.72rem; font-weight:400; color:#868e96;">트위터 재압축 화질 열화 방지</span>
+      </label>
+      <select id="sizeSelect">
+        <option value="2048" selected>장축 2048px (X 표준 권장)</option>
+        <option value="4096">장축 4096px (X 4K 최고화질)</option>
+        <option value="1200">장축 1200px (빠른 업로드)</option>
+        <option value="0">원본 크기 유지</option>
+      </select>
+    </div>
+
+    <!-- 샤프니스 (선명도) -->
+    <div class="control-row">
+      <label for="sharpRange">샤프니스 (선명도)</label>
+      <div class="slider-box">
+        <input type="range" id="sharpRange" min="0" max="100" value="0">
+        <span id="sharpVal">0%</span>
+      </div>
+    </div>
+
+    <!-- 밝기 -->
+    <div class="control-row">
+      <label for="brightRange">밝기 (Brightness)</label>
+      <div class="slider-box">
+        <input type="range" id="brightRange" min="-50" max="50" value="0">
+        <span id="brightVal">0</span>
+      </div>
+    </div>
+
+    <!-- 대비 -->
+    <div class="control-row">
+      <label for="contrastRange">대비 (Contrast)</label>
+      <div class="slider-box">
+        <input type="range" id="contrastRange" min="-50" max="50" value="0">
+        <span id="contrastVal">0</span>
+      </div>
+    </div>
+
+    <!-- 필름 그레인 (입자감) -->
+    <div class="control-row">
+      <label for="grainRange">필름 그레인 (입자)</label>
+      <div class="slider-box">
+        <input type="range" id="grainRange" min="0" max="60" value="0">
+        <span id="grainVal">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-reset" id="resetBtn" disabled>초기화</button>
+    <button class="btn btn-primary" id="downloadBtn" disabled>최적화 이미지 저장</button>
+  </div>
+</div>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const previewArea = document.getElementById('previewArea');
+  const resInfo = document.getElementById('resInfo');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const modeControl = document.getElementById('modeControl');
+  const sizeSelect = document.getElementById('sizeSelect');
+  const sharpRange = document.getElementById('sharpRange');
+  const sharpVal = document.getElementById('sharpVal');
+  const brightRange = document.getElementById('brightRange');
+  const brightVal = document.getElementById('brightVal');
+  const contrastRange = document.getElementById('contrastRange');
+  const contrastVal = document.getElementById('contrastVal');
+  const grainRange = document.getElementById('grainRange');
+  const grainVal = document.getElementById('grainVal');
+
+  const resetBtn = document.getElementById('resetBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  let originalImg = null;
+  let currentMode = 'color';
+
+  // 파일 업로드
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      originalImg = new Image();
+      originalImg.onload = () => {
+        previewArea.style.display = 'block';
+        resetBtn.disabled = false;
+        downloadBtn.disabled = false;
+        applyEdits();
+      };
+      originalImg.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  // 흑백/컬러 모드 전환
+  modeControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    modeControl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    currentMode = e.target.dataset.mode;
+    applyEdits();
+  });
+
+  // 슬라이더 및 옵션 이벤트
+  sizeSelect.addEventListener('change', applyEdits);
+  
+  sharpRange.addEventListener('input', () => {
+    sharpVal.textContent = `${sharpRange.value}%`;
+    applyEdits();
+  });
+  brightRange.addEventListener('input', () => {
+    brightVal.textContent = brightRange.value;
+    applyEdits();
+  });
+  contrastRange.addEventListener('input', () => {
+    contrastVal.textContent = contrastRange.value;
+    applyEdits();
+  });
+  grainRange.addEventListener('input', () => {
+    grainVal.textContent = `${grainRange.value}%`;
+    applyEdits();
+  });
+
+  // 초기화 버튼
+  resetBtn.addEventListener('click', () => {
+    sharpRange.value = 0; sharpVal.textContent = '0%';
+    brightRange.value = 0; brightVal.textContent = '0';
+    contrastRange.value = 0; contrastVal.textContent = '0';
+    grainRange.value = 0; grainVal.textContent = '0%';
+    modeControl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    modeControl.querySelector('[data-mode="color"]').classList.add('active');
+    currentMode = 'color';
+    applyEdits();
+  });
+
+  // 핵심 이미지 처리 파이프라인
+  function applyEdits() {
+    if (!originalImg) return;
+
+    const srcW = originalImg.naturalWidth;
+    const srcH = originalImg.naturalHeight;
+    const maxEdge = parseInt(sizeSelect.value, 10);
+
+    // 1. X 최적화 리사이징 계산 (원본이 더 작으면 확대하지 않음)
+    let scale = 1;
+    const longest = Math.max(srcW, srcH);
+    if (maxEdge > 0 && longest > maxEdge) {
+      scale = maxEdge / longest;
+    }
+
+    const w = Math.round(srcW * scale);
+    const h = Math.round(srcH * scale);
+    canvas.width = w;
+    canvas.height = h;
+    resInfo.textContent = `${w} × ${h} px`;
+
+    // 고품질 보간법으로 원본 그리기
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(originalImg, 0, 0, w, h);
+
+    // 픽셀 데이터 추출
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    const bright = parseInt(brightRange.value, 10) * 2.2;
+    let contrast = parseInt(contrastRange.value, 10);
+    if (currentMode === 'highbw') contrast += 25; // 고대비 흑백일 때 대비 부스트
+
+    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+    const grainAmount = parseInt(grainRange.value, 10) * 1.2;
+
+    // 2. 픽셀 단위 색조 / 흑백 / 밝기 / 대비 / 그레인 연산
+    for (let i = 0; i < data.length; i += 4) {
+      let r = data[i];
+      let g = data[i + 1];
+      let b = data[i + 2];
+
+      // 밝기 적용
+      r += bright;
+      g += bright;
+      b += bright;
+
+      // 대비 적용
+      r = factor * (r - 128) + 128;
+      g = factor * (g - 128) + 128;
+      b = factor * (b - 128) + 128;
+
+      // 흑백 및 세피아 변환 (인간 시신경 인지 가중치 Luminance 적용)
+      if (currentMode === 'bw' || currentMode === 'highbw') {
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        r = g = b = lum;
+      } else if (currentMode === 'sepia') {
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        r = lum + 28;
+        g = lum + 12;
+        b = lum - 14;
+      }
+
+      // 필름 그레인 (입자 노이즈) 추가
+      if (grainAmount > 0) {
+        const noise = (Math.random() - 0.5) * grainAmount;
+        r += noise;
+        g += noise;
+        b += noise;
+      }
+
+      data[i]     = Math.min(255, Math.max(0, r));
+      data[i + 1] = Math.min(255, Math.max(0, g));
+      data[i + 2] = Math.min(255, Math.max(0, b));
+    }
+
+    // 3. 샤프니스 (3x3 Convolution Sharpen Filter) 적용
+    const sharpStrength = parseInt(sharpRange.value, 10) / 100;
+    if (sharpStrength > 0) {
+      applySharpen(data, w, h, sharpStrength);
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  // 샤프닝 컨볼루션 필터 함수
+  function applySharpen(data, w, h, mix) {
+    const src = new Uint8ClampedArray(data);
+    // 중심 픽셀을 강조하고 상하좌우를 빼는 라플라시안 샤프닝 커널
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = (y * w + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const center = src[idx + c] * 5;
+          const up     = src[((y - 1) * w + x) * 4 + c];
+          const down   = src[((y + 1) * w + x) * 4 + c];
+          const left   = src[(y * w + (x - 1)) * 4 + c];
+          const right  = src[(y * w + (x + 1)) * 4 + c];
+
+          const sharpened = center - up - down - left - right;
+          data[idx + c] = src[idx + c] * (1 - mix) + sharpened * mix;
+        }
+      }
+    }
+  }
+
+  // 다운로드 (X 업로드용 최고 품질 JPEG 98%)
+  downloadBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `x_edit_${Date.now()}.jpg`;
+      link.click();
+    }, 'image/jpeg', 0.98);
+  });
+</script>
+
+</body>
+</html>
