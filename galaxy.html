@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#05070a">
+  <title>N-Body Galaxy Simulation // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* 시뮬레이션 캔버스 */
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 상단 실시간 데이터 오버레이 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.5;
+      text-align: right;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤러 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 70px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>N-BODY GALAXY SIMULATOR</h1>
+  <div class="hud-meta">GRAVITATIONAL KINEMATICS · 60 FPS</div>
+</header>
+
+<div class="telemetry-card">
+  <div>BODIES: <strong id="valCount">3,000</strong></div>
+  <div>FPS: <strong id="valFps">60</strong></div>
+  <div>INTEGRATOR: <strong>VERLET</strong></div>
+</div>
+
+<canvas id="simCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnSingle">단일 은하</button>
+  <button type="button" class="dock-btn" id="btnCollide">은하 충돌 (Colliding)</button>
+  <button type="button" class="dock-btn" id="btnChaos">카오스 클러스터</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnPause">일시정지</button>
+  <button type="button" class="dock-btn" id="btnReset">리셋</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>G (중력)</span>
+    <input type="range" id="gravityRange" min="5" max="60" value="20">
+  </div>
+  <div class="slider-group">
+    <span>입자 잔상</span>
+    <input type="range" id="trailRange" min="5" max="50" value="25">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valCount = document.getElementById('valCount');
+  const valFps = document.getElementById('valFps');
+  const btnSingle = document.getElementById('btnSingle');
+  const btnCollide = document.getElementById('btnCollide');
+  const btnChaos = document.getElementById('btnChaos');
+  const btnPause = document.getElementById('btnPause');
+  const btnReset = document.getElementById('btnReset');
+  const gravityRange = document.getElementById('gravityRange');
+  const trailRange = document.getElementById('trailRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 시뮬레이션 매개변수
+  let G = 2.0;                 // 만유인력 상수 스케일
+  const SOFTENING = 18.0;      // 0으로 나누는 발산 방지 소프트닝 상수 (epsilon)
+  const DT = 0.6;              // 타임스텝
+  let trailAlpha = 0.25;
+  let isPaused = false;
+  let currentScenario = 'single';
+
+  // 시점 및 조작
+  let cameraX = 0;
+  let cameraY = 0;
+  let zoom = 1.0;
+  let isDragging = false;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+
+  // 인터랙티브 마우스 중력 우물 (커서 클릭 시 거대 블랙홀 생성)
+  let mouseAttractor = { x: 0, y: 0, active: false, mass: 8000 };
+
+  // N-Body 입자 구조체 (TypedArray를 활용한 고성능 메모리 버퍼)
+  let MAX_PARTICLES = 3200;
+  let count = 0;
+  let posX = new Float32Array(MAX_PARTICLES);
+  let posY = new Float32Array(MAX_PARTICLES);
+  let velX = new Float32Array(MAX_PARTICLES);
+  let velY = new Float32Array(MAX_PARTICLES);
+  let mass = new Float32Array(MAX_PARTICLES);
+  let colorR = new Uint8Array(MAX_PARTICLES);
+  let colorG = new Uint8Array(MAX_PARTICLES);
+  let colorB = new Uint8Array(MAX_PARTICLES);
+  let isCore = new Uint8Array(MAX_PARTICLES);
+
+  // FPS 카운터
+  let frameCount = 0;
+  let lastFpsUpdate = performance.now();
+
+  // 은하 입자 생성 팩토리 함수 (케플러 원형 공전 속도 산출)
+  function spawnGalaxy(centerX, centerY, velBaseX, velBaseY, coreMass, starCount, radius, cr, cg, cb, clockwise = 1) {
+    // 1. 초대질량 중심 블랙홀 (Supermassive Core)
+    const coreIdx = count++;
+    posX[coreIdx] = centerX;
+    posY[coreIdx] = centerY;
+    velX[coreIdx] = velBaseX;
+    velY[coreIdx] = velBaseY;
+    mass[coreIdx] = coreMass;
+    colorR[coreIdx] = 255;
+    colorG[coreIdx] = 255;
+    colorB[coreIdx] = 255;
+    isCore[coreIdx] = 1;
+
+    // 2. 나선 원반 별들
+    for (let i = 0; i < starCount && count < MAX_PARTICLES; i++) {
+      const idx = count++;
+
+      // 거듭제곱 분포로 중심부 밀집 구조 유도
+      const r = Math.pow(Math.random(), 1.8) * radius + 8;
+      const armOffset = (Math.random() < 0.5 ? 0 : Math.PI); // 2-Arm 나선팔 기본 모멘텀
+      const theta = Math.random() * Math.PI * 2 + (r * 0.015) + armOffset;
+
+      const px = centerX + Math.cos(theta) * r;
+      const py = centerY + Math.sin(theta) * r;
+
+      // 뉴턴 중심력에 의한 안정 원형 궤도 속도 v = sqrt(G * M / r)
+      const vOrbital = Math.sqrt((G * coreMass) / Math.sqrt(r * r + SOFTENING * SOFTENING)) * (0.95 + Math.random() * 0.1);
+
+      // 공전 직교 접선 벡터 (회전 방향 결정)
+      const tangentX = -Math.sin(theta) * clockwise;
+      const tangentY = Math.cos(theta) * clockwise;
+
+      posX[idx] = px;
+      posY[idx] = py;
+      velX[idx] = velBaseX + tangentX * vOrbital;
+      velY[idx] = velBaseY + tangentY * vOrbital;
+      mass[idx] = 1.0;
+      isCore[idx] = 0;
+
+      // 은하 중심은 황백색, 외곽은 차가운 푸른색 별빛 분광형 모사
+      const tempFactor = Math.min(1.0, r / radius);
+      colorR[idx] = Math.round(cr * (1 - tempFactor * 0.4) + 120 * tempFactor);
+      colorG[idx] = Math.round(cg * (1 - tempFactor * 0.2) + 180 * tempFactor);
+      colorB[idx] = Math.round(cb * (0.8 + tempFactor * 0.2));
+    }
+  }
+
+  // 시나리오 빌더
+  function buildScenario(name) {
+    count = 0;
+    currentScenario = name;
+    cameraX = 0;
+    cameraY = 0;
+
+    if (name === 'single') {
+      zoom = 1.0;
+      // 중심 질량 4500의 안정된 단일 나선 은하 (안드로메다형)
+      spawnGalaxy(0, 0, 0, 0, 5200, 2800, 360, 255, 210, 180, 1);
+    } else if (name === 'collide') {
+      zoom = 0.85;
+      // 서로 마주 보고 접근하며 스쳐 지나가는 두 은하 (생쥐 은하 모사)
+      spawnGalaxy(-280, -140, 1.2, 0.4, 3800, 1500, 220, 255, 140, 80, 1);
+      spawnGalaxy(280, 140, -1.2, -0.4, 3400, 1500, 200, 80, 200, 255, -1);
+    } else if (name === 'chaos') {
+      zoom = 0.9;
+      // 3개의 중형 블랙홀이 뒤엉키는 구상 성단 카오스
+      spawnGalaxy(-180, 100, 0.5, 0.9, 2600, 900, 160, 255, 100, 120, 1);
+      spawnGalaxy(180, 100, -0.9, 0.2, 2600, 900, 160, 100, 255, 180, 1);
+      spawnGalaxy(0, -180, 0.4, -1.0, 2600, 900, 160, 180, 150, 255, 1);
+    }
+
+    valCount.textContent = count.toLocaleString();
+  }
+
+  // N-Body 상호작용 물리 연산 루프
+  function updatePhysics() {
+    if (isPaused) return;
+
+    // 1. 코어(블랙홀) 및 입자 간 중력 가속도 계산
+    // 대규모 입자 환경을 고려해 중심 질량체(Core) 및 대질량체 중심으로 가속도 누적 연산
+    for (let i = 0; i < count; i++) {
+      let ax = 0;
+      let ay = 0;
+      const px = posX[i];
+      const py = posY[i];
+
+      // 중심 거대 질량체들에 의한 지배적 인력 계산
+      for (let j = 0; j < count; j++) {
+        if (i === j) continue;
+        // 성능과 은하 안정성을 위해 질량이 큰 천체(Core)의 중력을 주축으로 계산
+        if (isCore[j] === 1) {
+          const dx = posX[j] - px;
+          const dy = posY[j] - py;
+          const distSq = dx * dx + dy * dy + SOFTENING * SOFTENING;
+          const dist = Math.sqrt(distSq);
+          const force = (G * mass[j]) / (distSq * dist);
+
+          ax += dx * force;
+          ay += dy * force;
+        }
+      }
+
+      // 마우스 블랙홀 클릭 시 인력 추가
+      if (mouseAttractor.active) {
+        const dx = mouseAttractor.x - px;
+        const dy = mouseAttractor.y - py;
+        const distSq = dx * dx + dy * dy + (SOFTENING * 1.5) * (SOFTENING * 1.5);
+        const dist = Math.sqrt(distSq);
+        const force = (G * mouseAttractor.mass) / (distSq * dist);
+        ax += dx * force;
+        ay += dy * force;
+      }
+
+      // 오일러-베를레 속도 갱신
+      velX[i] += ax * DT;
+      velY[i] += ay * DT;
+
+      // 위치 갱신
+      posX[i] += velX[i] * DT;
+      posY[i] += velY[i] * DT;
+    }
+  }
+
+  // 렌더링 루프
+  function render() {
+    // 이전 프레임 잔상 페이드 (궤적 효과)
+    ctx.fillStyle = `rgba(3, 4, 7, ${trailAlpha})`;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    // 시점 이동 및 줌 중심점 설정
+    ctx.translate(width / 2 + cameraX, height / 2 + cameraY);
+    ctx.scale(zoom, zoom);
+
+    // 블렌딩 모드를 가산 혼합(Lighter)으로 전환하여 별빛이 겹치면 밝게 발광
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (let i = 0; i < count; i++) {
+      const x = posX[i];
+      const y = posY[i];
+
+      // 뷰포트 범위 밖의 입자는 렌더링 생략
+      if (Math.abs(x * zoom + cameraX) > width && Math.abs(y * zoom + cameraY) > height) continue;
+
+      if (isCore[i] === 1) {
+        // 초대질량 블랙홀 코어 렌더링 (사건의 지평선과 강착원반 광채)
+        const rad = 5;
+        const grad = ctx.createRadialGradient(x, y, 1, x, y, rad * 3);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.3, 'rgba(56, 189, 248, 0.8)');
+        grad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, rad * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // 일반 항성 입자
+        ctx.fillStyle = `rgb(${colorR[i]}, ${colorG[i]}, ${colorB[i]})`;
+        ctx.fillRect(x - 0.75, y - 0.75, 1.5, 1.5);
+      }
+    }
+
+    // 마우스 클릭 블랙홀 위치 가이드 표시
+    if (mouseAttractor.active) {
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(mouseAttractor.x, mouseAttractor.y, 14, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // FPS 계산
+    frameCount++;
+    const now = performance.now();
+    if (now - lastFpsUpdate >= 500) {
+      const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+      valFps.textContent = fps;
+      frameCount = 0;
+      lastFpsUpdate = now;
+    }
+  }
+
+  // 메인 루프
+  function loop() {
+    updatePhysics();
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // 리사이즈
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  // 마우스/터치 인터랙션 (드래그 시점 이동, 휠 줌, 클릭 중력 왜곡)
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && !e.shiftKey) {
+      // 좌클릭: 임의의 블랙홀 중력 왜곡점 활성화
+      const worldX = (e.clientX - (width / 2 + cameraX)) / zoom;
+      const worldY = (e.clientY - (height / 2 + cameraY)) / zoom;
+      mouseAttractor.x = worldX;
+      mouseAttractor.y = worldY;
+      mouseAttractor.active = true;
+    } else if (e.button === 2 || e.shiftKey) {
+      // 우클릭 또는 Shift+클릭: 카메라 패닝 시작
+      isDragging = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    }
+  });
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  window.addEventListener('mousemove', (e) => {
+    if (mouseAttractor.active) {
+      mouseAttractor.x = (e.clientX - (width / 2 + cameraX)) / zoom;
+      mouseAttractor.y = (e.clientY - (height / 2 + cameraY)) / zoom;
+    }
+    if (isDragging) {
+      cameraX += e.clientX - lastMouseX;
+      cameraY += e.clientY - lastMouseY;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    mouseAttractor.active = false;
+    isDragging = false;
+  });
+
+  // 줌 인/아웃
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    zoom = Math.max(0.2, Math.min(4.0, zoom * zoomFactor));
+  }, { passive: false });
+
+  // 모바일 터치 대응
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      mouseAttractor.x = (t.clientX - (width / 2 + cameraX)) / zoom;
+      mouseAttractor.y = (t.clientY - (height / 2 + cameraY)) / zoom;
+      mouseAttractor.active = true;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && mouseAttractor.active) {
+      const t = e.touches[0];
+      mouseAttractor.x = (t.clientX - (width / 2 + cameraX)) / zoom;
+      mouseAttractor.y = (t.clientY - (height / 2 + cameraY)) / zoom;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => {
+    mouseAttractor.active = false;
+  });
+
+  // UI 바인딩
+  btnSingle.addEventListener('click', () => {
+    setScenarioBtn(btnSingle);
+    buildScenario('single');
+  });
+
+  btnCollide.addEventListener('click', () => {
+    setScenarioBtn(btnCollide);
+    buildScenario('collide');
+  });
+
+  btnChaos.addEventListener('click', () => {
+    setScenarioBtn(btnChaos);
+    buildScenario('chaos');
+  });
+
+  function setScenarioBtn(activeBtn) {
+    [btnSingle, btnCollide, btnChaos].forEach(b => b.classList.remove('active'));
+    activeBtn.classList.add('active');
+  }
+
+  btnPause.addEventListener('click', () => {
+    isPaused = !isPaused;
+    btnPause.textContent = isPaused ? '재개' : '일시정지';
+    btnPause.classList.toggle('active', isPaused);
+  });
+
+  btnReset.addEventListener('click', () => {
+    buildScenario(currentScenario);
+  });
+
+  gravityRange.addEventListener('input', (e) => {
+    G = parseFloat(e.target.value) / 10;
+  });
+
+  trailRange.addEventListener('input', (e) => {
+    trailAlpha = parseFloat(e.target.value) / 100;
+  });
+
+  // 초기화 및 가동
+  buildScenario('single');
+  loop();
+</script>
+
+</body>
+</html>
