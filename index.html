@@ -147,7 +147,7 @@
         </p>
     </section>
 
-  <!-- Tools 섹션 -->
+<!-- Tools 섹션 (5대 카테고리 정돈 완료) -->
     <section class="max-w-2xl mx-auto px-6 pb-16">
         <!-- Tools 타이틀 및 우측 미니멀 필터 인풋 -->
         <div class="flex items-center justify-between mb-4">
@@ -172,13 +172,17 @@
 
             <!-- 3. 카테고리별 전체 목록 -->
             <div id="categoryRows" class="space-y-1.5">
+                <!-- [글] 기록, 음수율, 마크다운 -->
                 <p>
                     <span class="text-zinc-500 font-medium">글</span> · 
                     <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수율 실시간 글자 수 계산기">syllable</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
                     <span class="tool-item" data-id="poem-card"><a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
                     <span class="tool-item" data-id="long-card"><a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="speccard"><a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="speccard"><a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="notepad"><a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a><button class="star-btn" title="즐겨찾기">☆</button></span>
                 </p>
+
+                <!-- [사진] 아날로그 필름, 톤, 규격 최적화 -->
                 <p>
                     <span class="text-zinc-500 font-medium">사진</span> · 
                     <span class="tool-item" data-id="filmscan"><a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
@@ -188,6 +192,8 @@
                     <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
                     <span class="tool-item" data-id="color-palette"><a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a><button class="star-btn" title="즐겨찾기">☆</button></span>
                 </p>
+
+                <!-- [이미지] 픽셀, 글리치, 그래픽 가공 -->
                 <p>
                     <span class="text-zinc-500 font-medium">이미지</span> · 
                     <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
@@ -196,13 +202,20 @@
                     <span class="tool-item" data-id="glitch"><a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
                     <span class="tool-item" data-id="ascii"><a href="ascii.html" data-desc="사진을 해커 터미널 텍스트 기호로 바꾸는 아스키 아트">ascii</a><button class="star-btn" title="즐겨찾기">☆</button></span>
                 </p>
+
+                <!-- [공감각] 소리, 타건감, 3D 촉각 -->
                 <p>
-                    <span class="text-zinc-500 font-medium">기타</span> · 
-                    <span class="tool-item" data-id="galaxy"><a href="galaxy.html" data-desc="만유인력 N-Body 실시간 나선 은하 형성 & 충돌 시뮬레이터">galaxy</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·드론 사운드 믹서">ambient</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                    <span class="text-zinc-500 font-medium">공감각</span> · 
+                    <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·솔페지오 사운드 믹서">ambient</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
                     <span class="tool-item" data-id="keystroke"><a href="keystroke.html" data-desc="타자기 & 윤활 기계식 키보드 프로시저럴 타건음 합성 패드">keystroke</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="notepad"><a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                </p>
+
+                <!-- [우주] 물리 시뮬레이션, 세포 오토마타 -->
+                <p>
+                    <span class="text-zinc-500 font-medium">우주</span> · 
+                    <span class="tool-item" data-id="galaxy"><a href="galaxy.html" data-desc="만유인력 N-Body 실시간 나선 은하 형성 & 충돌 시뮬레이터">galaxy</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="life"><a href="life.html" data-desc="콘웨이의 2차원 세포 오토마타 실시간 생명 게임">life</a><button class="star-btn" title="즐겨찾기">☆</button></span>
                 </p>
             </div>
         </div>
