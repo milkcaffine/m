@@ -158,7 +158,7 @@
       display: flex;
       align-items: center;
       gap: 9px;
-      width: 160px;
+      width: 170px;
       flex-shrink: 0;
     }
     .channel-icon { font-size: 1.2rem; }
@@ -168,6 +168,32 @@
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.62rem;
       color: #627d98;
+    }
+
+    /* 주파수 토글 버튼 */
+    .freq-switch {
+      display: inline-flex;
+      background: #090b10;
+      border: 1px solid #242d40;
+      border-radius: 4px;
+      margin-top: 3px;
+      padding: 1px;
+      width: fit-content;
+    }
+    .freq-btn {
+      background: transparent;
+      border: none;
+      color: #627d98;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      padding: 1px 5px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .freq-btn.active {
+      background: #00f0ff;
+      color: #08090d;
+      font-weight: 700;
     }
 
     .slider-box {
@@ -235,7 +261,7 @@
       <a href="index.html" class="home-link">← marsko</a>
       <h1>LO-FI AMBIENT</h1>
     </div>
-    <p class="sub">7 PROCEDURAL SYNTHS</p>
+    <p class="sub">8 PROCEDURAL SYNTHS</p>
   </header>
 
   <!-- 실시간 파형 시각화 -->
@@ -256,9 +282,27 @@
     </div>
   </div>
 
-  <!-- 7대 사운드 채널 -->
+  <!-- 사운드 채널 목록 (8개 채널) -->
   <div class="channel-list">
-    <!-- 1. 바이노럴 비트 (신규) -->
+    <!-- 1. 솔페지오 힐링 톤 (432Hz / 528Hz 전환) -->
+    <div class="channel-item active" id="ch-solfeggio">
+      <div class="channel-info">
+        <span class="channel-icon">✨</span>
+        <div class="channel-name">
+          <strong>솔페지오 튜닝 톤</strong>
+          <div class="freq-switch">
+            <button type="button" class="freq-btn active" data-freq="432">432Hz 평온</button>
+            <button type="button" class="freq-btn" data-freq="528">528Hz 치유</button>
+          </div>
+        </div>
+      </div>
+      <div class="slider-box">
+        <input type="range" class="vol-slider" data-ch="solfeggio" min="0" max="100" value="35">
+        <span class="val-label" id="v-solfeggio">35%</span>
+      </div>
+    </div>
+
+    <!-- 2. 바이노럴 비트 -->
     <div class="channel-item active" id="ch-binaural">
       <div class="channel-info">
         <span class="channel-icon">🧠</span>
@@ -273,7 +317,7 @@
       </div>
     </div>
 
-    <!-- 2. 윈드차임 바람종 (신규) -->
+    <!-- 3. 윈드차임 바람종 -->
     <div class="channel-item active" id="ch-chime">
       <div class="channel-info">
         <span class="channel-icon">🎐</span>
@@ -288,7 +332,7 @@
       </div>
     </div>
 
-    <!-- 3. 창가의 빗소리 -->
+    <!-- 4. 창가의 빗소리 -->
     <div class="channel-item active" id="ch-rain">
       <div class="channel-info">
         <span class="channel-icon">🌧️</span>
@@ -303,7 +347,7 @@
       </div>
     </div>
 
-    <!-- 4. LP판 크랙클 -->
+    <!-- 5. LP판 크랙클 -->
     <div class="channel-item active" id="ch-vinyl">
       <div class="channel-info">
         <span class="channel-icon">📻</span>
@@ -318,7 +362,7 @@
       </div>
     </div>
 
-    <!-- 5. 딥 스페이스 드론 -->
+    <!-- 6. 딥 스페이스 드론 -->
     <div class="channel-item active" id="ch-drone">
       <div class="channel-info">
         <span class="channel-icon">🌌</span>
@@ -333,7 +377,7 @@
       </div>
     </div>
 
-    <!-- 6. 심야의 밤바람 -->
+    <!-- 7. 심야의 밤바람 -->
     <div class="channel-item" id="ch-wind">
       <div class="channel-info">
         <span class="channel-icon">💨</span>
@@ -348,7 +392,7 @@
       </div>
     </div>
 
-    <!-- 7. 타닥이는 모닥불 -->
+    <!-- 8. 타닥이는 모닥불 -->
     <div class="channel-item" id="ch-fire">
       <div class="channel-info">
         <span class="channel-icon">🔥</span>
@@ -364,13 +408,13 @@
     </div>
   </div>
 
-  <!-- 하단 서브바 (프리셋 & 타이머) -->
+  <!-- 하단 서브바 -->
   <div class="sub-bar">
     <div class="preset-btn-group">
+      <button class="btn-preset" data-preset="healing">솔페지오 명상</button>
       <button class="btn-preset" data-preset="focus">몰입 집필</button>
       <button class="btn-preset" data-preset="zen">비와 풍경소리</button>
       <button class="btn-preset" data-preset="cyber">우주선 엔진</button>
-      <button class="btn-preset" data-preset="camp">심야 모닥불</button>
     </div>
     <div>
       <select class="timer-select" id="timerSelect">
@@ -391,15 +435,21 @@
   let timerId = null;
   let chimeTimerId = null;
 
-  // 7개 채널 게인 레지스트리
+  // 솔페지오 오실레이터 참조
+  let solfeggioOsc = null;
+  let solfeggioHarmonic = null;
+  let currentSolfeggioFreq = 432;
+
+  // 8개 채널 게인 레지스트리
   const channels = {
-    binaural: { gain: null, targetGain: 0.45 },
-    chime:    { gain: null, targetGain: 0.40 },
-    rain:     { gain: null, targetGain: 0.60 },
-    vinyl:    { gain: null, targetGain: 0.35 },
-    drone:    { gain: null, targetGain: 0.40 },
-    wind:     { gain: null, targetGain: 0.00 },
-    fire:     { gain: null, targetGain: 0.00 }
+    solfeggio: { gain: null, targetGain: 0.35 },
+    binaural:  { gain: null, targetGain: 0.45 },
+    chime:     { gain: null, targetGain: 0.40 },
+    rain:      { gain: null, targetGain: 0.60 },
+    vinyl:     { gain: null, targetGain: 0.35 },
+    drone:     { gain: null, targetGain: 0.40 },
+    wind:      { gain: null, targetGain: 0.00 },
+    fire:      { gain: null, targetGain: 0.00 }
   };
 
   const playBtn = document.getElementById('playBtn');
@@ -424,7 +474,8 @@
     masterGainNode.connect(analyserNode);
     analyserNode.connect(audioCtx.destination);
 
-    // 신규 & 기존 채널 합성 인스턴스 가동
+    // 채널 생성 및 연결
+    createSolfeggioChannel();
     createBinauralChannel();
     createChimeChannel();
     createRainChannel();
@@ -434,16 +485,68 @@
     createFireChannel();
   }
 
-  // --- [채널 1 신규] 뇌파 동조 바이노럴 비트 (좌 200Hz, 우 210Hz -> 10Hz Alpha) ---
+  // --- [채널 1] 솔페지오 힐링 톤 (432Hz / 528Hz 정현파 + 미세 배음 블렌드) ---
+  function createSolfeggioChannel() {
+    const chGain = audioCtx.createGain();
+    chGain.gain.value = channels.solfeggio.targetGain * 0.35;
+    channels.solfeggio.gain = chGain;
+
+    // 메인 정현파
+    solfeggioOsc = audioCtx.createOscillator();
+    solfeggioOsc.type = 'sine';
+    solfeggioOsc.frequency.setValueAtTime(currentSolfeggioFreq, audioCtx.currentTime);
+
+    // 부드러운 깊이감을 더하는 1/2 저역 서브 옥타브 배음
+    solfeggioHarmonic = audioCtx.createOscillator();
+    solfeggioHarmonic.type = 'sine';
+    solfeggioHarmonic.frequency.setValueAtTime(currentSolfeggioFreq / 2, audioCtx.currentTime);
+
+    const subGain = audioCtx.createGain();
+    subGain.gain.value = 0.25;
+
+    // 공기감을 주는 부드러운 저역 통과 필터
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 800;
+
+    solfeggioOsc.connect(filter);
+    solfeggioHarmonic.connect(subGain);
+    subGain.connect(filter);
+    filter.connect(chGain);
+    chGain.connect(masterGainNode);
+
+    solfeggioOsc.start();
+    solfeggioHarmonic.start();
+  }
+
+  // 솔페지오 주파수 변경 함수
+  function setSolfeggioFrequency(freq) {
+    currentSolfeggioFreq = freq;
+    if (solfeggioOsc && audioCtx) {
+      const now = audioCtx.currentTime;
+      solfeggioOsc.frequency.setTargetAtTime(freq, now, 0.1);
+      solfeggioHarmonic.frequency.setTargetAtTime(freq / 2, now, 0.1);
+    }
+  }
+
+  // 주파수 스위치 버튼 이벤트
+  document.querySelectorAll('.freq-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.freq-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      const freq = parseInt(e.target.dataset.freq, 10);
+      setSolfeggioFrequency(freq);
+    });
+  });
+
+  // --- [채널 2] 뇌파 동조 바이노럴 비트 (10Hz Alpha Focus) ---
   function createBinauralChannel() {
     const merger = audioCtx.createChannelMerger(2);
 
-    // 좌측 귀: 200Hz
     const oscL = audioCtx.createOscillator();
     oscL.type = 'sine';
     oscL.frequency.value = 200;
 
-    // 우측 귀: 210Hz (차이 10Hz = 집중 알파파)
     const oscR = audioCtx.createOscillator();
     oscR.type = 'sine';
     oscR.frequency.value = 210;
@@ -454,10 +557,10 @@
     gainR.gain.value = 0.5;
 
     oscL.connect(gainL);
-    gainL.connect(merger, 0, 0); // L 채널
+    gainL.connect(merger, 0, 0);
 
     oscR.connect(gainR);
-    gainR.connect(merger, 0, 1); // R 채널
+    gainR.connect(merger, 0, 1);
 
     const chGain = audioCtx.createGain();
     chGain.gain.value = channels.binaural.targetGain * 0.4;
@@ -470,14 +573,13 @@
     oscR.start();
   }
 
-  // --- [채널 2 신규] 프로시저럴 은은한 윈드차임 (Pentatonic Resonant Bell) ---
+  // --- [채널 3] 프로시저럴 은은한 윈드차임 ---
   function createChimeChannel() {
     const chGain = audioCtx.createGain();
     chGain.gain.value = channels.chime.targetGain;
     channels.chime.gain = chGain;
     chGain.connect(masterGainNode);
 
-    // 맑고 투명한 청동 펜타토닉 주파수 목록
     const chimeFreqs = [1174.66, 1318.51, 1567.98, 1760.00, 2093.00, 2349.32, 2637.02];
 
     function strikeChime() {
@@ -487,24 +589,20 @@
       }
 
       const now = audioCtx.currentTime;
-      // 1~2개 종이 살짝 겹쳐서 부딪히는 자연스러운 바람 효과
       const hits = Math.random() < 0.4 ? 2 : 1;
 
       for (let h = 0; h < hits; h++) {
         const offsetTime = now + (h * (0.08 + Math.random() * 0.15));
         const freq = chimeFreqs[Math.floor(Math.random() * chimeFreqs.length)];
 
-        // 기본 금속 울림 오실레이터
         const osc = audioCtx.createOscillator();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, offsetTime);
 
-        // 배음(Overtone) 추가로 맑은 금속성 질감 표현
         const overtone = audioCtx.createOscillator();
         overtone.type = 'triangle';
         overtone.frequency.setValueAtTime(freq * 2.76, offsetTime);
 
-        // 엔벨로프 (날카로운 타격 후 긴 여운)
         const env = audioCtx.createGain();
         env.gain.setValueAtTime(0, offsetTime);
         env.gain.linearRampToValueAtTime(0.35 * (0.6 + Math.random() * 0.4), offsetTime + 0.008);
@@ -530,7 +628,6 @@
     }
 
     function scheduleNextChime() {
-      // 3.5초 ~ 7.5초 주기의 불규칙한 바람 인터벌
       const nextDelay = 3500 + Math.random() * 4000;
       chimeTimerId = setTimeout(strikeChime, nextDelay);
     }
@@ -538,7 +635,7 @@
     scheduleNextChime();
   }
 
-  // --- [채널 3] 빗소리 (Pink Noise) ---
+  // --- [채널 4] 창가의 빗소리 ---
   function createRainChannel() {
     const bufferSize = audioCtx.sampleRate * 4;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -575,7 +672,7 @@
     source.start();
   }
 
-  // --- [채널 4] LP 바늘 크랙클 ---
+  // --- [채널 5] LP 바늘 크랙클 ---
   function createVinylChannel() {
     const bufferSize = audioCtx.sampleRate * 3;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -607,7 +704,7 @@
     source.start();
   }
 
-  // --- [채널 5] 딥 스페이스 드론 (55Hz Saw + Tri + LFO) ---
+  // --- [채널 6] 딥 스페이스 드론 ---
   function createDroneChannel() {
     const gain = audioCtx.createGain();
     gain.gain.value = channels.drone.targetGain * 0.35;
@@ -642,7 +739,7 @@
     osc2.start();
   }
 
-  // --- [채널 6] 심야 밤바람 (Brown Noise + Bandpass LFO) ---
+  // --- [채널 7] 심야 밤바람 ---
   function createWindChannel() {
     const bufferSize = audioCtx.sampleRate * 4;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -686,7 +783,7 @@
     lfo.start();
   }
 
-  // --- [채널 7] 모닥불 (Burst Crackle) ---
+  // --- [채널 8] 타닥이는 모닥불 ---
   function createFireChannel() {
     const bufferSize = audioCtx.sampleRate * 3;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -718,7 +815,7 @@
     source.start();
   }
 
-  // 재생 / 일시정지 토글
+  // 재생 / 일시정지
   playBtn.addEventListener('click', async () => {
     initAudioEngine();
 
@@ -747,7 +844,7 @@
     }
   });
 
-  // 슬라이더 조절 핸들러
+  // 슬라이더 핸들러
   document.querySelectorAll('.vol-slider').forEach(slider => {
     slider.addEventListener('input', (e) => {
       const chKey = e.target.dataset.ch;
@@ -757,6 +854,7 @@
       let normVal = val / 100;
       if (chKey === 'drone') normVal *= 0.35;
       if (chKey === 'binaural') normVal *= 0.4;
+      if (chKey === 'solfeggio') normVal *= 0.35;
 
       channels[chKey].targetGain = normVal;
 
@@ -769,12 +867,12 @@
     });
   });
 
-  // 테마별 원클릭 프리셋
+  // 프리셋
   const PRESETS = {
-    focus: { binaural: 65, chime: 25, rain: 45, vinyl: 20, drone: 30, wind: 0, fire: 0 },
-    zen:   { binaural: 30, chime: 70, rain: 55, vinyl: 15, drone: 0,  wind: 40, fire: 0 },
-    cyber: { binaural: 50, chime: 0,  rain: 10, vinyl: 10, drone: 80, wind: 55, fire: 0 },
-    camp:  { binaural: 0,  chime: 20, rain: 15, vinyl: 25, drone: 15, wind: 30, fire: 75 }
+    healing: { solfeggio: 60, binaural: 40, chime: 50, rain: 35, vinyl: 15, drone: 0,  wind: 20, fire: 0 },
+    focus:   { solfeggio: 25, binaural: 60, chime: 20, rain: 45, vinyl: 20, drone: 30, wind: 0,  fire: 0 },
+    zen:     { solfeggio: 30, binaural: 20, chime: 70, rain: 55, vinyl: 15, drone: 0,  wind: 40, fire: 0 },
+    cyber:   { solfeggio: 0,  binaural: 45, chime: 0,  rain: 10, vinyl: 10, drone: 80, wind: 55, fire: 0 }
   };
 
   document.querySelectorAll('.btn-preset').forEach(btn => {
@@ -804,7 +902,7 @@
     }
   });
 
-  // 오실로스코프 파형 렌더링
+  // 파형 오실로스코프
   function drawWaveform() {
     if (!isPlaying) return;
     requestAnimationFrame(drawWaveform);
