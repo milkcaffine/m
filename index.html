@@ -56,6 +56,65 @@
 .tool-desc.active .desc-text {
   color: #e2e8f0;
 }
+        /* 도구 아이템 래퍼 */
+.tool-item {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  vertical-align: baseline;
+}
+
+/* 별표 버튼 스타일 */
+.star-btn {
+  background: none;
+  border: none;
+  color: #4b5563;
+  font-size: 0.72rem;
+  padding: 0 1px 0 2px;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s ease, transform 0.15s ease;
+  vertical-align: middle;
+}
+
+/* 호버 시 별표 보이기 */
+.tool-item:hover .star-btn,
+.tool-item:focus-within .star-btn {
+  color: #94a3b8;
+}
+
+/* 즐겨찾기 등록된 상태 */
+.tool-item.favorited .star-btn,
+.fav-row .star-btn {
+  color: #00f0ff;
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
+}
+
+.star-btn:hover {
+  transform: scale(1.25);
+  color: #00f0ff !important;
+}
+
+/* 최상단 즐겨찾기 고정 줄 */
+.fav-row {
+  background: rgba(0, 240, 255, 0.03);
+  border: 1px dashed rgba(0, 240, 255, 0.25);
+  border-radius: 8px;
+  padding: 6px 10px !important;
+  margin-bottom: 8px !important;
+  animation: fadeIn 0.25s ease;
+}
+
+.fav-badge {
+  color: #00f0ff !important;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -105,35 +164,41 @@
 <section class="tools-section">
     <h2>Tools</h2>
     <div class="tools-list">
+        <!-- 즐겨찾기 고정 줄 (즐겨찾기 항목이 있을 때만 자동 노출) -->
+        <p class="fav-row" id="favRow" style="display: none;">
+            <span class="fav-badge">★</span> · <span id="favList"></span>
+        </p>
+
+        <!-- 카테고리별 전체 목록 -->
         <p><span>글</span> · 
-            <a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수율 실시간 글자 수 계산기">syllable</a> · 
-            <a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a> · 
-            <a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a> · 
-            <a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a>
+            <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수율 실시간 글자 수 계산기">syllable</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="poem-card"><a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="long-card"><a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="speccard"><a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a><button class="star-btn" title="즐겨찾기">☆</button></span>
         </p>
         <p><span>사진</span> · 
-            <a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a> · 
-            <a href="watermark.html" data-desc="SNS 아이디·닉네임 커스텀 워터마크 삽입기">watermark</a> · 
-            <a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-optimize</a> · 
-            <a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">film-frame</a> · 
-            <a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a> · 
-            <a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a>
+            <span class="tool-item" data-id="filmscan"><a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="watermark"><a href="watermark.html" data-desc="SNS 아이디·닉네임 커스텀 워터마크 삽입기">watermark</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="x-optimize"><a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-optimize</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="film-frame"><a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">film-frame</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="color-palette"><a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a><button class="star-btn" title="즐겨찾기">☆</button></span>
         </p>
         <p><span>이미지</span> · 
-            <a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a> · 
-            <a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a> · 
-            <a href="dither.html" data-desc="1-Bit 매킨토시 & 게임보이 카메라 도트 픽셀 변환">dither</a> · 
-            <a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a> · 
-            <a href="ascii.html" data-desc="사진을 해커 터미널 텍스트 기호로 바꾸는 아스키 아트">ascii</a>
+            <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="collage"><a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="dither"><a href="dither.html" data-desc="1-Bit 매킨토시 & 게임보이 카메라 도트 픽셀 변환">dither</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="glitch"><a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="ascii"><a href="ascii.html" data-desc="사진을 해커 터미널 텍스트 기호로 바꾸는 아스키 아트">ascii</a><button class="star-btn" title="즐겨찾기">☆</button></span>
         </p>
         <p><span>기타</span> · 
-            <a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a> · 
-            <a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·드론 사운드 믹서">ambient</a> · 
-            <a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a>
+            <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·드론 사운드 믹서">ambient</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+            <span class="tool-item" data-id="notepad"><a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a><button class="star-btn" title="즐겨찾기">☆</button></span>
         </p>
     </div>
 
-    <!-- 1줄 설명이 출력되는 고정 안내창 -->
+    <!-- 1줄 설명 출력 안내창 -->
     <div class="tool-desc" id="toolDesc">
         <span class="desc-prompt">&gt;</span> <span class="desc-text">도구에 마우스를 올리거나 탭하면 설명이 표시됩니다.</span>
     </div>
@@ -191,6 +256,155 @@
       // 모바일: 탭 시 설명 먼저 갱신
       link.addEventListener('touchstart', showDesc, { passive: true });
     });
+  })();
+</script>
+    <script>
+  (function() {
+    const STORAGE_KEY = 'marsko_fav_tools_v1';
+    const favRow = document.getElementById('favRow');
+    const favList = document.getElementById('favList');
+    const descBox = document.getElementById('toolDesc');
+    const descText = descBox ? descBox.querySelector('.desc-text') : null;
+    const defaultMsg = descText ? descText.textContent : '';
+
+    // 1. 로컬 스토리지에서 즐겨찾기 목록 불러오기
+    function getFavorites() {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveFavorites(favs) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(favs));
+      } catch (e) {
+        console.warn('LocalStorage save failed', e);
+      }
+    }
+
+    // 2. 상단 즐겨찾기 줄(fav-row) 렌더링
+    function renderFavorites() {
+      const favs = getFavorites();
+      
+      // 본문 전체 도구 아이템 active 상태 동기화
+      document.querySelectorAll('.tool-item').forEach(item => {
+        const id = item.getAttribute('data-id');
+        const star = item.querySelector('.star-btn');
+        if (favs.includes(id)) {
+          item.classList.add('favorited');
+          if (star) star.textContent = '★';
+        } else {
+          item.classList.remove('favorited');
+          if (star) star.textContent = '☆';
+        }
+      });
+
+      // 즐겨찾기 줄 비우기 및 재생성
+      if (!favRow || !favList) return;
+
+      if (favs.length === 0) {
+        favRow.style.display = 'none';
+        favList.innerHTML = '';
+        return;
+      }
+
+      favRow.style.display = 'block';
+      favList.innerHTML = '';
+
+      favs.forEach((id, idx) => {
+        const origItem = document.querySelector(`.tool-item[data-id="${id}"]`);
+        if (!origItem) return;
+        const origLink = origItem.querySelector('a');
+        if (!origLink) return;
+
+        if (idx > 0) {
+          favList.appendChild(document.createTextNode(' · '));
+        }
+
+        const favItemSpan = document.createElement('span');
+        favItemSpan.className = 'tool-item favorited';
+        favItemSpan.setAttribute('data-id', id);
+
+        const newLink = document.createElement('a');
+        newLink.href = origLink.getAttribute('href');
+        newLink.textContent = origLink.textContent;
+        newLink.setAttribute('data-desc', origLink.getAttribute('data-desc') || '');
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'star-btn';
+        removeBtn.textContent = '★';
+        removeBtn.title = '즐겨찾기 해제';
+        removeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite(id);
+        });
+
+        favItemSpan.appendChild(newLink);
+        favItemSpan.appendChild(removeBtn);
+        favList.appendChild(favItemSpan);
+
+        // 설명창 이벤트 연결
+        bindDescEvents(newLink);
+      });
+    }
+
+    // 3. 즐겨찾기 토글 동작
+    function toggleFavorite(id) {
+      let favs = getFavorites();
+      if (favs.includes(id)) {
+        favs = favs.filter(item => item !== id);
+      } else {
+        favs.push(id);
+      }
+      saveFavorites(favs);
+      renderFavorites();
+    }
+
+    // 4. 별표 클릭 이벤트 바인딩
+    document.querySelectorAll('.tool-item .star-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = this.closest('.tool-item');
+        if (parent) {
+          const id = parent.getAttribute('data-id');
+          toggleFavorite(id);
+        }
+      });
+    });
+
+    // 5. 툴팁 설명창 바인딩 헬퍼
+    function bindDescEvents(link) {
+      if (!descBox || !descText) return;
+      link.addEventListener('mouseenter', function() {
+        const d = this.getAttribute('data-desc');
+        if (d) { descText.textContent = d; descBox.classList.add('active'); }
+      });
+      link.addEventListener('mouseleave', function() {
+        descText.textContent = defaultMsg;
+        descBox.classList.remove('active');
+      });
+      link.addEventListener('focus', function() {
+        const d = this.getAttribute('data-desc');
+        if (d) { descText.textContent = d; descBox.classList.add('active'); }
+      });
+      link.addEventListener('blur', function() {
+        descText.textContent = defaultMsg;
+        descBox.classList.remove('active');
+      });
+      link.addEventListener('touchstart', function() {
+        const d = this.getAttribute('data-desc');
+        if (d) { descText.textContent = d; descBox.classList.add('active'); }
+      }, { passive: true });
+    }
+
+    // 초기 툴팁 연결 및 즐겨찾기 로드
+    document.querySelectorAll('.tools-list a').forEach(bindDescEvents);
+    renderFavorites();
   })();
 </script>
 </body>
