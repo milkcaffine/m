@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#08090d">
+  <title>INFINITE LO-FI AMBIENT STUDIO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #08090d;
+      color: #d8e2ec;
+      display: flex;
+      justify-content: center;
+      padding: 14px;
+      min-height: 100vh;
+    }
+    .container {
+      background: #10121a;
+      border: 1px solid #1c2233;
+      max-width: 500px;
+      width: 100%;
+      border-radius: 24px;
+      padding: 22px 18px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 240, 255, 0.05);
+    }
+    header { text-align: center; margin-bottom: 18px; }
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.15rem;
+      letter-spacing: 2px;
+      color: #00f0ff;
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+      margin-bottom: 4px;
+    }
+    p.sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #556987;
+      letter-spacing: 0.5px;
+    }
+
+    /* 실시간 사운드 파형 시각화 캔버스 */
+    .visualizer-card {
+      width: 100%;
+      height: 100px;
+      background: #06070a;
+      border: 1px solid #1a2030;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 18px;
+      position: relative;
+    }
+    #waveCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .status-badge {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #00f0ff;
+      background: rgba(0, 240, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+    }
+
+    /* 메인 마스터 컨트롤 바 */
+    .master-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #171c28;
+      border: 1px solid #242d40;
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+    }
+    .btn-play {
+      background: #00f0ff;
+      color: #08090d;
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      font-size: 1.2rem;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn-play:active { transform: scale(0.94); }
+    .btn-play.playing {
+      background: #ff0055;
+      color: #fff;
+      box-shadow: 0 0 16px rgba(255, 0, 85, 0.4);
+    }
+
+    .master-vol {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 170px;
+    }
+    .master-vol label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #829ab1;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* 사운드 채널 그리드 */
+    .channel-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .channel-item {
+      background: #141822;
+      border: 1px solid #1e2638;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: border-color 0.2s;
+    }
+    .channel-item.active { border-color: rgba(0, 240, 255, 0.4); }
+
+    .channel-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 150px;
+      flex-shrink: 0;
+    }
+    .channel-icon { font-size: 1.3rem; }
+    .channel-name {
+      display: flex;
+      flex-direction: column;
+    }
+    .channel-name strong { font-size: 0.85rem; color: #e2f1ff; }
+    .channel-name small {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #627d98;
+    }
+
+    .slider-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #242d40;
+      accent-color: #00f0ff;
+      cursor: pointer;
+    }
+    .val-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #00f0ff;
+      width: 32px;
+      text-align: right;
+    }
+
+    /* 하단 툴바 (프리셋 & 타이머) */
+    .sub-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid #1a2030;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+    }
+    .timer-select {
+      background: #141822;
+      border: 1px solid #242d40;
+      color: #00f0ff;
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-family: inherit;
+      font-size: 0.72rem;
+    }
+    .preset-btn-group { display: flex; gap: 6px; }
+    .btn-preset {
+      background: #171c28;
+      border: 1px solid #242d40;
+      color: #829ab1;
+      border-radius: 6px;
+      padding: 5px 8px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-family: inherit;
+    }
+    .btn-preset:hover { color: #00f0ff; border-color: #00f0ff; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>LO-FI AMBIENT</h1>
+    <p class="sub">100% PROCEDURAL SYNTH // ZERO AUDIO FILES</p>
+  </header>
+
+  <!-- 실시간 파형 시각화 -->
+  <div class="visualizer-card">
+    <div class="status-badge" id="statusBadge">STANDBY</div>
+    <canvas id="waveCanvas"></canvas>
+  </div>
+
+  <!-- 마스터 컨트롤러 -->
+  <div class="master-bar">
+    <button class="btn-play" id="playBtn" title="재생/일시정지">▶</button>
+    <div class="master-vol">
+      <label>
+        <span>MASTER GAIN</span>
+        <span id="masterVal">80%</span>
+      </label>
+      <input type="range" id="masterRange" min="0" max="100" value="80">
+    </div>
+  </div>
+
+  <!-- 개별 사운드 채널 -->
+  <div class="channel-list">
+    <!-- 1. 빗소리 -->
+    <div class="channel-item active" id="ch-rain">
+      <div class="channel-info">
+        <span class="channel-icon">🌧️</span>
+        <div class="channel-name">
+          <strong>창가의 빗소리</strong>
+          <small>PINK NOISE + BPF</small>
+        </div>
+      </div>
+      <div class="slider-box">
+        <input type="range" class="vol-slider" data-ch="rain" min="0" max="100" value="65">
+        <span class="val-label" id="v-rain">65%</span>
+      </div>
+    </div>
+
+    <!-- 2. LP판 크랙클 -->
+    <div class="channel-item active" id="ch-vinyl">
+      <div class="channel-info">
+        <span class="channel-icon">📻</span>
+        <div class="channel-name">
+          <strong>LP 바늘 노이즈</strong>
+          <small>VINYL CRACKLE</small>
+        </div>
+      </div>
+      <div class="slider-box">
+        <input type="range" class="vol-slider" data-ch="vinyl" min="0" max="100" value="45">
+        <span class="val-label" id="v-vinyl">45%</span>
+      </div>
+    </div>
+
+    <!-- 3. 아날로그 웜 드론 -->
+    <div class="channel-item active" id="ch-drone">
+      <div class="channel-info">
+        <span class="channel-icon">🌌</span>
+        <div class="channel-name">
+          <strong>딥 스페이스 드론</strong>
+          <small>SUB-OSC 55Hz (A1)</small>
+        </div>
+      </div>
+      <div class="slider-box">
+        <input type="range" class="vol-slider" data-ch="drone" min="0" max="100" value="50">
+        <span class="val-label" id="v-drone">50%</span>
+      </div>
+    </div>
+
+    <!-- 4. 밤바람 -->
+    <div class="channel-item" id="ch-wind">
+      <div class="channel-info">
+        <span class="channel-icon">💨</span>
+        <div class="channel-name">
+          <strong>심야의 밤바람</strong>
+          <small>LFO MODULATED WIND</small>
+        </div>
+      </div>
+      <div class="slider-box">
+        <input type="range" class="vol-slider" data-ch="wind" min="0" max="100" value="0">
+        <span class="val-label" id="v-wind">0%</span>
+      </div>
+    </div>
+
+    <!-- 5. 모닥불 -->
+    <div class="channel-item" id="ch-fire">
+      <div class="channel-info">
+        <span class="channel-icon">🔥</span>
+        <div class="channel-name">
+          <strong>타닥이는 모닥불</strong>
+          <small>BURST CRACKLE</small>
+        </div>
+      </div>
+      <div class="slider-box">
+        <input type="range" class="vol-slider" data-ch="fire" min="0" max="100" value="0">
+        <span class="val-label" id="v-fire">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 서브바 -->
+  <div class="sub-bar">
+    <div class="preset-btn-group">
+      <button class="btn-preset" data-preset="rainy">새벽 비</button>
+      <button class="btn-preset" data-preset="cyber">사이버 우주선</button>
+      <button class="btn-preset" data-preset="camp">심야 캠핑</button>
+    </div>
+    <div>
+      <select class="timer-select" id="timerSelect">
+        <option value="0">타이머 꺼짐</option>
+        <option value="15">15분 뒤 종료</option>
+        <option value="30">30분 뒤 종료</option>
+        <option value="60">60분 뒤 종료</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<script>
+  let audioCtx = null;
+  let masterGainNode = null;
+  let analyserNode = null;
+  let isPlaying = false;
+  let timerId = null;
+
+  // 오디오 채널 노드 레지스트리
+  const channels = {
+    rain:  { gain: null, targetGain: 0.65 },
+    vinyl: { gain: null, targetGain: 0.45 },
+    drone: { gain: null, targetGain: 0.50 },
+    wind:  { gain: null, targetGain: 0.00 },
+    fire:  { gain: null, targetGain: 0.00 }
+  };
+
+  const playBtn = document.getElementById('playBtn');
+  const masterRange = document.getElementById('masterRange');
+  const masterVal = document.getElementById('masterVal');
+  const statusBadge = document.getElementById('statusBadge');
+  const timerSelect = document.getElementById('timerSelect');
+  const waveCanvas = document.getElementById('waveCanvas');
+  const waveCtx = waveCanvas.getContext('2d');
+
+  // 1. 오디오 컨텍스트 및 신디사이저 엔진 초기화
+  function initAudioEngine() {
+    if (audioCtx) return;
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // 마스터 게인 & 분석기
+    masterGainNode = audioCtx.createGain();
+    masterGainNode.gain.value = parseInt(masterRange.value, 10) / 100;
+
+    analyserNode = audioCtx.createAnalyser();
+    analyserNode.fftSize = 512;
+
+    masterGainNode.connect(analyserNode);
+    analyserNode.connect(audioCtx.destination);
+
+    // 각 채널 생성 및 연결
+    createRainChannel();
+    createVinylChannel();
+    createDroneChannel();
+    createWindChannel();
+    createFireChannel();
+  }
+
+  // --- [채널 1] 빗소리: 핑크 노이즈 + 대역통과 필터(BPF) ---
+  function createRainChannel() {
+    const bufferSize = audioCtx.sampleRate * 4;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    // Paul Kellet's Pink Noise Algorithm
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+      b6 = white * 0.115926;
+    }
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1400;
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = channels.rain.targetGain;
+    channels.rain.gain = gain;
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGainNode);
+    source.start();
+  }
+
+  // --- [채널 2] LP 크랙클: 불규칙 스파이크 임펄스 노이즈 ---
+  function createVinylChannel() {
+    const bufferSize = audioCtx.sampleRate * 3;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      // 0.08% 확률로 튀는 바늘 소리
+      if (Math.random() < 0.0008) {
+        data[i] = (Math.random() * 2 - 1) * 0.8;
+      } else {
+        data[i] = (Math.random() * 2 - 1) * 0.012; // 옅은 표면 서징 노이즈
+      }
+    }
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 800;
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = channels.vinyl.targetGain;
+    channels.vinyl.gain = gain;
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGainNode);
+    source.start();
+  }
+
+  // --- [채널 3] 딥 스페이스 드론: 복수 오실레이터 화음 (55Hz 서브베이스 + 배음) ---
+  function createDroneChannel() {
+    const gain = audioCtx.createGain();
+    gain.gain.value = channels.drone.targetGain * 0.35;
+    channels.drone.gain = gain;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 180;
+
+    // A1 (55Hz)
+    const osc1 = audioCtx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = 55;
+
+    // E2 (82.4Hz) 화음
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.value = 82.41;
+
+    // 미세 디튠 LFO
+    const lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.08; // 12초 주기
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 40;
+    lfo.connect(filter.frequency);
+    lfo.start();
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGainNode);
+
+    osc1.start();
+    osc2.start();
+  }
+
+  // --- [채널 4] 심야 밤바람: 브라운 노이즈 + LFO 스윕 필터 ---
+  function createWindChannel() {
+    const bufferSize = audioCtx.sampleRate * 4;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    let last = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      data[i] = (last + (0.02 * white)) / 1.02;
+      last = data[i];
+      data[i] *= 2.8;
+    }
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 1.2;
+
+    // 바람의 웅성거림을 만드는 느린 LFO
+    const lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.18;
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 220;
+    lfo.connect(lfoGain);
+
+    filter.frequency.value = 350;
+    lfoGain.connect(filter.frequency);
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = channels.wind.targetGain;
+    channels.wind.gain = gain;
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGainNode);
+
+    source.start();
+    lfo.start();
+  }
+
+  // --- [채널 5] 모닥불: 저주파 팝 + 산발적 버스트 크랙클 ---
+  function createFireChannel() {
+    const bufferSize = audioCtx.sampleRate * 3;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      if (Math.random() < 0.0012) {
+        data[i] = (Math.random() * 2 - 1) * 0.9;
+      } else {
+        data[i] = 0;
+      }
+    }
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 3200;
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = channels.fire.targetGain;
+    channels.fire.gain = gain;
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGainNode);
+    source.start();
+  }
+
+  // 재생 / 정지 토글
+  playBtn.addEventListener('click', async () => {
+    initAudioEngine();
+
+    if (!isPlaying) {
+      await audioCtx.resume();
+      isPlaying = true;
+      playBtn.textContent = '■';
+      playBtn.classList.add('playing');
+      statusBadge.textContent = 'SYNTHESIZING';
+      drawWaveform();
+    } else {
+      await audioCtx.suspend();
+      isPlaying = false;
+      playBtn.textContent = '▶';
+      playBtn.classList.remove('playing');
+      statusBadge.textContent = 'PAUSED';
+    }
+  });
+
+  // 마스터 볼륨
+  masterRange.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    masterVal.textContent = `${val}%`;
+    if (masterGainNode) {
+      masterGainNode.gain.setTargetAtTime(val / 100, audioCtx.currentTime, 0.03);
+    }
+  });
+
+  // 개별 채널 슬라이더
+  document.querySelectorAll('.vol-slider').forEach(slider => {
+    slider.addEventListener('input', (e) => {
+      const chKey = e.target.dataset.ch;
+      const val = parseInt(e.target.value, 10);
+      document.getElementById(`v-${chKey}`).textContent = `${val}%`;
+
+      const normVal = (chKey === 'drone') ? (val / 100) * 0.35 : (val / 100);
+      channels[chKey].targetGain = normVal;
+
+      const card = document.getElementById(`ch-${chKey}`);
+      card.classList.toggle('active', val > 0);
+
+      if (channels[chKey].gain && audioCtx) {
+        channels[chKey].gain.gain.setTargetAtTime(normVal, audioCtx.currentTime, 0.05);
+      }
+    });
+  });
+
+  // 프리셋 설정
+  const PRESETS = {
+    rainy: { rain: 75, vinyl: 45, drone: 30, wind: 20, fire: 0 },
+    cyber: { rain: 15, vinyl: 10, drone: 80, wind: 60, fire: 0 },
+    camp:  { rain: 10, vinyl: 20, drone: 20, wind: 35, fire: 75 }
+  };
+
+  document.querySelectorAll('.btn-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = PRESETS[btn.dataset.preset];
+      if (!p) return;
+      Object.keys(p).forEach(k => {
+        const slider = document.querySelector(`.vol-slider[data-ch="${k}"]`);
+        slider.value = p[k];
+        slider.dispatchEvent(new Event('input'));
+      });
+    });
+  });
+
+  // 수면 타이머
+  timerSelect.addEventListener('change', () => {
+    if (timerId) clearTimeout(timerId);
+    const mins = parseInt(timerSelect.value, 10);
+    if (mins > 0 && isPlaying) {
+      statusBadge.textContent = `SLEEP IN ${mins}M`;
+      timerId = setTimeout(() => {
+        if (isPlaying) playBtn.click();
+        timerSelect.value = '0';
+      }, mins * 60 * 1000);
+    }
+  });
+
+  // 실시간 캔버스 오실로스코프 파형 애니메이션
+  function drawWaveform() {
+    if (!isPlaying) return;
+    requestAnimationFrame(drawWaveform);
+
+    const w = waveCanvas.width = waveCanvas.parentElement.clientWidth;
+    const h = waveCanvas.height = waveCanvas.parentElement.clientHeight;
+
+    const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
+    analyserNode.getByteTimeDomainData(dataArray);
+
+    waveCtx.fillStyle = '#06070a';
+    waveCtx.fillRect(0, 0, w, h);
+
+    waveCtx.lineWidth = 2;
+    waveCtx.strokeStyle = '#00f0ff';
+    waveCtx.shadowBlur = 8;
+    waveCtx.shadowColor = 'rgba(0, 240, 255, 0.6)';
+
+    waveCtx.beginPath();
+    const sliceWidth = w / dataArray.length;
+    let x = 0;
+
+    for (let i = 0; i < dataArray.length; i++) {
+      const v = dataArray[i] / 128.0;
+      const y = (v * h) / 2;
+
+      if (i === 0) waveCtx.moveTo(x, y);
+      else waveCtx.lineTo(x, y);
+
+      x += sliceWidth;
+    }
+
+    waveCtx.lineTo(w, h / 2);
+    waveCtx.stroke();
+  }
+</script>
+
+</body>
+</html>
