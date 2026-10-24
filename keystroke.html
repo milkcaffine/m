@@ -23,7 +23,7 @@
     .container {
       background: #11141c;
       border: 1px solid #1f2738;
-      max-width: 600px;
+      max-width: 620px;
       width: 100%;
       border-radius: 24px;
       padding: 20px 18px;
@@ -66,7 +66,7 @@
       border-radius: 6px;
     }
 
-    /* 사운드 프로필 선택 바 */
+    /* 사운드 프로필 */
     .profile-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -103,7 +103,7 @@
       margin-top: 2px;
     }
 
-    /* 컨트롤 슬라이더 & 옵션 바 */
+    /* 컨트롤 슬라이더 & 토글 */
     .control-strip {
       background: #141924;
       border: 1px solid #1e2638;
@@ -124,23 +124,23 @@
       color: #829ab1;
     }
     .control-item input[type="range"] {
-      width: 90px;
+      width: 75px;
       height: 4px;
       accent-color: #00f0ff;
       background: #232d40;
       cursor: pointer;
     }
-    .control-item label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+    .control-item label { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
 
-    /* 타자 입력 작업 공간 */
+    /* 타자 입력 공간 */
     .typing-card {
       background: #090b10;
       border: 1px solid #1f2738;
       border-radius: 14px;
-      padding: 16px;
+      padding: 14px 16px 16px 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       position: relative;
     }
     .typing-meta {
@@ -152,27 +152,99 @@
       color: #627d98;
       padding-bottom: 8px;
       border-bottom: 1px solid #161c28;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     .meta-tags { display: flex; gap: 10px; }
     .meta-tags span strong { color: #00f0ff; }
 
+    .meta-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .save-indicator {
+      color: #00f0ff;
+      font-weight: 600;
+      opacity: 0.8;
+    }
+    .btn-meta {
+      background: #161c28;
+      border: 1px solid #232d40;
+      color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-meta:hover {
+      color: #e2e8f0;
+      border-color: #3b465a;
+      background: #1c2434;
+    }
+    .btn-meta.btn-danger:hover {
+      color: #ff4d6d;
+      border-color: #ff4d6d;
+    }
+
+    /* 에디터 뷰포트 컨테이너 */
+    .editor-wrapper {
+      position: relative;
+      width: 100%;
+      height: 280px;
+      overflow: hidden;
+    }
+
     #typingArea {
       width: 100%;
-      height: 220px;
+      height: 100%;
       background: transparent;
       border: none;
       outline: none;
       color: #e2e8f0;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.95rem;
-      line-height: 1.7;
+      line-height: 28px; /* 엄밀한 라인 높이 */
       resize: none;
+      overflow-y: scroll;
+      scroll-behavior: smooth;
     }
     #typingArea::placeholder {
       color: #3b465a;
     }
 
-    /* 모바일/마우스용 테스트 터치 패드 */
+    /* 타자기 모드 활성화 시 중앙 가이드 라인 (은은한 수평선) */
+    .typewriter-guide {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(0, 240, 255, 0.12);
+      pointer-events: none;
+      display: none;
+    }
+    .typewriter-guide.active {
+      display: block;
+    }
+
+    /* 텍스트 좌표 계산용 미러 엘리먼트 (화면 밖 렌더링) */
+    #textMirror {
+      position: absolute;
+      visibility: hidden;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      line-height: 28px;
+      top: -9999px;
+      left: -9999px;
+      pointer-events: none;
+    }
+
+    /* 모바일/터치용 테스트 키 바 */
     .touch-test-bar {
       display: flex;
       gap: 6px;
@@ -255,7 +327,13 @@
     <div class="control-item">
       <label>
         <input type="checkbox" id="bellCheck" checked style="accent-color:#00f0ff;">
-        <span>엔터 줄바꿈 벨 (Ding)</span>
+        <span>엔터 벨 (Ding)</span>
+      </label>
+    </div>
+    <div class="control-item">
+      <label>
+        <input type="checkbox" id="typewriterScrollCheck" checked style="accent-color:#00f0ff;">
+        <span style="color:#00f0ff; font-weight:600;">타자기 중앙 스크롤</span>
       </label>
     </div>
   </div>
@@ -268,10 +346,21 @@
         <span>WORDS: <strong id="wordCount">0</strong></span>
         <span>SPEED: <strong id="wpmCount">0</strong> WPM</span>
       </div>
-      <span id="keyIndicator">READY TO TYPE</span>
+      <div class="meta-actions">
+        <span class="save-indicator" id="saveStatus">AUTOSAVED</span>
+        <button type="button" class="btn-meta" id="downloadBtn" title="텍스트 파일로 저장">⬇ TXT</button>
+        <button type="button" class="btn-meta btn-danger" id="clearBtn" title="내용 모두 지우기">✕ CLEAR</button>
+      </div>
     </div>
-    <textarea id="typingArea" placeholder="여기에 아무 키나 입력해 보세요...&#10;&#10;* 스페이스, 엔터, 백스페이스, 일반 자모음마다 고유한 타건음이 실시간 합성됩니다.&#10;* 엔터키를 치면 타자기 특유의 맑은 줄바꿈 벨(Ding) 소리가 울립니다."></textarea>
+    
+    <div class="editor-wrapper">
+      <div class="typewriter-guide active" id="typewriterGuide"></div>
+      <textarea id="typingArea" placeholder="여기에 글을 써내려가 보세요...&#10;&#10;* 타자기 모드가 켜져 있으면 커서가 항상 화면 정중앙 높이에 머물며 종이가 올라옵니다.&#10;* 브라우저 내부에 글이 실시간 영구 자동 저장됩니다."></textarea>
+    </div>
   </div>
+
+  <!-- 좌표 계산용 히든 미러 -->
+  <div id="textMirror"></div>
 
   <!-- 모바일/터치용 테스트 키 바 -->
   <div class="touch-test-bar">
@@ -283,11 +372,16 @@
 </div>
 
 <script>
+  const STORAGE_KEY = 'marsko_keystroke_memo_v1';
   let audioCtx = null;
   let masterGain = null;
   let currentProfile = 'vintage';
 
   const typingArea = document.getElementById('typingArea');
+  const textMirror = document.getElementById('textMirror');
+  const typewriterGuide = document.getElementById('typewriterGuide');
+  const typewriterScrollCheck = document.getElementById('typewriterScrollCheck');
+
   const profileGrid = document.getElementById('profileGrid');
   const volRange = document.getElementById('volRange');
   const volVal = document.getElementById('volVal');
@@ -297,11 +391,117 @@
   const charCount = document.getElementById('charCount');
   const wordCount = document.getElementById('wordCount');
   const wpmCount = document.getElementById('wpmCount');
-  const keyIndicator = document.getElementById('keyIndicator');
+  const saveStatus = document.getElementById('saveStatus');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const clearBtn = document.getElementById('clearBtn');
 
-  // WPM 계산용 변수
   let keystrokeTimes = [];
+  let saveTimeout = null;
 
+  // --- 타자기식 중앙 스크롤 엔진 (Typewriter Scrolling) ---
+  function updateTypewriterScroll() {
+    if (!typewriterScrollCheck.checked) {
+      typingArea.style.paddingTop = '10px';
+      typingArea.style.paddingBottom = '10px';
+      typewriterGuide.classList.remove('active');
+      return;
+    }
+
+    typewriterGuide.classList.add('active');
+
+    // 에디터 뷰포트의 절반 높이를 패딩으로 설정해 첫 줄과 마지막 줄도 중앙에 오도록 세팅
+    const halfHeight = typingArea.clientHeight / 2;
+    typingArea.style.paddingTop = `${halfHeight}px`;
+    typingArea.style.paddingBottom = `${halfHeight}px`;
+
+    // 커서 위치까지의 텍스트 높이 계산
+    const cursorIndex = typingArea.selectionStart;
+    const textUpToCursor = typingArea.value.substring(0, cursorIndex);
+
+    // 미러 DOM의 너비를 실제 텍스트영역과 똑같이 동기화
+    textMirror.style.width = `${typingArea.clientWidth}px`;
+    textMirror.textContent = textUpToCursor;
+
+    // 커서 위치 표시용 스팬 추가
+    const marker = document.createElement('span');
+    marker.textContent = '|';
+    textMirror.appendChild(marker);
+
+    // 마커의 오프셋 탑 좌표 추출
+    const cursorTop = marker.offsetTop;
+
+    // 커서가 뷰포트 정중앙(halfHeight)에 정확히 오도록 스크롤 위치 보정
+    // scrollHeight = paddingTop(halfHeight) + cursorTop - halfHeight = cursorTop
+    const targetScrollTop = cursorTop;
+    typingArea.scrollTop = targetScrollTop;
+  }
+
+  typewriterScrollCheck.addEventListener('change', () => {
+    updateTypewriterScroll();
+    typingArea.focus();
+  });
+
+  // --- 저장 기능 (LocalStorage) ---
+  function loadSavedContent() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved !== null) {
+        typingArea.value = saved;
+        updateCounts();
+        setTimeout(updateTypewriterScroll, 50);
+      }
+    } catch (e) {
+      console.warn('저장된 내용 불러오기 실패:', e);
+    }
+  }
+
+  function saveContent() {
+    saveStatus.textContent = 'SAVING...';
+    saveStatus.style.opacity = '0.5';
+
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, typingArea.value);
+        saveStatus.textContent = 'AUTOSAVED';
+        saveStatus.style.opacity = '0.8';
+      } catch (e) {
+        console.error('저장 실패:', e);
+        saveStatus.textContent = 'ERROR';
+      }
+    }, 250);
+  }
+
+  // TXT 파일 다운로드
+  downloadBtn.addEventListener('click', () => {
+    const text = typingArea.value;
+    if (!text.trim()) {
+      alert('저장할 텍스트가 없습니다.');
+      return;
+    }
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    link.href = URL.createObjectURL(blob);
+    link.download = `keystroke_${dateStr}.txt`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  // 내용 초기화
+  clearBtn.addEventListener('click', () => {
+    if (!typingArea.value.trim()) return;
+    if (confirm('작성 중인 내용을 모두 지우시겠습니까?')) {
+      typingArea.value = '';
+      saveContent();
+      updateCounts();
+      updateTypewriterScroll();
+      typingArea.focus();
+    }
+  });
+
+  // --- Web Audio 엔진 초기화 ---
   function initAudio() {
     if (audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -310,7 +510,6 @@
     masterGain.connect(audioCtx.destination);
   }
 
-  // 볼륨 & 지터 조절
   volRange.addEventListener('input', (e) => {
     volVal.textContent = e.target.value + '%';
     if (masterGain && audioCtx) {
@@ -322,7 +521,6 @@
     jitterVal.textContent = `±${(e.target.value / 10).toFixed(1)}%`;
   });
 
-  // 프로필 전환
   profileGrid.addEventListener('click', (e) => {
     const btn = e.target.closest('.profile-btn');
     if (!btn) return;
@@ -332,7 +530,7 @@
     playKeystrokeSound('KeyA');
   });
 
-  // --- 프로시저럴 사운드 합성 엔진 ---
+  // --- 사운드 합성 분기 ---
   function playKeystrokeSound(code) {
     initAudio();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -342,7 +540,6 @@
     const jitter = 1 + (Math.random() - 0.5) * (jitterPercent * 2);
 
     if (code === 'Enter' && bellCheck.checked && (currentProfile === 'vintage' || currentProfile === 'clicky')) {
-      // 엔터 시 타자기 맑은 황동 종소리 (2300Hz Sine + 3500Hz Overtone)
       playCarriageBell(now);
     }
 
@@ -357,12 +554,11 @@
     }
   }
 
-  // 1. 빈티지 타자기 (Vintage Mechanical Clack)
+  // 1. 빈티지 타자기
   function playVintageTypewriter(now, code, jitter) {
     const isSpace = (code === 'Space');
     const isEnter = (code === 'Enter');
 
-    // 금속 활자 부딪힘 (Sharp High Metallic Click)
     const bufSize = Math.floor(audioCtx.sampleRate * 0.03);
     const noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
     const data = noiseBuf.getChannelData(0);
@@ -385,7 +581,6 @@
     noiseGain.connect(masterGain);
     noiseSrc.start(now);
 
-    // 하부 바디 철제 공명 떵 (Low Resonance Body Thump)
     const osc = audioCtx.createOscillator();
     osc.type = isSpace ? 'triangle' : 'sine';
     const baseFreq = (isSpace ? 160 : (isEnter ? 210 : 260)) * jitter;
@@ -402,7 +597,6 @@
     osc.stop(now + 0.05);
   }
 
-  // 타자기 줄바꿈 엔터 벨 (Carriage Return Ding)
   function playCarriageBell(now) {
     const bellOsc = audioCtx.createOscillator();
     bellOsc.type = 'sine';
@@ -431,11 +625,9 @@
     overtone.stop(now + 1.5);
   }
 
-  // 2. 윤활 폼떡 기계식 (Lubed Thock - 뚝뚝/도각도각)
+  // 2. 윤활 폼떡 기계식
   function playLubedThock(now, code, jitter) {
     const isSpace = (code === 'Space');
-
-    // 로우패스로 뭉툭하게 깎은 펠트 댐퍼 노이즈
     const bufSize = Math.floor(audioCtx.sampleRate * 0.025);
     const noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
     const data = noiseBuf.getChannelData(0);
@@ -457,7 +649,6 @@
     noiseGain.connect(masterGain);
     noiseSrc.start(now);
 
-    // 하부 바닥을 묵직하게 치는 보텀아웃 (Deep Sub Pitch Drop)
     const osc = audioCtx.createOscillator();
     osc.type = 'sine';
     const startFreq = (isSpace ? 130 : 185) * jitter;
@@ -474,11 +665,9 @@
     osc.stop(now + 0.04);
   }
 
-  // 3. 청축 클릭키 (Blue Switch Dual-stage Click)
+  // 3. 청축 클릭키
   function playClickySwitch(now, code, jitter) {
     const isSpace = (code === 'Space');
-
-    // 1단계: 딸깍하는 내부 접점 리프 소리 (Crisp High Snap, 4kHz)
     const clickBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.006), audioCtx.sampleRate);
     const cData = clickBuf.getChannelData(0);
     for (let i = 0; i < cData.length; i++) cData[i] = (Math.random() * 2 - 1);
@@ -498,7 +687,6 @@
     clickGain.connect(masterGain);
     clickSrc.start(now);
 
-    // 2단계: 8ms 뒤 바닥 닿는 플라스틱 하우징 타건음 (Bottom-out)
     const hitTime = now + 0.008;
     const osc = audioCtx.createOscillator();
     osc.type = 'triangle';
@@ -516,7 +704,7 @@
     osc.stop(hitTime + 0.03);
   }
 
-  // 4. 저소음 펠트 (Soft Damped Tap)
+  // 4. 저소음 펠트
   function playSilentMembrane(now, code, jitter) {
     const isSpace = (code === 'Space');
     const osc = audioCtx.createOscillator();
@@ -540,39 +728,58 @@
     osc.stop(now + 0.035);
   }
 
-  // --- 키보드 입력 핸들러 ---
+  function updateCounts() {
+    const text = typingArea.value;
+    charCount.textContent = text.length;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    wordCount.textContent = words.length;
+  }
+
+  // 키 입력 핸들러
   typingArea.addEventListener('keydown', (e) => {
-    // 한영 변환키 등 비타건 제어키 제외
     if (['Alt', 'Control', 'Shift', 'Meta', 'CapsLock'].includes(e.key)) return;
-
     playKeystrokeSound(e.code);
-    keyIndicator.textContent = `KEY: ${e.key === ' ' ? 'Space' : e.key.toUpperCase()}`;
 
-    // WPM 계산
     const now = Date.now();
     keystrokeTimes.push(now);
-    // 최근 5초 이내 타건만 보존
     keystrokeTimes = keystrokeTimes.filter(t => now - t < 5000);
     const wpm = Math.round((keystrokeTimes.length / 5) * 12);
     wpmCount.textContent = wpm;
   });
 
   typingArea.addEventListener('input', () => {
-    const text = typingArea.value;
-    charCount.textContent = text.length;
-    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
-    wordCount.textContent = words.length;
+    updateCounts();
+    saveContent();
+    updateTypewriterScroll();
   });
 
-  // 모바일/마우스 터치 테스트 버튼 바인딩
+  // 클릭이나 방향키로 커서 이동할 때도 중앙 포커싱
+  typingArea.addEventListener('keyup', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+      updateTypewriterScroll();
+    }
+  });
+  typingArea.addEventListener('click', updateTypewriterScroll);
+
+  // 모바일 터치 테스트 키
   document.querySelectorAll('.touch-key').forEach(btn => {
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       const code = btn.dataset.key;
       playKeystrokeSound(code);
-      keyIndicator.textContent = `TOUCH: ${btn.textContent.split(' ')[0]}`;
     });
   });
+
+  // 단축키 Ctrl+S / Cmd+S
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      downloadBtn.click();
+    }
+  });
+
+  // 초기화 로드
+  loadSavedContent();
 </script>
 
 </body>
