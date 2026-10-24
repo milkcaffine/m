@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0c10">
+  <title>CYBERPUNK GLITCH & CRT STUDIO</title>
+  <!-- 사이버펑크 테크 폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #090b10;
+      color: #e2f1ff;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #11141c;
+      border: 1px solid #1f293d;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 8px 32px rgba(0, 240, 255, 0.08);
+    }
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 1px;
+      color: #00f0ff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+      margin-bottom: 4px;
+    }
+    p.sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #627d98;
+      text-align: center;
+      margin-bottom: 16px;
+      letter-spacing: 0.5px;
+    }
+
+    /* 드롭존 */
+    .dropzone {
+      border: 2px dashed #00f0ff;
+      background: rgba(0, 240, 255, 0.03);
+      border-radius: 14px;
+      padding: 20px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #00f0ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .dropzone:hover { background: rgba(0, 240, 255, 0.08); }
+    .dropzone small { font-size: 0.72rem; color: #829ab1; font-weight: 400; font-family: 'IBM Plex Mono', monospace; }
+    input[type="file"] { display: none; }
+
+    /* 미리보기 뷰 */
+    #previewArea {
+      margin-top: 14px;
+      display: none;
+      width: 100%;
+    }
+    .preview-info {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #00f0ff;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .canvas-container {
+      width: 100%;
+      max-height: 400px;
+      background: #050608;
+      border: 1px solid #1f293d;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 384px;
+      border-radius: 4px;
+      display: block;
+    }
+
+    /* 컨트롤 패널 */
+    .control-panel {
+      margin-top: 14px;
+      background: #161b26;
+      border: 1px solid #243046;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+    .control-row label {
+      font-weight: 600;
+      color: #bcccdc;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .control-row label small {
+      font-size: 0.7rem;
+      color: #627d98;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .slider-box { display: flex; align-items: center; gap: 8px; }
+    .slider-box input[type="range"] {
+      width: 130px;
+      accent-color: #00f0ff;
+    }
+    .slider-box span {
+      font-size: 0.8rem;
+      color: #00f0ff;
+      width: 36px;
+      text-align: right;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* 상단 랜덤 액션 바 */
+    .action-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-action {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #00f0ff;
+      background: rgba(0, 240, 255, 0.08);
+      color: #00f0ff;
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-action:hover { background: rgba(0, 240, 255, 0.2); }
+
+    /* 다운로드 버튼 */
+    .btn-group { margin-top: 16px; }
+    .btn-main {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, #00f0ff, #0070f3);
+      color: #ffffff;
+      font-family: 'Orbitron', sans-serif;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 16px rgba(0, 240, 255, 0.3);
+    }
+    .btn-main:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>CYBERPUNK GLITCH</h1>
+  <p class="sub">RGB SHIFT · CRT SCANLINE · CRT CURVE</p>
+
+  <div class="dropzone" id="dropzone">
+    <span>📷 이미지 선택 (UPLOAD SOURCE)</span>
+    <small>터치하여 글리치를 입힐 사진을 불러오세요</small>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div id="previewArea">
+    <div class="preview-info">
+      <span>FEED: LIVE RENDER</span>
+      <span id="resInfo">0 × 0 PX</span>
+    </div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="control-panel">
+    <div class="action-bar">
+      <button type="button" class="btn-action" id="randomBtn">🎲 랜덤 글리치 트리거</button>
+      <button type="button" class="btn-action" id="resetBtn" style="border-color:#ff0055; color:#ff0055; background:rgba(255,0,85,0.08);">초기화</button>
+    </div>
+
+    <!-- 1. RGB 색수차 Shift -->
+    <div class="control-row">
+      <label>
+        RGB 색수차 Shift
+        <small>빨강/파랑 채널 좌표 분리</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="rgbShift" min="0" max="60" value="18">
+        <span id="rgbShiftVal">18px</span>
+      </div>
+    </div>
+
+    <!-- 2. CRT 스캔라인 밀도/강도 -->
+    <div class="control-row">
+      <label>
+        CRT 가로 스캔라인
+        <small>브라운관 모니터 주사선</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="scanlines" min="0" max="100" value="45">
+        <span id="scanlinesVal">45%</span>
+      </div>
+    </div>
+
+    <!-- 3. 블록 데이터 슬라이스 글리치 -->
+    <div class="control-row">
+      <label>
+        블록 데이터 글리치
+        <small>화면 가로 잘림 왜곡</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="sliceGlitch" min="0" max="80" value="25">
+        <span id="sliceGlitchVal">25</span>
+      </div>
+    </div>
+
+    <!-- 4. 네온 틴트 / 색조 -->
+    <div class="control-row">
+      <label>
+        사이버네틱 네온 틴트
+        <small>시안 & 마젠타 톤 부스트</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="neonTint" min="0" max="100" value="30">
+        <span id="neonTintVal">30%</span>
+      </div>
+    </div>
+
+    <!-- 5. CRT 비네팅 & 곡면 -->
+    <div class="control-row">
+      <label>
+        CRT 비네팅 (주변부 감광)
+        <small>모니터 가장자리 어두움</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="vignette" min="0" max="100" value="50">
+        <span id="vignetteVal">50%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn-main" id="downloadBtn" disabled>EXPORT ARTWORK (PNG)</button>
+  </div>
+</div>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const previewArea = document.getElementById('previewArea');
+  const resInfo = document.getElementById('resInfo');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const rgbShift = document.getElementById('rgbShift');
+  const rgbShiftVal = document.getElementById('rgbShiftVal');
+  const scanlines = document.getElementById('scanlines');
+  const scanlinesVal = document.getElementById('scanlinesVal');
+  const sliceGlitch = document.getElementById('sliceGlitch');
+  const sliceGlitchVal = document.getElementById('sliceGlitchVal');
+  const neonTint = document.getElementById('neonTint');
+  const neonTintVal = document.getElementById('neonTintVal');
+  const vignette = document.getElementById('vignette');
+  const vignetteVal = document.getElementById('vignetteVal');
+
+  const randomBtn = document.getElementById('randomBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  let baseImg = null;
+  let sliceOffsets = []; // 일관된 렌더링을 위한 글리치 슬라이스 버퍼
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      baseImg = new Image();
+      baseImg.onload = () => {
+        previewArea.style.display = 'block';
+        downloadBtn.disabled = false;
+        generateNewGlitchSlices();
+        renderGlitch();
+      };
+      baseImg.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  // 슬라이스 오프셋 시드 생성
+  function generateNewGlitchSlices() {
+    sliceOffsets = [];
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      sliceOffsets.push({
+        yRel: Math.random(),
+        hRel: Math.random() * 0.08 + 0.01,
+        offsetRel: (Math.random() - 0.5) * 0.08
+      });
+    }
+  }
+
+  // 슬라이더 바인딩
+  rgbShift.addEventListener('input', () => { rgbShiftVal.textContent = rgbShift.value + 'px'; renderGlitch(); });
+  scanlines.addEventListener('input', () => { scanlinesVal.textContent = scanlines.value + '%'; renderGlitch(); });
+  sliceGlitch.addEventListener('input', () => { sliceGlitchVal.textContent = sliceGlitch.value; renderGlitch(); });
+  neonTint.addEventListener('input', () => { neonTintVal.textContent = neonTint.value + '%'; renderGlitch(); });
+  vignette.addEventListener('input', () => { vignetteVal.textContent = vignette.value + '%'; renderGlitch(); });
+
+  // 랜덤 트리거
+  randomBtn.addEventListener('click', () => {
+    if (!baseImg) return;
+    rgbShift.value = Math.floor(Math.random() * 45) + 5;
+    rgbShiftVal.textContent = rgbShift.value + 'px';
+    sliceGlitch.value = Math.floor(Math.random() * 60) + 10;
+    sliceGlitchVal.textContent = sliceGlitch.value;
+    neonTint.value = Math.floor(Math.random() * 50) + 15;
+    neonTintVal.textContent = neonTint.value + '%';
+    generateNewGlitchSlices();
+    renderGlitch();
+  });
+
+  // 초기화
+  resetBtn.addEventListener('click', () => {
+    rgbShift.value = 0; rgbShiftVal.textContent = '0px';
+    scanlines.value = 0; scanlinesVal.textContent = '0%';
+    sliceGlitch.value = 0; sliceGlitchVal.textContent = '0';
+    neonTint.value = 0; neonTintVal.textContent = '0%';
+    vignette.value = 0; vignetteVal.textContent = '0%';
+    sliceOffsets = [];
+    renderGlitch();
+  });
+
+  // 메인 글리치 렌더 파이프라인
+  function renderGlitch() {
+    if (!baseImg) return;
+
+    // 작업 해상도: 최대 1200px 기준 유지
+    const maxEdge = 1200;
+    let w = baseImg.naturalWidth;
+    let h = baseImg.naturalHeight;
+    if (Math.max(w, h) > maxEdge) {
+      const scale = maxEdge / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+    resInfo.textContent = `${w} × ${h} PX`;
+
+    // 1. 임시 버퍼에 원본 그리기
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    const tCtx = tempCanvas.getContext('2d');
+    tCtx.drawImage(baseImg, 0, 0, w, h);
+
+    // 2. 블록 슬라이스 왜곡 (가로로 찢어지는 데이터 글리치)
+    const slicePower = parseInt(sliceGlitch.value, 10);
+    if (slicePower > 0) {
+      sliceOffsets.forEach(s => {
+        const sy = Math.floor(s.yRel * h);
+        const sh = Math.max(2, Math.floor(s.hRel * h));
+        const shiftX = Math.round(s.offsetRel * w * (slicePower / 25));
+        tCtx.drawImage(tempCanvas, 0, sy, w, sh, shiftX, sy, w, sh);
+      });
+    }
+
+    // 3. RGB 색수차 Shift (픽셀 채널 분리)
+    const shift = parseInt(rgbShift.value, 10);
+    const srcData = tCtx.getImageData(0, 0, w, h);
+    const outData = ctx.createImageData(w, h);
+
+    const s = srcData.data;
+    const d = outData.data;
+    const tintAmount = parseInt(neonTint.value, 10) / 100;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+
+        // R 채널: 오른쪽으로 이동 (+shift)
+        const rx = Math.min(w - 1, Math.max(0, x + shift));
+        const rIdx = (y * w + rx) * 4;
+        let r = s[rIdx];
+
+        // G 채널: 원래 위치 유지
+        let g = s[i + 1];
+
+        // B 채널: 왼쪽으로 이동 (-shift)
+        const bx = Math.min(w - 1, Math.max(0, x - shift));
+        const bIdx = (y * w + bx) * 4;
+        let b = s[bIdx + 2];
+
+        // 사이버펑크 네온 틴트 (시안 & 마젠타 강조)
+        if (tintAmount > 0) {
+          b = Math.min(255, b + (255 - b) * (tintAmount * 0.4));
+          r = Math.min(255, r + (255 - r) * (tintAmount * 0.25));
+          g = g * (1 - tintAmount * 0.15);
+        }
+
+        d[i]     = r;
+        d[i + 1] = g;
+        d[i + 2] = b;
+        d[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(outData, 0, 0);
+
+    // 4. CRT 가로 스캔라인 레이어
+    const scanPower = parseInt(scanlines.value, 10) / 100;
+    if (scanPower > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(0, 0, 0, ${scanPower * 0.65})`;
+      for (let y = 0; y < h; y += 4) {
+        ctx.fillRect(0, y, w, 2);
+      }
+      ctx.restore();
+    }
+
+    // 5. CRT 비네팅 (주변부 음영 & 모니터 곡면 효과)
+    const vigPower = parseInt(vignette.value, 10) / 100;
+    if (vigPower > 0) {
+      ctx.save();
+      const radius = Math.max(w, h) * 0.75;
+      const gradient = ctx.createRadialGradient(w / 2, h / 2, radius * 0.35, w / 2, h / 2, radius);
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      gradient.addColorStop(0.8, `rgba(5, 8, 12, ${vigPower * 0.7})`);
+      gradient.addColorStop(1, `rgba(0, 0, 0, ${vigPower * 0.95})`);
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+  }
+
+  // PNG 다운로드
+  downloadBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `cyberpunk_glitch_${Date.now()}.png`;
+      link.click();
+    }, 'image/png');
+  });
+</script>
+
+</body>
+</html>
