@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0d0f14">
+  <title>프로시저럴 키보드 사운드 // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Apple SD Gothic Neo", sans-serif;
+      background: #090b10;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: center;
+      padding: 14px;
+      min-height: 100vh;
+    }
+    .container {
+      background: #11141c;
+      border: 1px solid #1f2738;
+      max-width: 600px;
+      width: 100%;
+      border-radius: 24px;
+      padding: 20px 18px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* 헤더 */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1a2233;
+    }
+    .header-left { display: flex; flex-direction: column; gap: 2px; }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .home-link:hover { color: #00f0ff; }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: 0.5px;
+    }
+    .engine-badge {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #00f0ff;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    /* 사운드 프로필 선택 바 */
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .profile-btn {
+      background: #161c28;
+      border: 1px solid #232c3e;
+      color: #94a3b8;
+      padding: 9px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.15s ease;
+      text-align: left;
+    }
+    .profile-btn:hover { background: #1c2434; color: #cbd5e1; }
+    .profile-btn.active {
+      background: rgba(0, 240, 255, 0.1);
+      border-color: #00f0ff;
+      color: #00f0ff;
+    }
+    .profile-icon { font-size: 1.1rem; }
+    .profile-text { display: flex; flex-direction: column; line-height: 1.25; }
+    .profile-text small {
+      font-size: 0.64rem;
+      font-family: 'IBM Plex Mono', monospace;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    /* 컨트롤 슬라이더 & 옵션 바 */
+    .control-strip {
+      background: #141924;
+      border: 1px solid #1e2638;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .control-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #829ab1;
+    }
+    .control-item input[type="range"] {
+      width: 90px;
+      height: 4px;
+      accent-color: #00f0ff;
+      background: #232d40;
+      cursor: pointer;
+    }
+    .control-item label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+    /* 타자 입력 작업 공간 */
+    .typing-card {
+      background: #090b10;
+      border: 1px solid #1f2738;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+    .typing-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #627d98;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #161c28;
+    }
+    .meta-tags { display: flex; gap: 10px; }
+    .meta-tags span strong { color: #00f0ff; }
+
+    #typingArea {
+      width: 100%;
+      height: 220px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e2e8f0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      resize: none;
+    }
+    #typingArea::placeholder {
+      color: #3b465a;
+    }
+
+    /* 모바일/마우스용 테스트 터치 패드 */
+    .touch-test-bar {
+      display: flex;
+      gap: 6px;
+    }
+    .touch-key {
+      flex: 1;
+      background: #161c28;
+      border: 1px solid #232d40;
+      color: #cbd5e1;
+      padding: 8px 4px;
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+    }
+    .touch-key:active {
+      background: #00f0ff;
+      color: #090b10;
+      transform: translateY(1px);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-left">
+      <a href="index.html" class="home-link">← marsko</a>
+      <h1>KEYSTROKE SYNTH</h1>
+    </div>
+    <span class="engine-badge" id="engineStatus">100% PROCEDURAL</span>
+  </header>
+
+  <!-- 4가지 사운드 프로필 -->
+  <div class="profile-grid" id="profileGrid">
+    <button type="button" class="profile-btn active" data-profile="vintage">
+      <span class="profile-icon">📜</span>
+      <div class="profile-text">
+        <span>빈티지 타자기</span>
+        <small>CLACK & ENTER BELL</small>
+      </div>
+    </button>
+    <button type="button" class="profile-btn" data-profile="thock">
+      <span class="profile-icon">🪵</span>
+      <div class="profile-text">
+        <span>윤활 폼떡 기계식</span>
+        <small>CREAMY DEEP THOCK</small>
+      </div>
+    </button>
+    <button type="button" class="profile-btn" data-profile="clicky">
+      <span class="profile-icon">⚡</span>
+      <div class="profile-text">
+        <span>청축 클릭키</span>
+        <small>CRISP TACTILE LEAF</small>
+      </div>
+    </button>
+    <button type="button" class="profile-btn" data-profile="silent">
+      <span class="profile-icon">☁️</span>
+      <div class="profile-text">
+        <span>저소음 펠트 패드</span>
+        <small>SOFT DAMPENED TAP</small>
+      </div>
+    </button>
+  </div>
+
+  <!-- 컨트롤 바 -->
+  <div class="control-strip">
+    <div class="control-item">
+      <span>VOLUME</span>
+      <input type="range" id="volRange" min="0" max="100" value="75">
+      <span id="volVal">75%</span>
+    </div>
+    <div class="control-item">
+      <span>PITCH JITTER</span>
+      <input type="range" id="jitterRange" min="0" max="50" value="25">
+      <span id="jitterVal">±2.5%</span>
+    </div>
+    <div class="control-item">
+      <label>
+        <input type="checkbox" id="bellCheck" checked style="accent-color:#00f0ff;">
+        <span>엔터 줄바꿈 벨 (Ding)</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- 집필 타이핑 영역 -->
+  <div class="typing-card">
+    <div class="typing-meta">
+      <div class="meta-tags">
+        <span>CHARS: <strong id="charCount">0</strong></span>
+        <span>WORDS: <strong id="wordCount">0</strong></span>
+        <span>SPEED: <strong id="wpmCount">0</strong> WPM</span>
+      </div>
+      <span id="keyIndicator">READY TO TYPE</span>
+    </div>
+    <textarea id="typingArea" placeholder="여기에 아무 키나 입력해 보세요...&#10;&#10;* 스페이스, 엔터, 백스페이스, 일반 자모음마다 고유한 타건음이 실시간 합성됩니다.&#10;* 엔터키를 치면 타자기 특유의 맑은 줄바꿈 벨(Ding) 소리가 울립니다."></textarea>
+  </div>
+
+  <!-- 모바일/터치용 테스트 키 바 -->
+  <div class="touch-test-bar">
+    <button type="button" class="touch-key" data-key="KeyA">A (타건)</button>
+    <button type="button" class="touch-key" data-key="Space">Space (울림)</button>
+    <button type="button" class="touch-key" data-key="Enter">Enter (개행)</button>
+    <button type="button" class="touch-key" data-key="Backspace">⌫ Delete</button>
+  </div>
+</div>
+
+<script>
+  let audioCtx = null;
+  let masterGain = null;
+  let currentProfile = 'vintage';
+
+  const typingArea = document.getElementById('typingArea');
+  const profileGrid = document.getElementById('profileGrid');
+  const volRange = document.getElementById('volRange');
+  const volVal = document.getElementById('volVal');
+  const jitterRange = document.getElementById('jitterRange');
+  const jitterVal = document.getElementById('jitterVal');
+  const bellCheck = document.getElementById('bellCheck');
+  const charCount = document.getElementById('charCount');
+  const wordCount = document.getElementById('wordCount');
+  const wpmCount = document.getElementById('wpmCount');
+  const keyIndicator = document.getElementById('keyIndicator');
+
+  // WPM 계산용 변수
+  let keystrokeTimes = [];
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = parseInt(volRange.value, 10) / 100;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  // 볼륨 & 지터 조절
+  volRange.addEventListener('input', (e) => {
+    volVal.textContent = e.target.value + '%';
+    if (masterGain && audioCtx) {
+      masterGain.gain.setTargetAtTime(parseInt(e.target.value, 10) / 100, audioCtx.currentTime, 0.03);
+    }
+  });
+
+  jitterRange.addEventListener('input', (e) => {
+    jitterVal.textContent = `±${(e.target.value / 10).toFixed(1)}%`;
+  });
+
+  // 프로필 전환
+  profileGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.profile-btn');
+    if (!btn) return;
+    profileGrid.querySelectorAll('.profile-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentProfile = btn.dataset.profile;
+    playKeystrokeSound('KeyA');
+  });
+
+  // --- 프로시저럴 사운드 합성 엔진 ---
+  function playKeystrokeSound(code) {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const now = audioCtx.currentTime;
+    const jitterPercent = parseInt(jitterRange.value, 10) / 1000;
+    const jitter = 1 + (Math.random() - 0.5) * (jitterPercent * 2);
+
+    if (code === 'Enter' && bellCheck.checked && (currentProfile === 'vintage' || currentProfile === 'clicky')) {
+      // 엔터 시 타자기 맑은 황동 종소리 (2300Hz Sine + 3500Hz Overtone)
+      playCarriageBell(now);
+    }
+
+    if (currentProfile === 'vintage') {
+      playVintageTypewriter(now, code, jitter);
+    } else if (currentProfile === 'thock') {
+      playLubedThock(now, code, jitter);
+    } else if (currentProfile === 'clicky') {
+      playClickySwitch(now, code, jitter);
+    } else if (currentProfile === 'silent') {
+      playSilentMembrane(now, code, jitter);
+    }
+  }
+
+  // 1. 빈티지 타자기 (Vintage Mechanical Clack)
+  function playVintageTypewriter(now, code, jitter) {
+    const isSpace = (code === 'Space');
+    const isEnter = (code === 'Enter');
+
+    // 금속 활자 부딪힘 (Sharp High Metallic Click)
+    const bufSize = Math.floor(audioCtx.sampleRate * 0.03);
+    const noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+
+    const noiseSrc = audioCtx.createBufferSource();
+    noiseSrc.buffer = noiseBuf;
+
+    const bpf = audioCtx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.value = (isSpace ? 1400 : 2800) * jitter;
+    bpf.Q.value = 3.5;
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.8, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+    noiseSrc.connect(bpf);
+    bpf.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noiseSrc.start(now);
+
+    // 하부 바디 철제 공명 떵 (Low Resonance Body Thump)
+    const osc = audioCtx.createOscillator();
+    osc.type = isSpace ? 'triangle' : 'sine';
+    const baseFreq = (isSpace ? 160 : (isEnter ? 210 : 260)) * jitter;
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, now + 0.045);
+
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.setValueAtTime(isSpace ? 0.9 : 0.6, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+    osc.connect(oscGain);
+    oscGain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.05);
+  }
+
+  // 타자기 줄바꿈 엔터 벨 (Carriage Return Ding)
+  function playCarriageBell(now) {
+    const bellOsc = audioCtx.createOscillator();
+    bellOsc.type = 'sine';
+    bellOsc.frequency.setValueAtTime(2280, now + 0.02);
+
+    const overtone = audioCtx.createOscillator();
+    overtone.type = 'sine';
+    overtone.frequency.setValueAtTime(3420, now + 0.02);
+
+    const bellGain = audioCtx.createGain();
+    bellGain.gain.setValueAtTime(0, now);
+    bellGain.gain.setValueAtTime(0.45, now + 0.025);
+    bellGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+
+    const overGain = audioCtx.createGain();
+    overGain.gain.value = 0.25;
+
+    bellOsc.connect(bellGain);
+    overtone.connect(overGain);
+    overGain.connect(bellGain);
+    bellGain.connect(masterGain);
+
+    bellOsc.start(now + 0.02);
+    overtone.start(now + 0.02);
+    bellOsc.stop(now + 1.5);
+    overtone.stop(now + 1.5);
+  }
+
+  // 2. 윤활 폼떡 기계식 (Lubed Thock - 뚝뚝/도각도각)
+  function playLubedThock(now, code, jitter) {
+    const isSpace = (code === 'Space');
+
+    // 로우패스로 뭉툭하게 깎은 펠트 댐퍼 노이즈
+    const bufSize = Math.floor(audioCtx.sampleRate * 0.025);
+    const noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+
+    const noiseSrc = audioCtx.createBufferSource();
+    noiseSrc.buffer = noiseBuf;
+
+    const lpf = audioCtx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = (isSpace ? 480 : 850) * jitter;
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.65, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+    noiseSrc.connect(lpf);
+    lpf.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noiseSrc.start(now);
+
+    // 하부 바닥을 묵직하게 치는 보텀아웃 (Deep Sub Pitch Drop)
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    const startFreq = (isSpace ? 130 : 185) * jitter;
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(startFreq * 0.35, now + 0.038);
+
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.setValueAtTime(isSpace ? 0.95 : 0.75, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.038);
+
+    osc.connect(oscGain);
+    oscGain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.04);
+  }
+
+  // 3. 청축 클릭키 (Blue Switch Dual-stage Click)
+  function playClickySwitch(now, code, jitter) {
+    const isSpace = (code === 'Space');
+
+    // 1단계: 딸깍하는 내부 접점 리프 소리 (Crisp High Snap, 4kHz)
+    const clickBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.006), audioCtx.sampleRate);
+    const cData = clickBuf.getChannelData(0);
+    for (let i = 0; i < cData.length; i++) cData[i] = (Math.random() * 2 - 1);
+
+    const clickSrc = audioCtx.createBufferSource();
+    clickSrc.buffer = clickBuf;
+    const hpf = audioCtx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = 3600 * jitter;
+
+    const clickGain = audioCtx.createGain();
+    clickGain.gain.setValueAtTime(0.9, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.005);
+
+    clickSrc.connect(hpf);
+    hpf.connect(clickGain);
+    clickGain.connect(masterGain);
+    clickSrc.start(now);
+
+    // 2단계: 8ms 뒤 바닥 닿는 플라스틱 하우징 타건음 (Bottom-out)
+    const hitTime = now + 0.008;
+    const osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    const hitFreq = (isSpace ? 320 : 540) * jitter;
+    osc.frequency.setValueAtTime(hitFreq, hitTime);
+    osc.frequency.exponentialRampToValueAtTime(hitFreq * 0.5, hitTime + 0.025);
+
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.setValueAtTime(0.65, hitTime);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, hitTime + 0.025);
+
+    osc.connect(oscGain);
+    oscGain.connect(masterGain);
+    osc.start(hitTime);
+    osc.stop(hitTime + 0.03);
+  }
+
+  // 4. 저소음 펠트 (Soft Damped Tap)
+  function playSilentMembrane(now, code, jitter) {
+    const isSpace = (code === 'Space');
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    const freq = (isSpace ? 90 : 140) * jitter;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.4, now + 0.03);
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 350;
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.55, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.035);
+  }
+
+  // --- 키보드 입력 핸들러 ---
+  typingArea.addEventListener('keydown', (e) => {
+    // 한영 변환키 등 비타건 제어키 제외
+    if (['Alt', 'Control', 'Shift', 'Meta', 'CapsLock'].includes(e.key)) return;
+
+    playKeystrokeSound(e.code);
+    keyIndicator.textContent = `KEY: ${e.key === ' ' ? 'Space' : e.key.toUpperCase()}`;
+
+    // WPM 계산
+    const now = Date.now();
+    keystrokeTimes.push(now);
+    // 최근 5초 이내 타건만 보존
+    keystrokeTimes = keystrokeTimes.filter(t => now - t < 5000);
+    const wpm = Math.round((keystrokeTimes.length / 5) * 12);
+    wpmCount.textContent = wpm;
+  });
+
+  typingArea.addEventListener('input', () => {
+    const text = typingArea.value;
+    charCount.textContent = text.length;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    wordCount.textContent = words.length;
+  });
+
+  // 모바일/마우스 터치 테스트 버튼 바인딩
+  document.querySelectorAll('.touch-key').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const code = btn.dataset.key;
+      playKeystrokeSound(code);
+      keyIndicator.textContent = `TOUCH: ${btn.textContent.split(' ')[0]}`;
+    });
+  });
+</script>
+
+</body>
+</html>
