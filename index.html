@@ -233,14 +233,20 @@
     <footer class="text-center py-8 text-zinc-600 text-sm">© 2026 Marsko</footer>
 
     <!-- 단일 통합 스크립트 (중복 제거 완료) -->
-    <script>
+   <script>
     (function() {
         const STORAGE_KEY = 'marsko_fav_tools_v1';
         const favRow = document.getElementById('favRow');
         const favList = document.getElementById('favList');
+        const searchRow = document.getElementById('searchRow');
+        const searchList = document.getElementById('searchList');
+        const categoryRows = document.getElementById('categoryRows');
+        const toolSearch = document.getElementById('toolSearch');
+        const clearSearch = document.getElementById('clearSearch');
         const descBox = document.getElementById('toolDesc');
         const descText = descBox ? descBox.querySelector('.desc-text') : null;
 
+        // 1. 즐겨찾기 스토리지 헬퍼
         function getFavorites() {
             try {
                 const data = localStorage.getItem(STORAGE_KEY);
@@ -258,6 +264,7 @@
             }
         }
 
+        // 2. 즐겨찾기 상단 렌더링
         function renderFavorites() {
             const favs = getFavorites();
 
@@ -275,7 +282,8 @@
 
             if (!favRow || !favList) return;
 
-            if (favs.length === 0) {
+            // 검색 중일 때는 즐겨찾기 줄을 임시로 숨김
+            if (favs.length === 0 || (toolSearch && toolSearch.value.trim() !== '')) {
                 favRow.style.display = 'none';
                 favList.innerHTML = '';
                 return;
@@ -285,7 +293,7 @@
             favList.innerHTML = '';
 
             favs.forEach((id, idx) => {
-                const origItem = document.querySelector(`.tools-list .tool-item[data-id="${id}"]`);
+                const origItem = document.querySelector(`#categoryRows .tool-item[data-id="${id}"]`);
                 if (!origItem) return;
                 const origLink = origItem.querySelector('a');
                 if (!origLink) return;
@@ -321,6 +329,7 @@
             });
         }
 
+        // 3. 즐겨찾기 토글
         function toggleFavorite(id) {
             let favs = getFavorites();
             if (favs.includes(id)) {
@@ -330,19 +339,108 @@
             }
             saveFavorites(favs);
             renderFavorites();
+            if (toolSearch && toolSearch.value.trim() !== '') {
+                filterTools(toolSearch.value.trim());
+            }
         }
 
-        document.querySelectorAll('.tool-item .star-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
+        // 별표 클릭 이벤트 위임 바인딩
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('star-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
-                const parent = this.closest('.tool-item');
+                const parent = e.target.closest('.tool-item');
                 if (parent) {
                     toggleFavorite(parent.getAttribute('data-id'));
                 }
-            });
+            }
         });
 
+        // 4. 실시간 검색 필터링 엔진
+        function filterTools(query) {
+            const kw = query.toLowerCase();
+            const favs = getFavorites();
+
+            if (!kw) {
+                // 검색어 없음: 원래 카테고리 복원
+                searchRow.style.display = 'none';
+                searchList.innerHTML = '';
+                categoryRows.style.display = 'block';
+                clearSearch.classList.add('hidden');
+                renderFavorites();
+                return;
+            }
+
+            clearSearch.classList.remove('hidden');
+            categoryRows.style.display = 'none';
+            favRow.style.display = 'none';
+            searchRow.style.display = 'block';
+            searchList.innerHTML = '';
+
+            const allItems = Array.from(document.querySelectorAll('#categoryRows .tool-item'));
+            const matched = allItems.filter(item => {
+                const link = item.querySelector('a');
+                if (!link) return false;
+                const name = link.textContent.toLowerCase();
+                const desc = (link.getAttribute('data-desc') || '').toLowerCase();
+                return name.includes(kw) || desc.includes(kw);
+            });
+
+            if (matched.length === 0) {
+                searchList.innerHTML = '<span class="text-zinc-600 text-xs">일치하는 도구가 없습니다.</span>';
+                return;
+            }
+
+            matched.forEach((origItem, idx) => {
+                const id = origItem.getAttribute('data-id');
+                const origLink = origItem.querySelector('a');
+                const isFav = favs.includes(id);
+
+                if (idx > 0) {
+                    searchList.appendChild(document.createTextNode(' · '));
+                }
+
+                const itemSpan = document.createElement('span');
+                itemSpan.className = `tool-item ${isFav ? 'favorited' : ''}`;
+                itemSpan.setAttribute('data-id', id);
+
+                const newLink = document.createElement('a');
+                newLink.href = origLink.getAttribute('href');
+                newLink.textContent = origLink.textContent;
+                newLink.setAttribute('data-desc', origLink.getAttribute('data-desc') || '');
+
+                const starBtn = document.createElement('button');
+                starBtn.className = 'star-btn';
+                starBtn.textContent = isFav ? '★' : '☆';
+                starBtn.title = '즐겨찾기';
+
+                itemSpan.appendChild(newLink);
+                itemSpan.appendChild(starBtn);
+                searchList.appendChild(itemSpan);
+
+                bindDescEvents(newLink);
+            });
+        }
+
+        // 인풋 이벤트
+        toolSearch.addEventListener('input', (e) => filterTools(e.target.value.trim()));
+
+        // ESC 키 및 지우기 버튼 대응
+        toolSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                toolSearch.value = '';
+                filterTools('');
+                toolSearch.blur();
+            }
+        });
+
+        clearSearch.addEventListener('click', () => {
+            toolSearch.value = '';
+            filterTools('');
+            toolSearch.focus();
+        });
+
+        // 5. 각주 설명창 이벤트 바인딩
         function bindDescEvents(link) {
             if (!descBox || !descText) return;
 
@@ -366,6 +464,7 @@
             link.addEventListener('touchstart', show, { passive: true });
         }
 
+        // 초기화
         document.querySelectorAll('.tools-list a').forEach(bindDescEvents);
         renderFavorites();
     })();
