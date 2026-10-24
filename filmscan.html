@@ -178,4 +178,418 @@
       background: #141722;
       border: 1px solid #262c3d;
       border-radius: 10px;
-      padding: 10px 12px
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .mask-preview {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .color-chip {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #c86432;
+    }
+    .btn-pipette {
+      background: #252b3b;
+      border: 1px solid #3b445c;
+      color: #f59f00;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .btn-pipette.active {
+      background: #f59f00;
+      color: #0d0f14;
+    }
+
+    /* 하단 버튼 */
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .btn {
+      min-height: 46px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .btn-reset {
+      background: #202534;
+      color: #94a3b8;
+      flex: 0 0 90px;
+    }
+    .btn-save {
+      background: #f59f00;
+      color: #0d0f14;
+      flex: 1;
+    }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>FILM NEGATIVE SCANNER</h1>
+  <p class="sub">COLOR / B&W INVERTER · ORANGE MASK STRIPPER</p>
+
+  <div class="dropzone" id="dropzone">
+    <span>📷 네거티브 필름 촬영본 불러오기</span>
+    <small>라이트박스 위에서 필름을 촬영한 원본 사진을 올려주세요</small>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div id="previewArea">
+    <div class="preview-info">
+      <span id="filmStatus">MODE: COLOR NEGATIVE</span>
+      <span id="resInfo">0 × 0 PX</span>
+    </div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="control-panel">
+    <!-- 1. 필름 유형 선택 -->
+    <div class="segmented-control" id="filmTypeControl">
+      <button type="button" data-type="color" class="active">컬러 네거티브 (C-41)</button>
+      <button type="button" data-type="bw">흑백 네거티브 (B&W)</button>
+    </div>
+
+    <!-- 2. 주황 마스크 베이스 제거 (컬러 전용) -->
+    <div class="mask-box" id="maskBox">
+      <div class="mask-preview">
+        <div class="color-chip" id="maskChip"></div>
+        <div>
+          <span style="display:block; color:#f1f5f9; font-weight:600;">필름 베이스 (주황 마스크)</span>
+          <span id="maskHex" style="color:#94a3b8; font-size:0.7rem;">#C86432</span>
+        </div>
+      </div>
+      <button type="button" class="btn-pipette" id="pipetteBtn">스포이드 선택</button>
+    </div>
+
+    <!-- 3. 블랙 포인트 (그림자 레벨) -->
+    <div class="control-row">
+      <label>
+        블랙 포인트 (Shadow Level)
+        <small>필름 암부 베이스 들뜸 억제</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="blackRange" min="0" max="60" value="8">
+        <span id="blackVal">8</span>
+      </div>
+    </div>
+
+    <!-- 4. 화이트 포인트 (하이라이트) -->
+    <div class="control-row">
+      <label>
+        화이트 포인트 (Highlight Level)
+        <small>빛바랜 하이라이트 복원</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="whiteRange" min="180" max="255" value="245">
+        <span id="whiteVal">245</span>
+      </div>
+    </div>
+
+    <!-- 5. 감마 (중간 톤 계조) -->
+    <div class="control-row">
+      <label>
+        감마 커브 (Midtone Gamma)
+        <small>은염/인화지 중간 톤 계조 조절</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="gammaRange" min="50" max="220" value="115">
+        <span id="gammaVal">1.15</span>
+      </div>
+    </div>
+
+    <!-- 6. 채도 (컬러 전용) -->
+    <div class="control-row" id="satRow">
+      <label>
+        채도 보정 (Saturation)
+        <small>반전 후 색상 선명도 조절</small>
+      </label>
+      <div class="slider-box">
+        <input type="range" id="satRange" min="0" max="200" value="110">
+        <span id="satVal">110%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-reset" id="resetBtn" disabled>초기화</button>
+    <button class="btn btn-save" id="saveBtn" disabled>양화 사진 저장 (JPEG)</button>
+  </div>
+</div>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const previewArea = document.getElementById('previewArea');
+  const filmStatus = document.getElementById('filmStatus');
+  const resInfo = document.getElementById('resInfo');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const filmTypeControl = document.getElementById('filmTypeControl');
+  const maskBox = document.getElementById('maskBox');
+  const maskChip = document.getElementById('maskChip');
+  const maskHex = document.getElementById('maskHex');
+  const pipetteBtn = document.getElementById('pipetteBtn');
+
+  const blackRange = document.getElementById('blackRange');
+  const blackVal = document.getElementById('blackVal');
+  const whiteRange = document.getElementById('whiteRange');
+  const whiteVal = document.getElementById('whiteVal');
+  const gammaRange = document.getElementById('gammaRange');
+  const gammaVal = document.getElementById('gammaVal');
+  const satRow = document.getElementById('satRow');
+  const satRange = document.getElementById('satRange');
+  const satVal = document.getElementById('satVal');
+
+  const resetBtn = document.getElementById('resetBtn');
+  const saveBtn = document.getElementById('saveBtn');
+
+  let rawImg = null;
+  let filmType = 'color'; // 'color' | 'bw'
+  let maskColor = [200, 100, 50]; // 기본 주황 마스크 기준 RGB
+  let isPickingPipette = false;
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      rawImg = new Image();
+      rawImg.onload = () => {
+        previewArea.style.display = 'block';
+        resetBtn.disabled = false;
+        saveBtn.disabled = false;
+        // 이미지의 가장자리 여백에서 베이스 마스크 색상 자동 샘플링 시도
+        autoSampleMaskColor();
+        renderInverted();
+      };
+      rawImg.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  // 필름 타입 전환
+  filmTypeControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    filmTypeControl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    filmType = e.target.dataset.type;
+
+    if (filmType === 'bw') {
+      maskBox.style.display = 'none';
+      satRow.style.display = 'none';
+      filmStatus.textContent = 'MODE: B&W NEGATIVE';
+    } else {
+      maskBox.style.display = 'flex';
+      satRow.style.display = 'flex';
+      filmStatus.textContent = 'MODE: COLOR NEGATIVE';
+    }
+    renderInverted();
+  });
+
+  // 슬라이더 이벤트
+  blackRange.addEventListener('input', () => { blackVal.textContent = blackRange.value; renderInverted(); });
+  whiteRange.addEventListener('input', () => { whiteVal.textContent = whiteRange.value; renderInverted(); });
+  gammaRange.addEventListener('input', () => { gammaVal.textContent = (gammaRange.value / 100).toFixed(2); renderInverted(); });
+  satRange.addEventListener('input', () => { satVal.textContent = `${satRange.value}%`; renderInverted(); });
+
+  // 스포이드(피펫) 모드 토글
+  pipetteBtn.addEventListener('click', () => {
+    isPickingPipette = !isPickingPipette;
+    pipetteBtn.classList.toggle('active', isPickingPipette);
+    canvas.classList.toggle('pipette-mode', isPickingPipette);
+    pipetteBtn.textContent = isPickingPipette ? '필름 테두리 클릭' : '스포이드 선택';
+  });
+
+  // 캔버스 클릭 시 스포이드로 마스크 색상 픽
+  canvas.addEventListener('click', (e) => {
+    if (!isPickingPipette || !rawImg) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+
+    // 원본 이미지 좌표에 비례해 마스크 컬러 추출
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tCtx = tempCanvas.getContext('2d');
+    tCtx.drawImage(rawImg, 0, 0, canvas.width, canvas.height);
+    const pixel = tCtx.getImageData(x, y, 1, 1).data;
+
+    maskColor = [pixel[0], pixel[1], pixel[2]];
+    updateMaskChip();
+
+    isPickingPipette = false;
+    pipetteBtn.classList.remove('active');
+    canvas.classList.remove('pipette-mode');
+    pipetteBtn.textContent = '스포이드 선택';
+    renderInverted();
+  });
+
+  function updateMaskChip() {
+    const hex = '#' + maskColor.map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    maskChip.style.background = hex;
+    maskHex.textContent = hex;
+  }
+
+  // 필름 가장자리에서 마스크 색상 자동 추정
+  function autoSampleMaskColor() {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 50;
+    tempCanvas.height = 50;
+    const tCtx = tempCanvas.getContext('2d');
+    tCtx.drawImage(rawImg, 0, 0, 50, 50);
+    const p = tCtx.getImageData(2, 2, 1, 1).data;
+    if (p[0] > 100 && p[1] > 40) {
+      maskColor = [p[0], p[1], p[2]];
+    }
+    updateMaskChip();
+  }
+
+  // 초기화
+  resetBtn.addEventListener('click', () => {
+    blackRange.value = 8; blackVal.textContent = '8';
+    whiteRange.value = 245; whiteVal.textContent = '245';
+    gammaRange.value = 115; gammaVal.textContent = '1.15';
+    satRange.value = 110; satVal.textContent = '110%';
+    renderInverted();
+  });
+
+  // 핵심 음화 반전 & 디지털 현상 파이프라인
+  function renderInverted() {
+    if (!rawImg) return;
+
+    // 작업 해상도: 장축 1600px 유지
+    const maxEdge = 1600;
+    let w = rawImg.naturalWidth;
+    let h = rawImg.naturalHeight;
+    if (Math.max(w, h) > maxEdge) {
+      const scale = maxEdge / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+    resInfo.textContent = `${w} × ${h} PX`;
+
+    ctx.drawImage(rawImg, 0, 0, w, h);
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+
+    const bPoint = parseInt(blackRange.value, 10);
+    const wPoint = parseInt(whiteRange.value, 10);
+    const gamma = parseFloat(gammaRange.value) / 100;
+    const invGamma = 1 / gamma;
+    const sat = (filmType === 'color') ? parseInt(satRange.value, 10) / 100 : 0;
+
+    // 주황 마스크 기준 정규화 계수
+    const maskR = Math.max(1, maskColor[0]);
+    const maskG = Math.max(1, maskColor[1]);
+    const maskB = Math.max(1, maskColor[2]);
+
+    for (let i = 0; i < d.length; i += 4) {
+      let r = d[i];
+      let g = d[i + 1];
+      let b = d[i + 2];
+
+      if (filmType === 'bw') {
+        // [흑백 네거티브 파이프라인]
+        // 1. 단일 채널 그레이 변환 후 단순 음화 반전 (255 - x)
+        let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        let pos = 255 - gray;
+
+        // 2. 레벨 스트레칭 (Black & White point)
+        pos = ((pos - bPoint) / (wPoint - bPoint)) * 255;
+        pos = Math.min(255, Math.max(0, pos));
+
+        // 3. 감마 계조 보정
+        pos = 255 * Math.pow(pos / 255, invGamma);
+
+        d[i] = d[i + 1] = d[i + 2] = pos;
+
+      } else {
+        // [컬러 C-41 네거티브 파이프라인]
+        // 1. 주황 마스크 나눗셈 상쇄 (Division Normalization)
+        let nr = Math.min(1, r / maskR);
+        let ng = Math.min(1, g / maskG);
+        let nb = Math.min(1, b / maskB);
+
+        // 2. 네거티브 ➔ 포지티브 반전
+        let pr = (1 - nr) * 255;
+        let pg = (1 - ng) * 255;
+        let pb = (1 - nb) * 255;
+
+        // 3. 레벨 히스토그램 스트레칭
+        pr = ((pr - bPoint) / (wPoint - bPoint)) * 255;
+        pg = ((pg - bPoint) / (wPoint - bPoint)) * 255;
+        pb = ((pb - bPoint) / (wPoint - bPoint)) * 255;
+
+        pr = Math.min(255, Math.max(0, pr));
+        pg = Math.min(255, Math.max(0, pg));
+        pb = Math.min(255, Math.max(0, pb));
+
+        // 4. 감마 적용
+        pr = 255 * Math.pow(pr / 255, invGamma);
+        pg = 255 * Math.pow(pg / 255, invGamma);
+        pb = 255 * Math.pow(pb / 255, invGamma);
+
+        // 5. 채도 증폭
+        if (sat !== 1) {
+          const lum = 0.299 * pr + 0.587 * pg + 0.114 * pb;
+          pr = lum + (pr - lum) * sat;
+          pg = lum + (pg - lum) * sat;
+          pb = lum + (pb - lum) * sat;
+        }
+
+        d[i]     = Math.min(255, Math.max(0, pr));
+        d[i + 1] = Math.min(255, Math.max(0, pg));
+        d[i + 2] = Math.min(255, Math.max(0, pb));
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  // 양화 사진 저장
+  saveBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `film_scan_${filmType}_${Date.now()}.jpg`;
+      link.click();
+    }, 'image/jpeg', 0.98);
+  });
+</script>
+
+</body>
+</html>
