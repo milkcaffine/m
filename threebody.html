@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Three-Body Problem // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 헤더 */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 상단 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 65px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>THREE-BODY PROBLEM</h1>
+  <div class="hud-meta">GRAVITATIONAL CHAOS · RK4 INTEGRATOR</div>
+</header>
+
+<div class="telemetry-card">
+  <div>PRESET: <strong id="valPreset">FIGURE-8</strong></div>
+  <div>STEP: <strong id="valStep">0</strong></div>
+  <div>ENERGY: <strong id="valEnergy">-0.000</strong></div>
+</div>
+
+<canvas id="simCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnFig8">8자 궤도</button>
+  <button type="button" class="dock-btn" id="btnChaos">카오스 조우</button>
+  <button type="button" class="dock-btn" id="btnLagrange">라그랑주</button>
+  <button type="button" class="dock-btn" id="btnPythagorean">피타고라스</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn active" id="btnPlay">일시정지</button>
+  <button type="button" class="dock-btn" id="btnClearTrails">궤적 지우기</button>
+  <button type="button" class="dock-btn" id="btnReset">리셋</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>속도</span>
+    <input type="range" id="speedRange" min="1" max="10" value="4">
+  </div>
+  <div class="slider-group">
+    <span>잔상 감쇠</span>
+    <input type="range" id="fadeRange" min="1" max="50" value="12">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valPreset = document.getElementById('valPreset');
+  const valStep = document.getElementById('valStep');
+  const valEnergy = document.getElementById('valEnergy');
+
+  const btnFig8 = document.getElementById('btnFig8');
+  const btnChaos = document.getElementById('btnChaos');
+  const btnLagrange = document.getElementById('btnLagrange');
+  const btnPythagorean = document.getElementById('btnPythagorean');
+
+  const btnPlay = document.getElementById('btnPlay');
+  const btnClearTrails = document.getElementById('btnClearTrails');
+  const btnReset = document.getElementById('btnReset');
+
+  const speedRange = document.getElementById('speedRange');
+  const fadeRange = document.getElementById('fadeRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 물리 상수 및 수치 적분 매개변수
+  const G = 1.0;
+  const SOFTENING = 0.05; // 0 분모 방지
+  let subSteps = 4;
+  let baseDt = 0.004;
+  let isRunning = true;
+  let stepCount = 0;
+  let currentPreset = 'figure8';
+
+  // 시점 조작
+  let scale = 180;
+  let offsetX = 0;
+  let offsetY = 0;
+  let isDragging = false;
+  let draggedBody = -1;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+
+  // 세 천체 데이터 구조체 (위치, 속도, 질량, 고유 네온 색상)
+  let bodies = [];
+
+  const BODY_STYLES = [
+    { color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)', name: 'ALPHA' }, // 시안
+    { color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.45)', name: 'BETA' },   // 네온 로즈
+    { color: '#facc15', glow: 'rgba(250, 204, 21, 0.45)', name: 'GAMMA' }  // 앰버 골드
+  ];
+
+  // 프리셋 데이터
+  function loadPreset(name) {
+    currentPreset = name;
+    stepCount = 0;
+    offsetX = 0;
+    offsetY = 0;
+
+    if (name === 'figure8') {
+      // Chenciner & Montgomery (2000) 8자 해
+      scale = Math.min(width, height) * 0.28;
+      valPreset.textContent = 'FIGURE-8';
+      const x1 = 0.97000436;
+      const y1 = -0.24308753;
+      const vx3 = 2 * -0.46620531;
+      const vy3 = 2 * -0.43236573;
+      const vx1 = -vx3 / 2;
+      const vy1 = -vy3 / 2;
+
+      bodies = [
+        { x: x1, y: y1, vx: vx1, vy: vy1, m: 1.0, history: [] },
+        { x: -x1, y: -y1, vx: vx1, vy: vy1, m: 1.0, history: [] },
+        { x: 0, y: 0, vx: vx3, vy: vy3, m: 1.0, history: [] }
+      ];
+    } else if (name === 'chaos') {
+      // 복잡한 얽힘 후 1체 방출을 유발하는 고에너지 카오스 조우
+      scale = Math.min(width, height) * 0.22;
+      valPreset.textContent = 'CHAOS ENCOUNTER';
+      bodies = [
+        { x: -1.2, y: 0.1, vx: 0.2, vy: 0.5, m: 1.2, history: [] },
+        { x: 1.1, y: -0.2, vx: -0.3, vy: -0.4, m: 1.0, history: [] },
+        { x: 0.0, y: 1.0, vx: 0.1, vy: -0.1, m: 0.9, history: [] }
+      ];
+    } else if (name === 'lagrange') {
+      // 정삼각형을 유지하며 회전하는 라그랑주 상대 평형해
+      scale = Math.min(width, height) * 0.26;
+      valPreset.textContent = 'LAGRANGE TRIANGLE';
+      const r = 1.0;
+      const omega = Math.sqrt(G * (1.0 + 1.0 + 1.0) / (r * r * r * Math.sqrt(3)));
+      const v = omega * r / Math.sqrt(3);
+
+      bodies = [
+        { x: r * Math.cos(0), y: r * Math.sin(0), vx: -v * Math.sin(0), vy: v * Math.cos(0), m: 1.0, history: [] },
+        { x: r * Math.cos(2 * Math.PI / 3), y: r * Math.sin(2 * Math.PI / 3), vx: -v * Math.sin(2 * Math.PI / 3), vy: v * Math.cos(2 * Math.PI / 3), m: 1.0, history: [] },
+        { x: r * Math.cos(4 * Math.PI / 3), y: r * Math.sin(4 * Math.PI / 3), vx: -v * Math.sin(4 * Math.PI / 3), vy: v * Math.cos(4 * Math.PI / 3), m: 1.0, history: [] }
+      ];
+    } else if (name === 'pythagorean') {
+      // Burrau (1913) 피타고라스 3:4:5 직각삼각형 문제 (정지 상태에서 시작)
+      scale = Math.min(width, height) * 0.16;
+      valPreset.textContent = 'PYTHAGOREAN (3-4-5)';
+      bodies = [
+        { x: 1.0, y: 3.0, vx: 0, vy: 0, m: 3.0, history: [] },
+        { x: -2.0, y: -1.0, vx: 0, vy: 0, m: 4.0, history: [] },
+        { x: 1.0, y: -1.0, vx: 0, vy: 0, m: 5.0, history: [] }
+      ];
+    }
+
+    clearTrailsCanvas();
+  }
+
+  // 궤적 전용 버퍼 캔버스
+  const trailCanvas = document.createElement('canvas');
+  trailCanvas.width = width;
+  trailCanvas.height = height;
+  const trailCtx = trailCanvas.getContext('2d');
+
+  function clearTrailsCanvas() {
+    trailCtx.clearRect(0, 0, width, height);
+    bodies.forEach(b => b.history = []);
+  }
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = trailCanvas.width = window.innerWidth;
+    height = canvas.height = trailCanvas.height = window.innerHeight;
+    clearTrailsCanvas();
+  });
+
+  // --- 물리 가속도 계산 ---
+  function computeAccelerations(state) {
+    const acc = [ { ax: 0, ay: 0 }, { ax: 0, ay: 0 }, { ax: 0, ay: 0 } ];
+
+    for (let i = 0; i < 3; i++) {
+      for (let j = i + 1; j < 3; j++) {
+        const dx = state[j].x - state[i].x;
+        const dy = state[j].y - state[i].y;
+        const distSq = dx * dx + dy * dy + SOFTENING * SOFTENING;
+        const dist = Math.sqrt(distSq);
+        const f = G / (distSq * dist);
+
+        acc[i].ax += dx * f * state[j].m;
+        acc[i].ay += dy * f * state[j].m;
+
+        acc[j].ax -= dx * f * state[i].m;
+        acc[j].ay -= dy * f * state[i].m;
+      }
+    }
+    return acc;
+  }
+
+  // --- 4차 룽게-쿠타 적분기 (RK4: 에너지 보존 안정성 우수) ---
+  function rk4Step(dt) {
+    const s0 = bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, m: b.m }));
+
+    // k1
+    const a1 = computeAccelerations(s0);
+    const k1 = s0.map((b, i) => ({ dx: b.vx, dy: b.vy, dvx: a1[i].ax, dvy: a1[i].ay }));
+
+    // k2
+    const s1 = s0.map((b, i) => ({
+      x: b.x + k1[i].dx * dt * 0.5,
+      y: b.y + k1[i].dy * dt * 0.5,
+      vx: b.vx + k1[i].dvx * dt * 0.5,
+      vy: b.vy + k1[i].dvy * dt * 0.5,
+      m: b.m
+    }));
+    const a2 = computeAccelerations(s1);
+    const k2 = s1.map((b, i) => ({ dx: b.vx, dy: b.vy, dvx: a2[i].ax, dvy: a2[i].ay }));
+
+    // k3
+    const s2 = s0.map((b, i) => ({
+      x: b.x + k2[i].dx * dt * 0.5,
+      y: b.y + k2[i].dy * dt * 0.5,
+      vx: b.vx + k2[i].dvx * dt * 0.5,
+      vy: b.vy + k2[i].dvy * dt * 0.5,
+      m: b.m
+    }));
+    const a3 = computeAccelerations(s2);
+    const k3 = s2.map((b, i) => ({ dx: b.vx, dy: b.vy, dvx: a3[i].ax, dvy: a3[i].ay }));
+
+    // k4
+    const s3 = s0.map((b, i) => ({
+      x: b.x + k3[i].dx * dt,
+      y: b.y + k3[i].dy * dt,
+      vx: b.vx + k3[i].dvx * dt,
+      vy: b.vy + k3[i].dvy * dt,
+      m: b.m
+    }));
+    const a4 = computeAccelerations(s3);
+    const k4 = s3.map((b, i) => ({ dx: b.vx, dy: b.vy, dvx: a4[i].ax, dvy: a4[i].ay }));
+
+    // 상태 갱신
+    for (let i = 0; i < 3; i++) {
+      bodies[i].x += (dt / 6) * (k1[i].dx + 2 * k2[i].dx + 2 * k3[i].dx + k4[i].dx);
+      bodies[i].y += (dt / 6) * (k1[i].dy + 2 * k2[i].dy + 2 * k3[i].dy + k4[i].dy);
+      bodies[i].vx += (dt / 6) * (k1[i].dvx + 2 * k2[i].dvx + 2 * k3[i].dvx + k4[i].dvx);
+      bodies[i].vy += (dt / 6) * (k1[i].dvy + 2 * k2[i].dvy + 2 * k3[i].dvy + k4[i].dvy);
+    }
+  }
+
+  // 역학적 총에너지 계산 (E = T + V)
+  function computeTotalEnergy() {
+    let t = 0;
+    let v = 0;
+    for (let i = 0; i < 3; i++) {
+      t += 0.5 * bodies[i].m * (bodies[i].vx * bodies[i].vx + bodies[i].vy * bodies[i].vy);
+      for (let j = i + 1; j < 3; j++) {
+        const dx = bodies[j].x - bodies[i].x;
+        const dy = bodies[j].y - bodies[i].y;
+        const dist = Math.sqrt(dx * dx + dy * dy + SOFTENING * SOFTENING);
+        v -= (G * bodies[i].m * bodies[j].m) / dist;
+      }
+    }
+    return t + v;
+  }
+
+  // 월드 좌표 ➔ 캔버스 스크린 좌표 변환
+  function toScreen(wx, wy) {
+    return {
+      x: width / 2 + offsetX + wx * scale,
+      y: height / 2 + offsetY + wy * scale
+    };
+  }
+
+  // 스크린 좌표 ➔ 월드 좌표 변환
+  function toWorld(sx, sy) {
+    return {
+      x: (sx - (width / 2 + offsetX)) / scale,
+      y: (sy - (height / 2 + offsetY)) / scale
+    };
+  }
+
+  // --- 메인 루프 ---
+  function update() {
+    if (!isRunning) return;
+
+    subSteps = parseInt(speedRange.value, 10);
+    const dt = baseDt;
+
+    for (let s = 0; s < subSteps; s++) {
+      const prevPoints = bodies.map(b => toScreen(b.x, b.y));
+      rk4Step(dt);
+      const currPoints = bodies.map(b => toScreen(b.x, b.y));
+
+      // 궤적 버퍼에 부드러운 네온 선 긋기
+      trailCtx.lineWidth = 1.4;
+      for (let i = 0; i < 3; i++) {
+        trailCtx.strokeStyle = BODY_STYLES[i].color;
+        trailCtx.shadowColor = BODY_STYLES[i].color;
+        trailCtx.shadowBlur = 6;
+        trailCtx.beginPath();
+        trailCtx.moveTo(prevPoints[i].x, prevPoints[i].y);
+        trailCtx.lineTo(currPoints[i].x, currPoints[i].y);
+        trailCtx.stroke();
+      }
+      stepCount++;
+    }
+
+    valStep.textContent = stepCount.toLocaleString();
+    valEnergy.textContent = computeTotalEnergy().toFixed(4);
+  }
+
+  function render() {
+    // 1. 잔상 페이드 처리
+    const fadeRate = parseInt(fadeRange.value, 10) / 1000;
+    trailCtx.fillStyle = `rgba(3, 4, 7, ${fadeRate})`;
+    trailCtx.fillRect(0, 0, width, height);
+
+    // 2. 화면 합성
+    ctx.fillStyle = '#030407';
+    ctx.fillRect(0, 0, width, height);
+
+    // 3. 궤적 레이어 전사
+    ctx.drawImage(trailCanvas, 0, 0);
+
+    // 4. 질량 중심(Center of Mass) 표시
+    let comX = 0, comY = 0, totalM = 0;
+    bodies.forEach(b => {
+      comX += b.x * b.m;
+      comY += b.y * b.m;
+      totalM += b.m;
+    });
+    comX /= totalM;
+    comY /= totalM;
+    const comScreen = toScreen(comX, comY);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(comScreen.x, comScreen.y, 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 5. 천체 렌더링 (빛나는 네온 코어)
+    bodies.forEach((b, i) => {
+      const pos = toScreen(b.x, b.y);
+      const radius = Math.max(3.5, Math.sqrt(b.m) * 4);
+
+      // 외부 글로우
+      const grad = ctx.createRadialGradient(pos.x, pos.y, 1, pos.x, pos.y, radius * 3.5);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.25, BODY_STYLES[i].color);
+      grad.addColorStop(1, 'transparent');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius * 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 내부 코어
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // --- 마우스 / 터치 인터랙션 (드래그 조작 및 줌) ---
+  canvas.addEventListener('mousedown', (e) => {
+    const mousePos = { x: e.clientX, y: e.clientY };
+
+    // 천체 클릭 검출
+    for (let i = 0; i < 3; i++) {
+      const sp = toScreen(bodies[i].x, bodies[i].y);
+      const dist = Math.hypot(sp.x - mousePos.x, sp.y - mousePos.y);
+      if (dist < 22) {
+        draggedBody = i;
+        isDragging = true;
+        return;
+      }
+    }
+
+    // 캔버스 패닝 시작
+    isDragging = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    if (draggedBody !== -1) {
+      // 선택된 천체 실시간 위치 이동
+      const w = toWorld(e.clientX, e.clientY);
+      bodies[draggedBody].x = w.x;
+      bodies[draggedBody].y = w.y;
+      bodies[draggedBody].vx = 0;
+      bodies[draggedBody].vy = 0;
+    } else {
+      // 뷰포트 이동
+      offsetX += e.clientX - lastMouseX;
+      offsetY += e.clientY - lastMouseY;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    draggedBody = -1;
+  });
+
+  // 휠 줌
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    scale = Math.max(20, Math.min(1200, scale * factor));
+  }, { passive: false });
+
+  // 모바일 터치
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      for (let i = 0; i < 3; i++) {
+        const sp = toScreen(bodies[i].x, bodies[i].y);
+        if (Math.hypot(sp.x - t.clientX, sp.y - t.clientY) < 30) {
+          draggedBody = i;
+          isDragging = true;
+          return;
+        }
+      }
+      isDragging = true;
+      lastMouseX = t.clientX;
+      lastMouseY = t.clientY;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging && e.touches.length === 1) {
+      const t = e.touches[0];
+      if (draggedBody !== -1) {
+        const w = toWorld(t.clientX, t.clientY);
+        bodies[draggedBody].x = w.x;
+        bodies[draggedBody].y = w.y;
+      } else {
+        offsetX += t.clientX - lastMouseX;
+        offsetY += t.clientY - lastMouseY;
+        lastMouseX = t.clientX;
+        lastMouseY = t.clientY;
+      }
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => {
+    isDragging = false;
+    draggedBody = -1;
+  });
+
+  // UI 버튼 바인딩
+  btnFig8.addEventListener('click', () => { setPresetBtn(btnFig8); loadPreset('figure8'); });
+  btnChaos.addEventListener('click', () => { setPresetBtn(btnChaos); loadPreset('chaos'); });
+  btnLagrange.addEventListener('click', () => { setPresetBtn(btnLagrange); loadPreset('lagrange'); });
+  btnPythagorean.addEventListener('click', () => { setPresetBtn(btnPythagorean); loadPreset('pythagorean'); });
+
+  function setPresetBtn(btn) {
+    [btnFig8, btnChaos, btnLagrange, btnPythagorean].forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  btnPlay.addEventListener('click', () => {
+    isRunning = !isRunning;
+    btnPlay.textContent = isRunning ? '일시정지' : '재생';
+    btnPlay.classList.toggle('active', isRunning);
+  });
+
+  btnClearTrails.addEventListener('click', clearTrailsCanvas);
+  btnReset.addEventListener('click', () => loadPreset(currentPreset));
+
+  // 시작
+  loadPreset('figure8');
+  loop();
+</script>
+
+</body>
+</html>
