@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0d0f14">
+  <title>3D 프린터 STL 뷰어 // marsko</title>
+  <!-- Three.js + STLLoader 공식 CDN (안정적 UMD 빌드) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+  <!-- 폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Apple SD Gothic Neo", sans-serif;
+      background: #0d0f14;
+      color: #e2e8f0;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 상단 네비게이션 헤더 */
+    header {
+      background: #141722;
+      border-bottom: 1px solid #232838;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .home-link {
+      color: #8b949e;
+      font-size: 0.78rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #1c2130;
+      border: 1px solid #283044;
+    }
+    .home-link:hover { color: #00f0ff; }
+    .title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #00f0ff;
+    }
+
+    .btn-upload {
+      background: #00f0ff;
+      color: #0d0f14;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .btn-upload:hover { background: #38f4ff; }
+    input[type="file"] { display: none; }
+
+    /* 메인 3D 뷰포트 */
+    #viewport {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #08090d;
+      cursor: grab;
+    }
+    #viewport:active { cursor: grabbing; }
+
+    /* 드롭 오버레이 가이드 */
+    #dropGuide {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      text-align: center;
+      background: rgba(13, 15, 20, 0.85);
+      border: 2px dashed #00f0ff;
+      padding: 24px 30px;
+      border-radius: 18px;
+      backdrop-filter: blur(8px);
+      z-index: 5;
+    }
+    #dropGuide h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1rem;
+      color: #00f0ff;
+      margin-bottom: 6px;
+    }
+    #dropGuide p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    /* 플로팅 정보 HUD (크기, 면 수) */
+    .info-hud {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: rgba(20, 23, 34, 0.85);
+      border: 1px solid #283044;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      backdrop-filter: blur(6px);
+      display: none;
+      pointer-events: none;
+      line-height: 1.5;
+    }
+    .info-hud strong { color: #00f0ff; }
+
+    /* 하단 플로팅 컨트롤러 */
+    .controls-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 23, 34, 0.9);
+      border: 1px solid #283044;
+      border-radius: 14px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(8px);
+      max-width: 94%;
+      overflow-x: auto;
+      z-index: 10;
+    }
+    .dock-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .dock-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+    .dock-btn {
+      background: #171b26;
+      border: 1px solid #2a3348;
+      color: #cbd5e1;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .dock-btn.active {
+      background: #00f0ff;
+      color: #0d0f14;
+      border-color: #00f0ff;
+      font-weight: 700;
+    }
+    .dock-sep {
+      width: 1px;
+      height: 18px;
+      background: #2a3348;
+    }
+    input[type="color"] {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 6px;
+      background: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="index.html" class="home-link">← marsko</a>
+    <span class="title">STL 3D VIEWER</span>
+  </div>
+  <button class="btn-upload" id="uploadBtn">📁 STL 파일 열기</button>
+  <input type="file" id="fileInput" accept=".stl,.STL">
+</header>
+
+<div id="viewport">
+  <div id="dropGuide">
+    <h2>3D 프린터 .STL 파일 드래그</h2>
+    <p>또는 우측 상단의 [STL 파일 열기] 버튼을 누르세요</p>
+  </div>
+
+  <div class="info-hud" id="infoHud">
+    <div>MODEL: <strong id="hudName">-</strong></div>
+    <div>SIZE: <span id="hudSize">-</span></div>
+    <div>TRIANGLES: <span id="hudTris">-</span></div>
+  </div>
+
+  <div class="controls-dock">
+    <!-- 뷰 리셋 -->
+    <button class="dock-btn" id="resetCamBtn">⌖ 시점 초기화</button>
+    <div class="dock-sep"></div>
+
+    <!-- 렌더 모드 -->
+    <div class="dock-group">
+      <span class="dock-label">MODE</span>
+      <button class="dock-btn active" id="shadedBtn">쉐이딩</button>
+      <button class="dock-btn" id="wireBtn">와이어프레임</button>
+    </div>
+    <div class="dock-sep"></div>
+
+    <!-- 자동 회전 (Turntable) -->
+    <button class="dock-btn" id="rotateBtn">↻ 턴테이블</button>
+    <div class="dock-sep"></div>
+
+    <!-- 빌드 플레이트(베드) 그리드 토글 -->
+    <button class="dock-btn active" id="gridBtn">격자 베드</button>
+    <div class="dock-sep"></div>
+
+    <!-- 모델 색상 선택 -->
+    <div class="dock-group">
+      <span class="dock-label">COLOR</span>
+      <input type="color" id="modelColor" value="#9aa7b8" title="필라멘트/소재 색상 변경">
+    </div>
+  </div>
+</div>
+
+<script>
+  const viewport = document.getElementById('viewport');
+  const fileInput = document.getElementById('fileInput');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const dropGuide = document.getElementById('dropGuide');
+  const infoHud = document.getElementById('infoHud');
+  const hudName = document.getElementById('hudName');
+  const hudSize = document.getElementById('hudSize');
+  const hudTris = document.getElementById('hudTris');
+
+  const resetCamBtn = document.getElementById('resetCamBtn');
+  const shadedBtn = document.getElementById('shadedBtn');
+  const wireBtn = document.getElementById('wireBtn');
+  const rotateBtn = document.getElementById('rotateBtn');
+  const gridBtn = document.getElementById('gridBtn');
+  const modelColor = document.getElementById('modelColor');
+
+  let scene, camera, renderer, controls;
+  let currentMesh = null;
+  let gridHelper = null;
+  let dirLight, hemiLight;
+  let isAutoRotating = false;
+
+  // 1. Three.js 씬 & WebGL 렌더러 초기화
+  function initThree() {
+    const width = viewport.clientWidth;
+    const height = viewport.clientHeight;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0c12);
+
+    camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
+    camera.position.set(150, 150, 180);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    viewport.appendChild(renderer.domElement);
+
+    // 마우스 / 터치 궤도 컨트롤
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxDistance = 1500;
+    controls.minDistance = 5;
+
+    // 조명 세팅 (스튜디오 3점 조명 스타일)
+    hemiLight = new THREE.HemisphereLight(0xffffff, 0x1f2430, 0.7);
+    scene.add(hemiLight);
+
+    dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(150, 250, 150);
+    scene.add(dirLight);
+
+    const backLight = new THREE.DirectionalLight(0x00f0ff, 0.3);
+    backLight.position.set(-150, -100, -150);
+    scene.add(backLight);
+
+    // 3D 프린터 베드 격자 (250mm x 250mm, 10mm 간격)
+    gridHelper = new THREE.GridHelper(250, 25, 0x00f0ff, 0x232938);
+    gridHelper.position.y = 0;
+    scene.add(gridHelper);
+
+    animate();
+  }
+
+  // 렌더 루프
+  function animate() {
+    requestAnimationFrame(animate);
+    if (isAutoRotating) {
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 2.5;
+    } else {
+      controls.autoRotate = false;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  // 리사이즈 대응
+  window.addEventListener('resize', () => {
+    if (!renderer || !camera) return;
+    const w = viewport.clientWidth;
+    const h = viewport.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+
+  // 2. STL 로더 및 센터링 알고리즘
+  function loadSTLFromArrayBuffer(buffer, filename) {
+    const loader = new THREE.STLLoader();
+    try {
+      const geometry = loader.parse(buffer);
+
+      if (currentMesh) {
+        scene.remove(currentMesh);
+        if (currentMesh.geometry) currentMesh.geometry.dispose();
+      }
+
+      // 노멀 벡터 계산 (음영을 매끄럽고 또렷하게)
+      geometry.computeVertexNormals();
+
+      // 메트릭 바운딩 박스 계산 및 바닥 맞춤
+      geometry.computeBoundingBox();
+      const bbox = geometry.boundingBox;
+      const sizeX = (bbox.max.x - bbox.min.x);
+      const sizeY = (bbox.max.y - bbox.min.y);
+      const sizeZ = (bbox.max.z - bbox.min.z);
+
+      // 프린터 베드 바닥(y=0) 위에 안착되도록 정렬
+      geometry.center();
+      geometry.translate(0, sizeY / 2, 0);
+
+      // 소재 매질 (세련된 무광 필라멘트 재질)
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(modelColor.value),
+        roughness: 0.35,
+        metalness: 0.15,
+        wireframe: wireBtn.classList.contains('active')
+      });
+
+      currentMesh = new THREE.Mesh(geometry, material);
+      scene.add(currentMesh);
+
+      // 카메라 거리 자동 피팅
+      const maxDim = Math.max(sizeX, sizeY, sizeZ);
+      const dist = maxDim * 2.2;
+      camera.position.set(dist * 0.8, dist * 0.9, dist * 1.1);
+      controls.target.set(0, sizeY / 2, 0);
+      controls.update();
+
+      // HUD 정보 갱신
+      dropGuide.style.display = 'none';
+      infoHud.style.display = 'block';
+      hudName.textContent = filename || 'MODEL.stl';
+      hudSize.textContent = `${sizeX.toFixed(1)} × ${sizeZ.toFixed(1)} × ${sizeY.toFixed(1)} mm`;
+      const tris = geometry.attributes.position.count / 3;
+      hudTris.textContent = tris.toLocaleString();
+
+    } catch (err) {
+      alert('STL 파일을 파싱하는 데 실패했습니다.');
+      console.error(err);
+    }
+  }
+
+  // 3. 파일 로드 이벤트 (드롭 & 파일 선택)
+  uploadBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) readFile(file);
+    fileInput.value = '';
+  });
+
+  function readFile(file) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      loadSTLFromArrayBuffer(ev.target.result, file.name);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // 드래그 앤 드롭
+  viewport.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    viewport.style.background = '#0f131a';
+  });
+  viewport.addEventListener('dragleave', () => {
+    viewport.style.background = '#08090d';
+  });
+  viewport.addEventListener('drop', (e) => {
+    e.preventDefault();
+    viewport.style.background = '#08090d';
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      readFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  // 4. 컨트롤 바 이벤트
+  resetCamBtn.addEventListener('click', () => {
+    if (!currentMesh) return;
+    currentMesh.geometry.computeBoundingBox();
+    const bbox = currentMesh.geometry.boundingBox;
+    const sizeY = bbox.max.y - bbox.min.y;
+    const maxDim = Math.max(bbox.max.x - bbox.min.x, sizeY, bbox.max.z - bbox.min.z);
+    const dist = maxDim * 2.2;
+    camera.position.set(dist * 0.8, dist * 0.9, dist * 1.1);
+    controls.target.set(0, sizeY / 2, 0);
+  });
+
+  shadedBtn.addEventListener('click', () => {
+    shadedBtn.classList.add('active');
+    wireBtn.classList.remove('active');
+    if (currentMesh) currentMesh.material.wireframe = false;
+  });
+
+  wireBtn.addEventListener('click', () => {
+    wireBtn.classList.add('active');
+    shadedBtn.classList.remove('active');
+    if (currentMesh) currentMesh.material.wireframe = true;
+  });
+
+  rotateBtn.addEventListener('click', () => {
+    isAutoRotating = !isAutoRotating;
+    rotateBtn.classList.toggle('active', isAutoRotating);
+  });
+
+  gridBtn.addEventListener('click', () => {
+    gridHelper.visible = !gridHelper.visible;
+    gridBtn.classList.toggle('active', gridHelper.visible);
+  });
+
+  modelColor.addEventListener('input', (e) => {
+    if (currentMesh) {
+      currentMesh.material.color.set(e.target.value);
+    }
+  });
+
+  // 시작
+  initThree();
+</script>
+
+</body>
+</html>
