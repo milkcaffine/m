@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#12141a">
+  <title>필름 네거티브 디지털 스캐너</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Apple SD Gothic Neo", sans-serif;
+      background: #0d0f14;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      min-height: 100vh;
+    }
+    .container {
+      background: #151821;
+      border: 1px solid #222736;
+      max-width: 540px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 10px 36px rgba(0,0,0,0.5);
+    }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      text-align: center;
+      color: #f59f00;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    p.sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #64748b;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    /* 드롭존 */
+    .dropzone {
+      border: 2px dashed #f59f00;
+      background: rgba(245, 159, 0, 0.04);
+      border-radius: 14px;
+      padding: 18px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #f59f00;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dropzone small { font-size: 0.72rem; color: #94a3b8; font-family: 'IBM Plex Mono', monospace; }
+    input[type="file"] { display: none; }
+
+    /* 캔버스 뷰포트 */
+    #previewArea {
+      margin-top: 14px;
+      display: none;
+      width: 100%;
+    }
+    .preview-info {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .canvas-container {
+      width: 100%;
+      max-height: 420px;
+      background: #08090c;
+      border: 1px solid #222736;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 8px;
+      position: relative;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 400px;
+      border-radius: 4px;
+      display: block;
+      cursor: default;
+    }
+    #previewCanvas.pipette-mode {
+      cursor: crosshair;
+    }
+
+    /* 컨트롤 패널 */
+    .control-panel {
+      margin-top: 14px;
+      background: #1b1f2b;
+      border: 1px solid #282f42;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* 필름 타입 토글 */
+    .segmented-control {
+      display: flex;
+      background: #11141c;
+      border-radius: 8px;
+      padding: 3px;
+      width: 100%;
+    }
+    .segmented-control button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 8px 0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #64748b;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .segmented-control button.active {
+      background: #f59f00;
+      color: #0d0f14;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+    .control-row label {
+      font-weight: 600;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .control-row label small {
+      font-size: 0.7rem;
+      color: #64748b;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .slider-box { display: flex; align-items: center; gap: 8px; }
+    .slider-box input[type="range"] {
+      width: 130px;
+      accent-color: #f59f00;
+    }
+    .slider-box span {
+      font-size: 0.8rem;
+      color: #f59f00;
+      width: 38px;
+      text-align: right;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* 주황 마스크 스포이드 박스 */
+    .mask-box {
+      background: #141722;
+      border: 1px solid #262c3d;
+      border-radius: 10px;
+      padding: 10px 12px
