@@ -9,6 +9,53 @@
     <style>
         body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
         .hero-img { filter: saturate(0.8) contrast(1.05); }
+        /* 도구 링크 호버 효과 및 설명창 */
+.tools-list a {
+  transition: color 0.15s ease, text-shadow 0.15s ease;
+  padding: 1px 3px;
+  border-radius: 4px;
+}
+
+.tools-list a:hover,
+.tools-list a:focus {
+  color: #00f0ff;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+}
+
+.tool-desc {
+  margin-top: 14px;
+  padding: 8px 12px;
+  background: rgba(20, 24, 33, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-family: 'IBM Plex Mono', monospace, sans-serif;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.tool-desc .desc-prompt {
+  color: #00f0ff;
+  font-weight: 700;
+}
+
+.tool-desc .desc-text {
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.tool-desc.active {
+  border-color: rgba(0, 240, 255, 0.3);
+  background: rgba(0, 240, 255, 0.04);
+}
+
+.tool-desc.active .desc-text {
+  color: #e2e8f0;
+}
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -55,16 +102,42 @@
         </p>
     </section>
 
-    <section class="max-w-2xl mx-auto px-6 pb-8">
-        <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-4">Tools</h2>
-        <div class="text-sm text-zinc-400 leading-relaxed space-y-2">
-            <p><span class="text-zinc-500">글</span> · <a href="syllable.html" class="hover:text-sky-300">syllable</a> · <a href="poem-card.html" class="hover:text-sky-300">poem-card</a> · <a href="long-card.html" class="hover:text-sky-300">long-card</a> · <a href="speccard.html" class="hover:text-sky-300">spec-card</a></p>
-            <p><span class="text-zinc-500">사진</span> · <a href="filmscan.html" class="hover:text-sky-300">filmscan</a> · <a href="watermark.html" class="hover:text-sky-300">watermark</a> · <a href="x-optimize.html" class="hover:text-sky-300">x-optimize</a> · <a href="film-frame.html" class="hover:text-sky-300">film-frame</a> · <a href="heic-to-jpg.html" class="hover:text-sky-300">heic-to-jpg</a> · <a href="color-palette.html" class="hover:text-sky-300">color-palette</a></p>
-            <p><span class="text-zinc-500">이미지</span> · <a href="x-split.html" class="hover:text-sky-300">x-split</a>  · <a href="collage.html" class="hover:text-sky-300">collage</a> · <a href="dither.html" class="hover:text-sky-300">dither</a> · <a href="glitch.html" class="hover:text-sky-300">glitch</a> · <a href="ascii.html" class="hover:text-sky-300">ascii</a></p>
-            <p><span class="text-zinc-500">기타</span> · <a href="stlview.html" class="hover:text-sky-300">stlview</a> · <a href="ambient.html" class="hover:text-sky-300">ambient</a> · <a href="notepad.html" class="hover:text-sky-300">notepad</a></p>
+<section class="tools-section">
+    <h2>Tools</h2>
+    <div class="tools-list">
+        <p><span>글</span> · 
+            <a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수율 실시간 글자 수 계산기">syllable</a> · 
+            <a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a> · 
+            <a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a> · 
+            <a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a>
+        </p>
+        <p><span>사진</span> · 
+            <a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a> · 
+            <a href="watermark.html" data-desc="SNS 아이디·닉네임 커스텀 워터마크 삽입기">watermark</a> · 
+            <a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-optimize</a> · 
+            <a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">film-frame</a> · 
+            <a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a> · 
+            <a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a>
+        </p>
+        <p><span>이미지</span> · 
+            <a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a> · 
+            <a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a> · 
+            <a href="dither.html" data-desc="1-Bit 매킨토시 & 게임보이 카메라 도트 픽셀 변환">dither</a> · 
+            <a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a> · 
+            <a href="ascii.html" data-desc="사진을 해커 터미널 텍스트 기호로 바꾸는 아스키 아트">ascii</a>
+        </p>
+        <p><span>기타</span> · 
+            <a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a> · 
+            <a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·드론 사운드 믹서">ambient</a> · 
+            <a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a>
+        </p>
+    </div>
 
-        </div>
-    </section>
+    <!-- 1줄 설명이 출력되는 고정 안내창 -->
+    <div class="tool-desc" id="toolDesc">
+        <span class="desc-prompt">&gt;</span> <span class="desc-text">도구에 마우스를 올리거나 탭하면 설명이 표시됩니다.</span>
+    </div>
+</section>
 
     <section class="max-w-2xl mx-auto px-6 pb-16">
         <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-6">Work</h2>
@@ -85,5 +158,40 @@
     </section>
 
     <footer class="text-center py-8 text-zinc-600 text-sm">© 2026 Marsko</footer>
+    <script>
+  (function() {
+    const descBox = document.getElementById('toolDesc');
+    if (!descBox) return;
+    const descText = descBox.querySelector('.desc-text');
+    const defaultMsg = descText.textContent;
+    const toolLinks = document.querySelectorAll('.tools-list a');
+
+    function showDesc(e) {
+      const desc = this.getAttribute('data-desc');
+      if (desc) {
+        descText.textContent = desc;
+        descBox.classList.add('active');
+      }
+    }
+
+    function resetDesc() {
+      descText.textContent = defaultMsg;
+      descBox.classList.remove('active');
+    }
+
+    toolLinks.forEach(link => {
+      // PC: 마우스 진입/이탈
+      link.addEventListener('mouseenter', showDesc);
+      link.addEventListener('mouseleave', resetDesc);
+
+      // 키보드 탭 이동 대응
+      link.addEventListener('focus', showDesc);
+      link.addEventListener('blur', resetDesc);
+
+      // 모바일: 탭 시 설명 먼저 갱신
+      link.addEventListener('touchstart', showDesc, { passive: true });
+    });
+  })();
+</script>
 </body>
 </html>
