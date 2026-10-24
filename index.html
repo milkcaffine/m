@@ -9,204 +9,104 @@
     <style>
         body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
         .hero-img { filter: saturate(0.8) contrast(1.05); }
-        /* 도구 링크 호버 효과 및 설명창 */
-.tools-list a {
-  transition: color 0.15s ease, text-shadow 0.15s ease;
-  padding: 1px 3px;
-  border-radius: 4px;
-}
 
-.tools-list a:hover,
-.tools-list a:focus {
-  color: #00f0ff;
-  text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
-}
-
-.tool-desc {
-  margin-top: 14px;
-  padding: 8px 12px;
-  background: rgba(20, 24, 33, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  font-family: 'IBM Plex Mono', monospace, sans-serif;
-  font-size: 0.76rem;
-  color: #94a3b8;
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-.tool-desc .desc-prompt {
-  color: #00f0ff;
-  font-weight: 700;
-}
-
-.tool-desc .desc-text {
-  line-height: 1.4;
-  word-break: keep-all;
-}
-
-.tool-desc.active {
-  border-color: rgba(0, 240, 255, 0.3);
-  background: rgba(0, 240, 255, 0.04);
-}
-
-.tool-desc.active .desc-text {
-  color: #e2e8f0;
-}
-        /* 도구 아이템 래퍼 */
-.tool-item {
-  display: inline-flex;
-  align-items: center;
-  position: relative;
-  vertical-align: baseline;
-}
-
-/* 별표 버튼 스타일 */
-.star-btn {
-  background: none;
-  border: none;
-  color: #4b5563;
-  font-size: 0.72rem;
-  padding: 0 1px 0 2px;
-  cursor: pointer;
-  line-height: 1;
-  transition: color 0.15s ease, transform 0.15s ease;
-  vertical-align: middle;
-}
-
-/* 호버 시 별표 보이기 */
-.tool-item:hover .star-btn,
-.tool-item:focus-within .star-btn {
-  color: #94a3b8;
-}
-
-/* 즐겨찾기 등록된 상태 */
-.tool-item.favorited .star-btn,
-.fav-row .star-btn {
-  color: #00f0ff;
-  text-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
-}
-
-.star-btn:hover {
-  transform: scale(1.25);
-  color: #00f0ff !important;
-}
-
-/* 최상단 즐겨찾기 고정 줄 */
-.fav-row {
-  background: rgba(0, 240, 255, 0.03);
-  border: 1px dashed rgba(0, 240, 255, 0.25);
-  border-radius: 8px;
-  padding: 6px 10px !important;
-  margin-bottom: 8px !important;
-  animation: fadeIn 0.25s ease;
-}
-
-.fav-badge {
-  color: #00f0ff !important;
-  font-weight: 700;
-  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
         /* 도구 아이템 인라인 정렬 */
-.tool-item {
-  display: inline-flex;
-  align-items: center;
-  position: relative;
-  vertical-align: baseline;
-}
+        .tool-item {
+            display: inline-flex;
+            align-items: center;
+            position: relative;
+            vertical-align: baseline;
+        }
 
-/* 링크 호버 시 부드러운 밝기 증가 */
-.tools-list a {
-  transition: opacity 0.2s ease, color 0.2s ease;
-}
+        /* 링크 호버 시 부드러운 밝기 증가 */
+        .tools-list a {
+            transition: opacity 0.2s ease, color 0.2s ease;
+        }
 
-.tools-list a:hover {
-  opacity: 1;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
+        .tools-list a:hover {
+            color: #f4f4f5;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
 
-/* 별표 버튼: 평소엔 완전 투명하게 숨김 */
-.star-btn {
-  background: none;
-  border: none;
-  color: #666;
-  font-size: 0.68rem;
-  padding: 0 1px 0 3px;
-  cursor: pointer;
-  line-height: 1;
-  opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease;
-  vertical-align: middle;
-}
+        /* 별표 버튼: 평소엔 완전 투명 */
+        .star-btn {
+            background: none;
+            border: none;
+            color: #71717a;
+            font-size: 0.68rem;
+            padding: 0 1px 0 2px;
+            cursor: pointer;
+            line-height: 1;
+            opacity: 0;
+            transition: opacity 0.15s ease, color 0.15s ease;
+            vertical-align: middle;
+        }
 
-/* 도구 위에 마우스를 올리거나 포커스될 때만 살짝 등장 */
-.tool-item:hover .star-btn,
-.tool-item:focus-within .star-btn {
-  opacity: 0.6;
-}
+        /* 호버 시 살짝 등장 */
+        .tool-item:hover .star-btn,
+        .tool-item:focus-within .star-btn {
+            opacity: 0.7;
+        }
 
-.tool-item:hover .star-btn:hover {
-  opacity: 1;
-  color: #d1d5db;
-}
+        .tool-item:hover .star-btn:hover {
+            opacity: 1;
+            color: #e4e4e7;
+        }
 
-/* 즐겨찾기 등록된 아이템 */
-.tool-item.favorited .star-btn,
-.fav-row .star-btn {
-  opacity: 0.9 !important;
-  color: #e5e7eb !important;
-}
+        /* 즐겨찾기 등록된 아이템 */
+        .tool-item.favorited .star-btn,
+        .fav-row .star-btn {
+            opacity: 0.9 !important;
+            color: #e4e4e7 !important;
+        }
 
-/* 상단 즐겨찾기 줄: 기존 '글 ·', '사진 ·' 과 똑같은 차분한 텍스트 톤 */
-.fav-row {
-  margin-bottom: 6px;
-  opacity: 0.95;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding-bottom: 8px;
-}
+        /* 상단 즐겨찾기 줄: 기존 '글 ·', '사진 ·' 과 똑같은 차분한 텍스트 톤 */
+        .fav-row {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            animation: fadeIn 0.25s ease;
+        }
 
-.fav-badge {
-  color: #e5e7eb;
-  font-size: 0.85rem;
-}
+        .fav-badge {
+            color: #e4e4e7;
+            font-size: 0.82rem;
+        }
 
-/* 하단 설명: 인위적인 콘솔창 대신 도록 각주 같은 조용한 1줄 */
-.tool-desc-caption {
-  margin-top: 10px;
-  min-height: 20px;
-  font-size: 0.76rem;
-  color: #71717a;
-  line-height: 1.4;
-  letter-spacing: 0.2px;
-  transition: color 0.2s ease;
-}
+        /* 하단 설명: 도록 각주 같은 조용한 1줄 */
+        .tool-desc-caption {
+            margin-top: 14px;
+            min-height: 20px;
+            font-size: 0.8rem;
+            color: #71717a;
+            line-height: 1.4;
+            transition: color 0.2s ease;
+        }
 
-.tool-desc-caption.active {
-  color: #a1a1aa;
-}
+        .tool-desc-caption.active {
+            color: #a1a1aa;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-3px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
+    <!-- 헤더 -->
     <header class="relative min-h-[88vh] overflow-hidden">
         <img src="images/cone.jpg" alt="Wet plaza, white trellis, one cone" class="hero-img absolute inset-0 h-full w-full object-cover">
         <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-zinc-950/15"></div>
         
-        <!-- 위쪽 작은 메뉴 -->
+        <!-- 상단 메뉴 -->
         <nav class="absolute top-0 left-0 right-0 z-20 flex justify-end px-6 py-4 text-xs text-zinc-300/80 tracking-wide">
             <div class="flex gap-4 flex-wrap justify-end">
                 <a href="archive.html" class="hover:text-sky-300">archive</a>
                 <a href="walks.html" class="hover:text-sky-300">walks</a>
                 <span class="text-zinc-600">|</span>
-                 <a href="https://x.com/marsko" class="hover:text-sky-300">@marsko</a>
+                <a href="https://x.com/marsko" class="hover:text-sky-300">@marsko</a>
                 <span class="text-zinc-600">|</span>
             </div>
         </nav>
@@ -226,6 +126,7 @@
         </div>
     </header>
 
+    <!-- Note 섹션 -->
     <section class="max-w-2xl mx-auto px-6 py-16">
         <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-4">Note</h2>
         <p class="text-zinc-300 leading-relaxed text-lg">
@@ -239,53 +140,55 @@
         </p>
     </section>
 
-<section class="tools-section">
-    <h2>Tools</h2>
-    <div class="tools-list">
-        <!-- 즐겨찾기 줄 (등록된 도구가 있을 때만 자연스럽게 노출) -->
-        <p class="fav-row" id="favRow" style="display: none;">
-            <span class="fav-badge">★</span> · <span id="favList"></span>
-        </p>
+    <!-- Tools 섹션 (Note, Work와 동일한 레이아웃 규격 적용) -->
+    <section class="max-w-2xl mx-auto px-6 pb-16">
+        <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-4">Tools</h2>
+        <div class="tools-list text-zinc-400 leading-relaxed text-sm space-y-1.5">
+            <!-- 즐겨찾기 줄 -->
+            <p class="fav-row text-zinc-300" id="favRow" style="display: none;">
+                <span class="fav-badge">★</span> · <span id="favList"></span>
+            </p>
 
-        <!-- 카테고리별 도구 목록 -->
-        <p>
-            <span>글</span> · 
-            <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수율 실시간 글자 수 계산기">syllable</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="poem-card"><a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="long-card"><a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="speccard"><a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a><button class="star-btn" title="즐겨찾기">☆</button></span>
-        </p>
-        <p>
-            <span>사진</span> · 
-            <span class="tool-item" data-id="filmscan"><a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="watermark"><a href="watermark.html" data-desc="SNS 아이디·닉네임 커스텀 워터마크 삽입기">watermark</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="x-optimize"><a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-optimize</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="film-frame"><a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">film-frame</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="color-palette"><a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a><button class="star-btn" title="즐겨찾기">☆</button></span>
-        </p>
-        <p>
-            <span>이미지</span> · 
-            <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="collage"><a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="dither"><a href="dither.html" data-desc="1-Bit 매킨토시 & 게임보이 카메라 도트 픽셀 변환">dither</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="glitch"><a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="ascii"><a href="ascii.html" data-desc="사진을 해커 터미널 텍스트 기호로 바꾸는 아스키 아트">ascii</a><button class="star-btn" title="즐겨찾기">☆</button></span>
-        </p>
-        <p>
-            <span>기타</span> · 
-            <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·드론 사운드 믹서">ambient</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-            <span class="tool-item" data-id="notepad"><a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a><button class="star-btn" title="즐겨찾기">☆</button></span>
-        </p>
-    </div>
+            <!-- 카테고리별 도구 목록 -->
+            <p>
+                <span class="text-zinc-500 font-medium">글</span> · 
+                <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수율 실시간 글자 수 계산기">syllable</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="poem-card"><a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="long-card"><a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="speccard"><a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+            </p>
+            <p>
+                <span class="text-zinc-500 font-medium">사진</span> · 
+                <span class="tool-item" data-id="filmscan"><a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="watermark"><a href="watermark.html" data-desc="SNS 아이디·닉네임 커스텀 워터마크 삽입기">watermark</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="x-optimize"><a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-optimize</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="film-frame"><a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">film-frame</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="color-palette"><a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+            </p>
+            <p>
+                <span class="text-zinc-500 font-medium">이미지</span> · 
+                <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="collage"><a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="dither"><a href="dither.html" data-desc="1-Bit 매킨토시 & 게임보이 카메라 도트 픽셀 변환">dither</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="glitch"><a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="ascii"><a href="ascii.html" data-desc="사진을 해커 터미널 텍스트 기호로 바꾸는 아스키 아트">ascii</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+            </p>
+            <p>
+                <span class="text-zinc-500 font-medium">기타</span> · 
+                <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·드론 사운드 믹서">ambient</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                <span class="tool-item" data-id="notepad"><a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+            </p>
+        </div>
 
-    <!-- 호버 시 자연스럽게 나타나는 미니멀 각주 설명 -->
-    <div class="tool-desc-caption" id="toolDesc">
-        <span class="desc-text"></span>
-    </div>
-</section>
+        <!-- 하단 각주 1줄 설명 -->
+        <div class="tool-desc-caption" id="toolDesc">
+            <span class="desc-text"></span>
+        </div>
+    </section>
 
+    <!-- Work 섹션 -->
     <section class="max-w-2xl mx-auto px-6 pb-16">
         <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-6">Work</h2>
         <div class="divide-y divide-zinc-800 border-y border-zinc-800">
@@ -305,326 +208,144 @@
     </section>
 
     <footer class="text-center py-8 text-zinc-600 text-sm">© 2026 Marsko</footer>
+
+    <!-- 단일 통합 스크립트 (중복 제거 완료) -->
     <script>
-  (function() {
-    const descBox = document.getElementById('toolDesc');
-    if (!descBox) return;
-    const descText = descBox.querySelector('.desc-text');
-    const defaultMsg = descText.textContent;
-    const toolLinks = document.querySelectorAll('.tools-list a');
+    (function() {
+        const STORAGE_KEY = 'marsko_fav_tools_v1';
+        const favRow = document.getElementById('favRow');
+        const favList = document.getElementById('favList');
+        const descBox = document.getElementById('toolDesc');
+        const descText = descBox ? descBox.querySelector('.desc-text') : null;
 
-    function showDesc(e) {
-      const desc = this.getAttribute('data-desc');
-      if (desc) {
-        descText.textContent = desc;
-        descBox.classList.add('active');
-      }
-    }
-
-    function resetDesc() {
-      descText.textContent = defaultMsg;
-      descBox.classList.remove('active');
-    }
-
-    toolLinks.forEach(link => {
-      // PC: 마우스 진입/이탈
-      link.addEventListener('mouseenter', showDesc);
-      link.addEventListener('mouseleave', resetDesc);
-
-      // 키보드 탭 이동 대응
-      link.addEventListener('focus', showDesc);
-      link.addEventListener('blur', resetDesc);
-
-      // 모바일: 탭 시 설명 먼저 갱신
-      link.addEventListener('touchstart', showDesc, { passive: true });
-    });
-  })();
-</script>
-    <script>
-  (function() {
-    const STORAGE_KEY = 'marsko_fav_tools_v1';
-    const favRow = document.getElementById('favRow');
-    const favList = document.getElementById('favList');
-    const descBox = document.getElementById('toolDesc');
-    const descText = descBox ? descBox.querySelector('.desc-text') : null;
-    const defaultMsg = descText ? descText.textContent : '';
-
-    // 1. 로컬 스토리지에서 즐겨찾기 목록 불러오기
-    function getFavorites() {
-      try {
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function saveFavorites(favs) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(favs));
-      } catch (e) {
-        console.warn('LocalStorage save failed', e);
-      }
-    }
-
-    // 2. 상단 즐겨찾기 줄(fav-row) 렌더링
-    function renderFavorites() {
-      const favs = getFavorites();
-      
-      // 본문 전체 도구 아이템 active 상태 동기화
-      document.querySelectorAll('.tool-item').forEach(item => {
-        const id = item.getAttribute('data-id');
-        const star = item.querySelector('.star-btn');
-        if (favs.includes(id)) {
-          item.classList.add('favorited');
-          if (star) star.textContent = '★';
-        } else {
-          item.classList.remove('favorited');
-          if (star) star.textContent = '☆';
-        }
-      });
-
-      // 즐겨찾기 줄 비우기 및 재생성
-      if (!favRow || !favList) return;
-
-      if (favs.length === 0) {
-        favRow.style.display = 'none';
-        favList.innerHTML = '';
-        return;
-      }
-
-      favRow.style.display = 'block';
-      favList.innerHTML = '';
-
-      favs.forEach((id, idx) => {
-        const origItem = document.querySelector(`.tool-item[data-id="${id}"]`);
-        if (!origItem) return;
-        const origLink = origItem.querySelector('a');
-        if (!origLink) return;
-
-        if (idx > 0) {
-          favList.appendChild(document.createTextNode(' · '));
+        function getFavorites() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
         }
 
-        const favItemSpan = document.createElement('span');
-        favItemSpan.className = 'tool-item favorited';
-        favItemSpan.setAttribute('data-id', id);
+        function saveFavorites(favs) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(favs));
+            } catch (e) {
+                console.warn(e);
+            }
+        }
 
-        const newLink = document.createElement('a');
-        newLink.href = origLink.getAttribute('href');
-        newLink.textContent = origLink.textContent;
-        newLink.setAttribute('data-desc', origLink.getAttribute('data-desc') || '');
+        function renderFavorites() {
+            const favs = getFavorites();
 
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'star-btn';
-        removeBtn.textContent = '★';
-        removeBtn.title = '즐겨찾기 해제';
-        removeBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleFavorite(id);
+            document.querySelectorAll('.tool-item').forEach(item => {
+                const id = item.getAttribute('data-id');
+                const star = item.querySelector('.star-btn');
+                if (favs.includes(id)) {
+                    item.classList.add('favorited');
+                    if (star) star.textContent = '★';
+                } else {
+                    item.classList.remove('favorited');
+                    if (star) star.textContent = '☆';
+                }
+            });
+
+            if (!favRow || !favList) return;
+
+            if (favs.length === 0) {
+                favRow.style.display = 'none';
+                favList.innerHTML = '';
+                return;
+            }
+
+            favRow.style.display = 'block';
+            favList.innerHTML = '';
+
+            favs.forEach((id, idx) => {
+                const origItem = document.querySelector(`.tools-list .tool-item[data-id="${id}"]`);
+                if (!origItem) return;
+                const origLink = origItem.querySelector('a');
+                if (!origLink) return;
+
+                if (idx > 0) {
+                    favList.appendChild(document.createTextNode(' · '));
+                }
+
+                const favItemSpan = document.createElement('span');
+                favItemSpan.className = 'tool-item favorited';
+                favItemSpan.setAttribute('data-id', id);
+
+                const newLink = document.createElement('a');
+                newLink.href = origLink.getAttribute('href');
+                newLink.textContent = origLink.textContent;
+                newLink.setAttribute('data-desc', origLink.getAttribute('data-desc') || '');
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'star-btn';
+                removeBtn.textContent = '★';
+                removeBtn.title = '즐겨찾기 해제';
+                removeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFavorite(id);
+                });
+
+                favItemSpan.appendChild(newLink);
+                favItemSpan.appendChild(removeBtn);
+                favList.appendChild(favItemSpan);
+
+                bindDescEvents(newLink);
+            });
+        }
+
+        function toggleFavorite(id) {
+            let favs = getFavorites();
+            if (favs.includes(id)) {
+                favs = favs.filter(item => item !== id);
+            } else {
+                favs.push(id);
+            }
+            saveFavorites(favs);
+            renderFavorites();
+        }
+
+        document.querySelectorAll('.tool-item .star-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const parent = this.closest('.tool-item');
+                if (parent) {
+                    toggleFavorite(parent.getAttribute('data-id'));
+                }
+            });
         });
 
-        favItemSpan.appendChild(newLink);
-        favItemSpan.appendChild(removeBtn);
-        favList.appendChild(favItemSpan);
+        function bindDescEvents(link) {
+            if (!descBox || !descText) return;
 
-        // 설명창 이벤트 연결
-        bindDescEvents(newLink);
-      });
-    }
+            const show = function() {
+                const d = this.getAttribute('data-desc');
+                if (d) {
+                    descText.textContent = d;
+                    descBox.classList.add('active');
+                }
+            };
 
-    // 3. 즐겨찾기 토글 동작
-    function toggleFavorite(id) {
-      let favs = getFavorites();
-      if (favs.includes(id)) {
-        favs = favs.filter(item => item !== id);
-      } else {
-        favs.push(id);
-      }
-      saveFavorites(favs);
-      renderFavorites();
-    }
+            const hide = function() {
+                descText.textContent = '';
+                descBox.classList.remove('active');
+            };
 
-    // 4. 별표 클릭 이벤트 바인딩
-    document.querySelectorAll('.tool-item .star-btn').forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const parent = this.closest('.tool-item');
-        if (parent) {
-          const id = parent.getAttribute('data-id');
-          toggleFavorite(id);
-        }
-      });
-    });
-
-    // 5. 툴팁 설명창 바인딩 헬퍼
-    function bindDescEvents(link) {
-      if (!descBox || !descText) return;
-      link.addEventListener('mouseenter', function() {
-        const d = this.getAttribute('data-desc');
-        if (d) { descText.textContent = d; descBox.classList.add('active'); }
-      });
-      link.addEventListener('mouseleave', function() {
-        descText.textContent = defaultMsg;
-        descBox.classList.remove('active');
-      });
-      link.addEventListener('focus', function() {
-        const d = this.getAttribute('data-desc');
-        if (d) { descText.textContent = d; descBox.classList.add('active'); }
-      });
-      link.addEventListener('blur', function() {
-        descText.textContent = defaultMsg;
-        descBox.classList.remove('active');
-      });
-      link.addEventListener('touchstart', function() {
-        const d = this.getAttribute('data-desc');
-        if (d) { descText.textContent = d; descBox.classList.add('active'); }
-      }, { passive: true });
-    }
-
-    // 초기 툴팁 연결 및 즐겨찾기 로드
-    document.querySelectorAll('.tools-list a').forEach(bindDescEvents);
-    renderFavorites();
-  })();
-</script>
-    <script>
-  (function() {
-    const STORAGE_KEY = 'marsko_fav_tools_v1';
-    const favRow = document.getElementById('favRow');
-    const favList = document.getElementById('favList');
-    const descBox = document.getElementById('toolDesc');
-    const descText = descBox ? descBox.querySelector('.desc-text') : null;
-
-    function getFavorites() {
-      try {
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function saveFavorites(favs) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(favs));
-      } catch (e) {
-        console.warn(e);
-      }
-    }
-
-    function renderFavorites() {
-      const favs = getFavorites();
-
-      document.querySelectorAll('.tool-item').forEach(item => {
-        const id = item.getAttribute('data-id');
-        const star = item.querySelector('.star-btn');
-        if (favs.includes(id)) {
-          item.classList.add('favorited');
-          if (star) star.textContent = '★';
-        } else {
-          item.classList.remove('favorited');
-          if (star) star.textContent = '☆';
-        }
-      });
-
-      if (!favRow || !favList) return;
-
-      if (favs.length === 0) {
-        favRow.style.display = 'none';
-        favList.innerHTML = '';
-        return;
-      }
-
-      favRow.style.display = 'block';
-      favList.innerHTML = '';
-
-      favs.forEach((id, idx) => {
-        const origItem = document.querySelector(`.tool-item[data-id="${id}"]`);
-        if (!origItem) return;
-        const origLink = origItem.querySelector('a');
-        if (!origLink) return;
-
-        if (idx > 0) {
-          favList.appendChild(document.createTextNode(' · '));
+            link.addEventListener('mouseenter', show);
+            link.addEventListener('mouseleave', hide);
+            link.addEventListener('focus', show);
+            link.addEventListener('blur', hide);
+            link.addEventListener('touchstart', show, { passive: true });
         }
 
-        const favItemSpan = document.createElement('span');
-        favItemSpan.className = 'tool-item favorited';
-        favItemSpan.setAttribute('data-id', id);
-
-        const newLink = document.createElement('a');
-        newLink.href = origLink.getAttribute('href');
-        newLink.textContent = origLink.textContent;
-        newLink.setAttribute('data-desc', origLink.getAttribute('data-desc') || '');
-
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'star-btn';
-        removeBtn.textContent = '★';
-        removeBtn.title = '즐겨찾기 해제';
-        removeBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleFavorite(id);
-        });
-
-        favItemSpan.appendChild(newLink);
-        favItemSpan.appendChild(removeBtn);
-        favList.appendChild(favItemSpan);
-
-        bindDescEvents(newLink);
-      });
-    }
-
-    function toggleFavorite(id) {
-      let favs = getFavorites();
-      if (favs.includes(id)) {
-        favs = favs.filter(item => item !== id);
-      } else {
-        favs.push(id);
-      }
-      saveFavorites(favs);
-      renderFavorites();
-    }
-
-    document.querySelectorAll('.tool-item .star-btn').forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const parent = this.closest('.tool-item');
-        if (parent) {
-          toggleFavorite(parent.getAttribute('data-id'));
-        }
-      });
-    });
-
-    function bindDescEvents(link) {
-      if (!descBox || !descText) return;
-      
-      const show = function() {
-        const d = this.getAttribute('data-desc');
-        if (d) {
-          descText.textContent = d;
-          descBox.classList.add('active');
-        }
-      };
-
-      const hide = function() {
-        descText.textContent = '';
-        descBox.classList.remove('active');
-      };
-
-      link.addEventListener('mouseenter', show);
-      link.addEventListener('mouseleave', hide);
-      link.addEventListener('focus', show);
-      link.addEventListener('blur', hide);
-      link.addEventListener('touchstart', show, { passive: true });
-    }
-
-    document.querySelectorAll('.tools-list a').forEach(bindDescEvents);
-    renderFavorites();
-  })();
-</script>
+        document.querySelectorAll('.tools-list a').forEach(bindDescEvents);
+        renderFavorites();
+    })();
+    </script>
 </body>
 </html>
