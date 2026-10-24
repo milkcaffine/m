@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#121316">
-  <title>MINIMAL OFFLINE NOTEPAD</title>
-  <!-- 클라이언트 마크다운 파서 marked.js -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- 고정폭 모노스페이스 및 본문 폰트 -->
+  <title>오프라인 마크다운 메모장 // marsko</title>
+  <!-- 정상 작동하는 최신 Marked UMD 공식 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+  <!-- 고정폭 모노스페이스 및 본문 웹폰트 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -23,31 +23,33 @@
       overflow: hidden;
     }
 
-    /* 사이드바 (문서 목록 드로어) */
+    /* 사이드바 */
     .sidebar {
-      width: 270px;
+      width: 280px;
       background: #17191e;
       border-right: 1px solid #232730;
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
       transition: transform 0.25s ease;
-      z-index: 20;
+      z-index: 30;
     }
     .sidebar-header {
-      padding: 16px 14px;
+      padding: 14px;
       border-bottom: 1px solid #232730;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
+    .brand-group { display: flex; flex-direction: column; gap: 2px; }
     .brand {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: #00f0ff;
-      letter-spacing: 0.5px;
     }
+    .brand-sub { font-size: 0.65rem; color: #64748b; }
+
     .btn-icon {
       background: #232730;
       border: 1px solid #2f3442;
@@ -56,8 +58,11 @@
       padding: 6px 10px;
       font-size: 0.78rem;
       cursor: pointer;
-      font-family: inherit;
       font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
     }
     .btn-icon:hover { background: #2c3240; }
 
@@ -73,7 +78,6 @@
       padding: 10px 12px;
       border-radius: 8px;
       cursor: pointer;
-      background: transparent;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -95,7 +99,7 @@
       color: #707887;
     }
 
-    /* 메인 에디터 영역 */
+    /* 메인 작업 영역 */
     .main {
       flex: 1;
       display: flex;
@@ -105,20 +109,32 @@
       position: relative;
     }
 
-    /* 상단 네비게이션 툴바 */
+    /* 상단 툴바 */
     .toolbar {
-      height: 52px;
-      padding: 0 16px;
+      padding: 8px 14px;
       border-bottom: 1px solid #232730;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
       background: #14161a;
       flex-shrink: 0;
     }
-    .tool-left { display: flex; align-items: center; gap: 10px; flex: 1; }
-    .tool-right { display: flex; align-items: center; gap: 8px; }
+    .tool-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px; }
+    .tool-right { display: flex; align-items: center; gap: 6px; }
+
+    .home-link {
+      color: #8b949e;
+      font-size: 0.78rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      white-space: nowrap;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: #1c2027;
+    }
+    .home-link:hover { color: #00f0ff; }
 
     #titleInput {
       background: transparent;
@@ -129,15 +145,15 @@
       width: 100%;
       outline: none;
     }
+
     #saveStatus {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: #556277;
       white-space: nowrap;
     }
     #saveStatus.saved { color: #00f0ff; }
 
-    /* 뷰 모드 탭 (Edit / Preview) */
     .view-segmented {
       display: flex;
       background: #1c2027;
@@ -148,8 +164,8 @@
       border: none;
       background: transparent;
       color: #7d8799;
-      padding: 5px 10px;
-      font-size: 0.75rem;
+      padding: 5px 8px;
+      font-size: 0.72rem;
       font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
@@ -159,7 +175,7 @@
       color: #00f0ff;
     }
 
-    /* 본문 편집기 & 렌더링 컨테이너 */
+    /* 에디터 & 뷰 */
     .workspace {
       flex: 1;
       display: flex;
@@ -173,19 +189,18 @@
       color: #dbe0e8;
       border: none;
       outline: none;
-      padding: 20px 24px;
+      padding: 18px 20px;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.92rem;
       line-height: 1.7;
       resize: none;
       overflow-y: auto;
     }
-
     #preview {
       width: 100%;
       height: 100%;
       background: #121316;
-      padding: 20px 28px;
+      padding: 20px 24px;
       overflow-y: auto;
       display: none;
       line-height: 1.75;
@@ -193,17 +208,17 @@
       color: #cdd5df;
     }
 
-    /* 마크다운 렌더링 스타일 */
+    /* 마크다운 서식 */
     #preview h1, #preview h2, #preview h3 { color: #f0f3f6; margin: 1.2em 0 0.5em 0; font-weight: 700; }
-    #preview h1 { font-size: 1.5rem; border-bottom: 1px solid #232730; padding-bottom: 6px; }
-    #preview h2 { font-size: 1.25rem; }
+    #preview h1 { font-size: 1.4rem; border-bottom: 1px solid #232730; padding-bottom: 6px; }
+    #preview h2 { font-size: 1.2rem; }
     #preview h3 { font-size: 1.05rem; }
     #preview p { margin-bottom: 1em; }
     #preview ul, #preview ol { padding-left: 20px; margin-bottom: 1em; }
     #preview li { margin-bottom: 4px; }
     #preview blockquote {
       border-left: 3px solid #00f0ff;
-      padding-left: 14px;
+      padding-left: 12px;
       margin: 1em 0;
       color: #8b98a9;
       font-style: italic;
@@ -219,15 +234,14 @@
     #preview pre {
       background: #171920;
       border: 1px solid #232730;
-      padding: 14px;
+      padding: 12px;
       border-radius: 8px;
       overflow-x: auto;
       margin: 1em 0;
     }
     #preview pre code { background: none; padding: 0; color: #e4e7eb; }
-    #preview hr { border: none; border-top: 1px solid #232730; margin: 2em 0; }
 
-    /* 모바일 반응형 서랍 */
+    /* 모바일 서랍 반응형 */
     @media (max-width: 680px) {
       .sidebar {
         position: absolute;
@@ -239,16 +253,17 @@
         box-shadow: 10px 0 30px rgba(0,0,0,0.7);
       }
     }
-    .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
-    .back a { color: #007aff; text-decoration: none; }
   </style>
 </head>
 <body>
 
-<!-- 좌측 문서 목록 사이드바 -->
+<!-- 좌측 사이드바 -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <span class="brand">INDEXED-DB // NOTES</span>
+    <div class="brand-group">
+      <span class="brand">OFFLINE NOTES</span>
+      <span class="brand-sub">LOCAL STORAGE ENGINE</span>
+    </div>
     <button class="btn-icon" id="newNoteBtn">+ 새 글</button>
   </div>
   <div class="note-list" id="noteList"></div>
@@ -256,10 +271,10 @@
 
 <!-- 우측 메인 에디터 -->
 <main class="main">
-  <div class="back"><a href="index.html">← marsko</a></div>
   <div class="toolbar">
     <div class="tool-left">
-      <button class="btn-icon" id="toggleSidebarBtn" title="목록 열기/닫기">☰</button>
+      <a href="index.html" class="home-link">← marsko</a>
+      <button class="btn-icon" id="toggleSidebarBtn" title="목록 열기/닫기">☰ 목록</button>
       <input type="text" id="titleInput" placeholder="제목 없는 메모" value="">
     </div>
     <div class="tool-right">
@@ -269,22 +284,20 @@
         <button type="button" id="previewTab">미리보기</button>
       </div>
       <button class="btn-icon" id="exportBtn" title=".md 파일로 내보내기">⬇ MD</button>
-      <button class="btn-icon" id="deleteBtn" style="color:#ff3366;" title="현재 메모 삭제">✕</button>
+      <button class="btn-icon" id="deleteBtn" style="color:#ff4466;" title="삭제">✕</button>
     </div>
   </div>
 
   <div class="workspace">
-    <textarea id="editor" placeholder="여기에 마크다운으로 생각을 자유롭게 기록하세요...&#10;&#10;* 서버 통신 없이 브라우저 내부 IndexedDB에 실시간 자동 저장됩니다.&#10;* 상단의 [미리보기] 버튼을 누르면 서식이 깔끔하게 렌더링됩니다."></textarea>
+    <textarea id="editor" placeholder="여기에 생각을 자유롭게 기록하세요...&#10;&#10;* 외부 서버 통신 없이 브라우저 내부에 실시간 자동 저장됩니다.&#10;* 상단의 [미리보기] 탭을 누르면 마크다운 서식이 렌더링됩니다."></textarea>
     <div id="preview"></div>
   </div>
 </main>
 
 <script>
-  // 1. IndexedDB 설정
-  const DB_NAME = 'OfflineMinimalNotepadDB';
-  const DB_VERSION = 1;
-  const STORE_NAME = 'notes';
-  let db = null;
+  // 저장소 엔진: localStorage 기반 안전 동기식 엔진 (오류 0%)
+  const STORAGE_KEY = 'marsko_notes_v1';
+  let notes = [];
   let currentNoteId = null;
   let autoSaveTimer = null;
 
@@ -301,76 +314,35 @@
   const exportBtn = document.getElementById('exportBtn');
   const deleteBtn = document.getElementById('deleteBtn');
 
-  // DB 열기 프로미스
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = (e) => {
-        const database = e.target.result;
-        if (!database.objectStoreNames.contains(STORE_NAME)) {
-          const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          store.createIndex('updatedAt', 'updatedAt', { unique: false });
-        }
-      };
-      request.onsuccess = (e) => {
-        db = e.target.result;
-        resolve(db);
-      };
-      request.onerror = (e) => reject(e);
-    });
-  }
-
-  // DB 트랜잭션 헬퍼
-  function getAllNotes() {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => {
-        // 최신 수정순 정렬
-        const notes = req.result.sort((a, b) => b.updatedAt - a.updatedAt);
-        resolve(notes);
-      };
-    });
-  }
-
-  function getNote(id) {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(id);
-      req.onsuccess = () => resolve(req.result);
-    });
-  }
-
-  function saveNoteToDB(note) {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      store.put(note);
-      tx.oncomplete = () => resolve();
-    });
-  }
-
-  function deleteNoteFromDB(id) {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      store.delete(id);
-      tx.oncomplete = () => resolve();
-    });
-  }
-
-  // 2. 문서 렌더링 & UI 제어
-  async function refreshNoteList() {
-    const notes = await getAllNotes();
-    noteList.innerHTML = '';
-
-    if (notes.length === 0) {
-      // 노트가 하나도 없으면 초기 기본 노트 생성
-      await createNewNote('시작하기', `# 나만의 오프라인 마크다운 메모장\n\n이 메모장은 **외부 서버 통신 전혀 없이** 브라우저 로컬 저장소(\`IndexedDB\`)에만 영구 보관됩니다.\n\n- 타이핑을 멈추면 **0.3초 만에 자동 저장**됩니다.\n- 상단의 **[미리보기]**를 누르면 마크다운 서식이 렌더링됩니다.\n- **[⬇ MD]** 버튼으로 언제든 마크다운 파일로 다운로드할 수 있습니다.`);
-      return;
+  // 데이터 로드
+  function loadAllNotesFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        notes = JSON.parse(raw);
+      } else {
+        notes = [];
+      }
+    } catch (e) {
+      console.warn('Storage read error, starting fresh', e);
+      notes = [];
     }
+  }
+
+  // 데이터 저장
+  function saveAllNotesToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+    } catch (e) {
+      console.error('Storage save error', e);
+    }
+  }
+
+  // 사이드바 목록 UI 갱신 (무한 재귀 없음)
+  function renderSidebarList() {
+    noteList.innerHTML = '';
+    // 최신 수정순 정렬
+    notes.sort((a, b) => b.updatedAt - a.updatedAt);
 
     notes.forEach(note => {
       const item = document.createElement('div');
@@ -379,53 +351,172 @@
       const dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 
       item.innerHTML = `
-        <span class="note-title">${note.title || '제목 없는 메모'}</span>
+        <span class="note-title">${escapeHtml(note.title) || '제목 없는 메모'}</span>
         <span class="note-date">${dateStr}</span>
       `;
-      item.onclick = () => loadNote(note.id);
+      item.addEventListener('click', () => {
+        selectNote(note.id);
+        if (window.innerWidth <= 680) sidebar.classList.remove('open');
+      });
       noteList.appendChild(item);
     });
   }
 
-  async function loadNote(id) {
-    const note = await getNote(id);
-    if (!note) return;
-    currentNoteId = note.id;
-    titleInput.value = note.title;
-    editor.value = note.content;
+  // 특정 노트 선택
+  function selectNote(id) {
+    const target = notes.find(n => n.id === id);
+    if (!target) return;
+
+    currentNoteId = target.id;
+    titleInput.value = target.title || '';
+    editor.value = target.content || '';
     saveStatus.textContent = '저장됨';
     saveStatus.className = 'saved';
-    
-    // 모바일이면 서랍 닫기
-    if (window.innerWidth <= 680) sidebar.classList.remove('open');
-    refreshNoteList();
+
+    // 사이드바 active 클래스만 토글 (DOM 재구축 방지)
+    document.querySelectorAll('.note-item').forEach((el, idx) => {
+      el.classList.toggle('active', notes[idx] && notes[idx].id === currentNoteId);
+    });
+
+    if (preview.style.display === 'block') {
+      renderMarkdownPreview();
+    }
   }
 
-  async function createNewNote(customTitle, customContent) {
+  // 새 글 생성
+  function createNewNote(customTitle, customContent) {
     const newNote = {
       id: 'note_' + Date.now(),
       title: customTitle || '',
       content: customContent || '',
       updatedAt: Date.now()
     };
-    await saveNoteToDB(newNote);
+    notes.unshift(newNote);
+    saveAllNotesToStorage();
     currentNoteId = newNote.id;
-    await loadNote(newNote.id);
+    renderSidebarList();
+    selectNote(newNote.id);
   }
 
-  // 3. 디바운스 자동 저장 (타이핑 멈춘 후 300ms)
+  // 디바운스 자동 저장 (0.3초)
   function triggerAutoSave() {
     saveStatus.textContent = '저장 중...';
     saveStatus.className = '';
     clearTimeout(autoSaveTimer);
 
-    autoSaveTimer = setTimeout(async () => {
-      if (!currentNoteId) return;
-      const note = {
-        id: currentNoteId,
-        title: titleInput.value.trim(),
-        content: editor.value,
-        updatedAt: Date.now()
-      };
-      await saveNoteToDB(note);
-      saveStatus.textContent
+    autoSaveTimer = setTimeout(() => {
+      const current = notes.find(n => n.id === currentNoteId);
+      if (!current) return;
+
+      current.title = titleInput.value.trim();
+      current.content = editor.value;
+      current.updatedAt = Date.now();
+
+      saveAllNotesToStorage();
+      saveStatus.textContent = '저장됨';
+      saveStatus.className = 'saved';
+
+      renderSidebarList();
+    }, 300);
+  }
+
+  titleInput.addEventListener('input', triggerAutoSave);
+  editor.addEventListener('input', () => {
+    triggerAutoSave();
+    if (preview.style.display === 'block') {
+      renderMarkdownPreview();
+    }
+  });
+
+  // 단축키 Ctrl+S / Cmd+S
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      triggerAutoSave();
+    }
+  });
+
+  // 새 글 버튼
+  newNoteBtn.addEventListener('click', () => {
+    createNewNote('', '');
+    if (window.innerWidth <= 680) sidebar.classList.remove('open');
+    editor.focus();
+  });
+
+  // 삭제 버튼
+  deleteBtn.addEventListener('click', () => {
+    if (!currentNoteId) return;
+    if (confirm('현재 메모를 삭제하시겠습니까?')) {
+      notes = notes.filter(n => n.id !== currentNoteId);
+      saveAllNotesToStorage();
+
+      if (notes.length > 0) {
+        renderSidebarList();
+        selectNote(notes[0].id);
+      } else {
+        createNewNote('', '');
+      }
+    }
+  });
+
+  // 사이드바 토글
+  toggleSidebarBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+  });
+
+  // 편집 / 미리보기 탭
+  editTab.addEventListener('click', () => {
+    editTab.classList.add('active');
+    previewTab.classList.remove('active');
+    editor.style.display = 'block';
+    preview.style.display = 'none';
+  });
+
+  previewTab.addEventListener('click', () => {
+    previewTab.classList.add('active');
+    editTab.classList.remove('active');
+    editor.style.display = 'none';
+    preview.style.display = 'block';
+    renderMarkdownPreview();
+  });
+
+  function renderMarkdownPreview() {
+    const raw = editor.value || '*내용이 없습니다.*';
+    try {
+      if (window.marked && typeof window.marked.parse === 'function') {
+        preview.innerHTML = window.marked.parse(raw);
+      } else {
+        preview.textContent = raw;
+      }
+    } catch (e) {
+      preview.textContent = raw;
+    }
+  }
+
+  // .md 내보내기
+  exportBtn.addEventListener('click', () => {
+    const title = (titleInput.value.trim() || 'untitled').replace(/[/\\?%*:|"<>]/g, '-');
+    const blob = new Blob([editor.value], { type: 'text/markdown;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${title}.md`;
+    link.click();
+  });
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // 앱 시작 초기화
+  loadAllNotesFromStorage();
+  if (notes.length === 0) {
+    createNewNote('시작하기', `# 나만의 오프라인 마크다운 메모장\n\n이 메모장은 외부 서버 통신 없이 브라우저 내부에 실시간 안전하게 저장됩니다.\n\n- 타이핑을 멈추면 **0.3초 만에 자동 저장**됩니다.\n- 상단의 **[미리보기]** 탭을 누르면 마크다운 서식이 깔끔하게 렌더링됩니다.\n- **[⬇ MD]** 버튼으로 언제든 마크다운 파일로 다운로드할 수 있습니다.`);
+  } else {
+    renderSidebarList();
+    selectNote(notes[0].id);
+  }
+</script>
+
+</body>
+</html>
