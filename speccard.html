@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>컬렉션 스펙 카드 생성기</title>
+  <!-- 감성 폰트: 모노스페이스(스펙/바코드용) & 인터/노토산스 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Noto Sans KR", sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+
+    /* 사진 업로드 */
+    .dropzone {
+      border: 2px dashed #007aff;
+      background: #f0f7ff;
+      border-radius: 14px;
+      padding: 18px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #007aff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    input[type="file"] { display: none; }
+
+    /* 프리셋 템플릿 버튼 */
+    .preset-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .preset-btn {
+      flex: 1;
+      white-space: nowrap;
+      padding: 7px 10px;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #495057;
+      cursor: pointer;
+    }
+    .preset-btn:hover { background: #f8f9fa; border-color: #adb5bd; }
+
+    /* 컨트롤 패널 */
+    .control-panel {
+      margin-top: 12px;
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      gap: 8px;
+    }
+    .control-row label { font-weight: 600; color: #343a40; flex-shrink: 0; width: 90px; }
+    .control-row input[type="text"] {
+      flex: 1;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      padding: 7px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+    }
+    .spec-pair {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+    }
+    .spec-pair input.spec-k { width: 38%; flex: none; font-weight: 600; color: #495057; }
+    .spec-pair input.spec-v { flex: 1; }
+
+    /* 테마 선택 세그먼트 */
+    .segmented-control {
+      display: flex;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 3px;
+      width: 100%;
+    }
+    .segmented-control button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 7px 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+    }
+    .segmented-control button.active {
+      background: #fff;
+      color: #007aff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    /* 미리보기 캔버스 */
+    #previewArea {
+      margin-top: 16px;
+      width: 100%;
+      text-align: center;
+    }
+    .preview-header { font-size: 0.75rem; color: #868e96; margin-bottom: 6px; text-align: left; }
+    .canvas-container {
+      width: 100%;
+      max-height: 480px;
+      background: #e9ecef;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 10px;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 460px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+      border-radius: 6px;
+    }
+
+    /* 저장 버튼 */
+    .btn-group { margin-top: 16px; }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: #007aff;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>컬렉션 스펙 카드 생성기</h1>
+  <p class="sub">카메라 · 렌즈 · 인형 · 레트로 기기 아카이빙 시트</p>
+
+  <div class="dropzone" id="dropzone">
+    <span>📷 소장품 사진 불러오기</span>
+    <small>정사각형 또는 4:3 비율로 자동 크롭됩니다</small>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <!-- 빠른 카테고리 프리셋 -->
+  <div class="preset-bar">
+    <button type="button" class="preset-btn" data-preset="lens">📷 빈티지 렌즈</button>
+    <button type="button" class="preset-btn" data-preset="doll">🎎 커스텀 인형</button>
+    <button type="button" class="preset-btn" data-preset="retro">🎧 레트로 디바이스</button>
+  </div>
+
+  <div class="control-panel">
+    <label style="font-weight: 600; font-size: 0.85rem; color: #343a40;">카드 디자인 테마</label>
+    <div class="segmented-control" id="themeControl">
+      <button type="button" data-theme="museum" class="active">박물관 도록</button>
+      <button type="button" data-theme="cyber">사이버 터미널</button>
+      <button type="button" data-theme="archive">다크 아카이브</button>
+    </div>
+
+    <div class="control-row">
+      <label>분류 / 번호</label>
+      <input type="text" id="catInput" value="OPTICAL LENS // ARCHIVE #04">
+    </div>
+
+    <div class="control-row">
+      <label>소장품 이름</label>
+      <input type="text" id="nameInput" value="Helios 44-2 58mm F2">
+    </div>
+
+    <div class="control-row">
+      <label>스펙 항목 1</label>
+      <div class="spec-pair">
+        <input type="text" class="spec-k" id="k1" value="MOUNT">
+        <input type="text" class="spec-v" id="v1" value="M42 Screw (w/ Helicoid)">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label>스펙 항목 2</label>
+      <div class="spec-pair">
+        <input type="text" class="spec-k" id="k2" value="OPTICS">
+        <input type="text" class="spec-v" id="v2" value="6 Elements in 4 Groups">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label>스펙 항목 3</label>
+      <div class="spec-pair">
+        <input type="text" class="spec-k" id="k3" value="ERA / ORIGIN">
+        <input type="text" class="spec-v" id="v3" value="1978 · KMZ Factory">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label>스펙 항목 4</label>
+      <div class="spec-pair">
+        <input type="text" class="spec-k" id="k4" value="CONDITION">
+        <input type="text" class="spec-v" id="v4" value="Functional Brassing / Clean Glass">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <label>코멘트 / 메모</label>
+      <input type="text" id="noteInput" value="Swirly bokeh character with custom 3D-printed front cap.">
+    </div>
+
+    <div class="control-row">
+      <label>소유자 서명</label>
+      <input type="text" id="ownerInput" value="COLLECTION OF @MARSKO">
+    </div>
+  </div>
+
+  <div id="previewArea">
+    <div class="preview-header">스펙 카드 실시간 미리보기 (1200×1600px 고해상도)</div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn" id="downloadBtn">스펙 카드 이미지 저장</button>
+  </div>
+</div>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const themeControl = document.getElementById('themeControl');
+  const presetBtns = document.querySelectorAll('.preset-btn');
+
+  const catInput = document.getElementById('catInput');
+  const nameInput = document.getElementById('nameInput');
+  const k1 = document.getElementById('k1'), v1 = document.getElementById('v1');
+  const k2 = document.getElementById('k2'), v2 = document.getElementById('v2');
+  const k3 = document.getElementById('k3'), v3 = document.getElementById('v3');
+  const k4 = document.getElementById('k4'), v4 = document.getElementById('v4');
+  const noteInput = document.getElementById('noteInput');
+  const ownerInput = document.getElementById('ownerInput');
+
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  let itemImg = null;
+  let currentTheme = 'museum';
+
+  // 카테고리별 빠른 입력 프리셋 데이터
+  const presets = {
+    lens: {
+      cat: 'OPTICAL LENS // ARCHIVE #04',
+      name: 'Helios 44-2 58mm F2.0',
+      k1: 'MOUNT', v1: 'M42 Screw (Adapted to E)',
+      k2: 'APERTURE', v2: 'f/2.0 - f/16 (8 Blades)',
+      k3: 'ORIGIN', v3: '1978 · KMZ USSR',
+      k4: 'CHARACTER', v4: 'Classic Swirly Bokeh',
+      note: 'Custom 3D-printed lens cap & helicoid close-focus setup.'
+    },
+    doll: {
+      cat: 'BJD ARCHIVE // SPEC SHEET #01',
+      name: 'Volks SDGr Michael',
+      k1: 'SCULPT / BODY', v1: 'Michael Head + SDGr Boy Body',
+      k2: 'SKIN TONE', v2: 'Pure Skin Normal',
+      k3: 'CUSTOM', v3: 'Custom Faceup & UV Coating',
+      k4: 'EYES / WIG', v4: '16mm Glass Eyes / Mohair Wig',
+      note: 'Maintained and customized with delicate pastel blushing.'
+    },
+    retro: {
+      cat: 'LEGACY TECH // HARDWARE #07',
+      name: 'Apple iPod Classic (5th Gen)',
+      k1: 'MODEL NO.', v1: 'MA002J/A (White)',
+      k2: 'STORAGE', v2: 'Flash Modded 256GB',
+      k3: 'DAC CHIP', v3: 'Wolfson WM87588G',
+      k4: 'MODIFICATION', v4: 'New Battery & 3D Printed Parts',
+      note: 'Restored portable media player for dedicated offline listening.'
+    }
+  };
+
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = presets[btn.dataset.preset];
+      if (!p) return;
+      catInput.value = p.cat;
+      nameInput.value = p.name;
+      k1.value = p.k1; v1.value = p.v1;
+      k2.value = p.k2; v2.value = p.v2;
+      k3.value = p.k3; v3.value = p.v3;
+      k4.value = p.k4; v4.value = p.v4;
+      noteInput.value = p.note;
+      renderSpecCard();
+    });
+  });
+
+  // 테마 토글
+  themeControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    themeControl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    currentTheme = e.target.dataset.theme;
+    renderSpecCard();
+  });
+
+  // 이미지 업로드
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      itemImg = new Image();
+      itemImg.onload = renderSpecCard;
+      itemImg.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  // 입력값 변경 시 실시간 렌더링
+  [catInput, nameInput, k1, v1, k2, v2, k3, v3, k4, v4, noteInput, ownerInput].forEach(el => {
+    el.addEventListener('input', renderSpecCard);
+  });
+
+  // Cover 크롭 이미지 그리기
+  function drawCoverImg(ctx, img, x, y, w, h) {
+    const imgRatio = img.naturalWidth / img.naturalHeight;
+    const targetRatio = w / h;
+    let sx, sy, sw, sh;
+    if (imgRatio > targetRatio) {
+      sh = img.naturalHeight; sw = sh * targetRatio;
+      sy = 0; sx = (img.naturalWidth - sw) / 2;
+    } else {
+      sw = img.naturalWidth; sh = sw / targetRatio;
+      sx = 0; sy = (img.naturalHeight - sh) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+
+  // 장식용 바코드 그리기
+  function drawBarcode(ctx, x, y, w, h, color) {
+    ctx.save();
+    ctx.fillStyle = color;
+    const seed = [3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2, 1, 3, 1, 2, 2, 1, 3];
+    let curX = x;
+    let i = 0;
+    while (curX < x + w) {
+      const barW = seed[i % seed.length] * 2.5;
+      const gapW = seed[(i + 3) % seed.length] * 2;
+      if (curX + barW > x + w) break;
+      ctx.fillRect(curX, y, barW, h);
+      curX += barW + gapW;
+      i++;
+    }
+    ctx.restore();
+  }
+
+  // 메인 스펙 카드 렌더링
+  function renderSpecCard() {
+    const W = 1200;
+    const H = 1600;
+    canvas.width = W;
+    canvas.height = H;
+
+    // 테마별 색상 팔레트 정의
+    let bg, cardBorder, textMain, textSub, accent, lineCol;
+    if (currentTheme === 'museum') {
+      bg = '#f6f4f0';
+      cardBorder = '#1e1e1e';
+      textMain = '#181818';
+      textSub = '#6e6a64';
+      accent = '#b84a39';
+      lineCol = '#dcd8d0';
+    } else if (currentTheme === 'cyber') {
+      bg = '#0b0e14';
+      cardBorder = '#00f0ff';
+      textMain = '#e2f1ff';
+      textSub = '#5c7c99';
+      accent = '#00f0ff';
+      lineCol = '#1b2636';
+    } else {
+      bg = '#141517';
+      cardBorder = '#343a40';
+      textMain = '#f1f3f5';
+      textSub = '#868e96';
+      accent = '#f59f00';
+      lineCol = '#2b2f36';
+    }
+
+    // 1. 배경 및 외곽 도록 테두리
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    const pad = 70;
+    ctx.strokeStyle = cardBorder;
+    ctx.lineWidth = currentTheme === 'cyber' ? 3 : 2;
+    ctx.strokeRect(pad, pad, W - pad * 2, H - pad * 2);
+
+    const innerX = pad + 45;
+    const innerW = W - (pad + 45) * 2;
+
+    // 2. 상단 메타 헤더 (분류 코드 & 포인트 마크)
+    ctx.fillStyle = accent;
+    ctx.fillRect(innerX, pad + 42, 14, 24);
+
+    ctx.fillStyle = textSub;
+    ctx.font = '600 22px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(catInput.value.toUpperCase(), innerX + 26, pad + 43);
+
+    // 우측 상단 장식 좌표
+    ctx.textAlign = 'right';
+    ctx.fillText('SPECIFICATION SHEET', innerX + innerW, pad + 43);
+
+    // 3. 소장품 이미지 프레임 (1020 x 680)
+    const imgY = pad + 90;
+    const imgH = 680;
+
+    ctx.fillStyle = lineCol;
+    ctx.fillRect(innerX, imgY, innerW, imgH);
+
+    if (itemImg) {
+      drawCoverImg(ctx, itemImg, innerX, imgY, innerW, imgH);
+    } else {
+      // 사진이 없을 때 기본 가이드 그래픽
+      ctx.fillStyle = textSub;
+      ctx.font = '500 26px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('[ NO IMAGE LOADED — TAP ABOVE TO UPLOAD ]', W / 2, imgY + imgH / 2);
+    }
+
+    // 이미지 테두리 라인
+    ctx.strokeStyle = cardBorder;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(innerX, imgY, innerW, imgH);
+
+    // 4. 소장품 메인 타이틀
+    const titleY = imgY + imgH + 45;
+    ctx.fillStyle = textMain;
+    ctx.font = '800 46px "Inter", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(nameInput.value, innerX, titleY);
+
+    // 타이틀 하단 굵은 구분선
+    const divY = titleY + 72;
+    ctx.fillStyle = cardBorder;
+    ctx.fillRect(innerX, divY, innerW, 4);
+
+    // 5. 4줄 스펙 테이블 그리드
+    const specs = [
+      { k: k1.value, v: v1.value },
+      { k: k2.value, v: v2.value },
+      { k: k3.value, v: v3.value },
+      { k: k4.value, v: v4.value }
+    ];
+
+    let rowY = divY + 20;
+    const rowH = 74;
+
+    specs.forEach((s) => {
+      // 항목 라벨 (좌측)
+      ctx.fillStyle = accent;
+      ctx.font = '600 22px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(s.k.toUpperCase(), innerX + 8, rowY + rowH / 2);
+
+      // 항목 값 (우측)
+      ctx.fillStyle = textMain;
+      ctx.font = '600 26px "Inter", "Noto Sans KR", sans-serif';
+      ctx.fillText(s.v, innerX + 290, rowY + rowH / 2);
+
+      // 하단 얇은 라인
+      ctx.fillStyle = lineCol;
+      ctx.fillRect(innerX, rowY + rowH, innerW, 1.5);
+
+      rowY += rowH;
+    });
+
+    // 6. 커스텀 메모 / 코멘트 박스
+    const noteY = rowY + 32;
+    ctx.fillStyle = textSub;
+    ctx.font = '600 18px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('NOTES & MODIFICATIONS //', innerX, noteY);
+
+    ctx.fillStyle = textMain;
+    ctx.font = '400 24px "Inter", "Noto Sans KR", sans-serif';
+    ctx.fillText(noteInput.value, innerX, noteY + 32);
+
+    // 7. 하단 푸터 (소유자 서명 & 바코드 그래픽)
+    const footerY = H - pad - 65;
+    ctx.fillStyle = textSub;
+    ctx.font = '600 20px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(ownerInput.value.toUpperCase(), innerX, footerY + 25);
+
+    // 우측 하단 시리얼 바코드
+    drawBarcode(ctx, innerX + innerW - 220, footerY - 12, 220, 36, textMain);
+  }
+
+  // 폰트 로드 완료 후 초기 렌더링
+  document.fonts.ready.then(() => {
+    renderSpecCard();
+  });
+
+  // 다운로드
+  downloadBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `spec_card_${Date.now()}.jpg`;
+      link.click();
+    }, 'image/jpeg', 0.98);
+  });
+</script>
+
+</body>
+</html>
