@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <title>1-Bit 디더링 & 게임보이 카메라 변환기</title>
+  <!-- 레트로 모노스페이스 폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      background: #e9ecef;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .container {
+      background: #ffffff;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+
+    /* 업로드 드롭존 */
+    .dropzone {
+      border: 2px dashed #007aff;
+      background: #f0f7ff;
+      border-radius: 14px;
+      padding: 20px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #007aff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    input[type="file"] { display: none; }
+
+    /* 미리보기 뷰 (도트 칼핀 유지) */
+    #previewArea {
+      margin-top: 14px;
+      display: none;
+      width: 100%;
+    }
+    .preview-info {
+      font-size: 0.75rem;
+      color: #495057;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      font-family: "IBM Plex Mono", monospace;
+    }
+    .canvas-container {
+      width: 100%;
+      max-height: 400px;
+      background: #141517;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 10px;
+    }
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 380px;
+      /* 픽셀이 흐려지지 않고 칼같이 각지게 보이도록 설정 */
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    /* 컨트롤 패널 */
+    .control-panel {
+      margin-top: 14px;
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+    }
+    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row select {
+      font-size: 0.85rem;
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid #ced4da;
+      background: #fff;
+      font-weight: 600;
+    }
+
+    /* 팔레트 테마 버튼 */
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .pal-btn {
+      padding: 8px 6px;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      color: #343a40;
+    }
+    .pal-btn.active {
+      border-color: #007aff;
+      background: #f0f7ff;
+      color: #007aff;
+    }
+    .dot-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+
+    /* 슬라이더 */
+    .slider-box { display: flex; align-items: center; gap: 8px; }
+    .slider-box input[type="range"] { width: 125px; }
+    .slider-box span {
+      font-size: 0.8rem;
+      color: #495057;
+      width: 44px;
+      text-align: right;
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    /* 버튼 */
+    .btn-group { margin-top: 16px; }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: #007aff;
+      color: #ffffff;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>1-Bit 디더링 & 게임보이 카메라</h1>
+  <p class="sub">레트로 매킨토시 · CRT 터미널 · 도트 픽셀 변환기</p>
+
+  <div class="dropzone" id="dropzone">
+    <span>📷 사진 선택 / 불러오기</span>
+    <small>일상 스냅, 인물, 풍경 사진을 레트로 도트로 변환합니다</small>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div id="previewArea">
+    <div class="preview-info">
+      <span id="algoLabel">ATKINSON 1-BIT</span>
+      <span id="resLabel">0 × 0 px</span>
+    </div>
+    <div class="canvas-container">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="control-panel">
+    <!-- 디더링 알고리즘 선택 -->
+    <div class="control-row">
+      <label for="algoSelect">디더링 방식</label>
+      <select id="algoSelect">
+        <option value="atkinson" selected>Atkinson (클래식 매킨토시)</option>
+        <option value="floyd">Floyd-Steinberg (정밀 점묘화)</option>
+        <option value="bayer">Bayer Matrix (레트로 게임 크로스해칭)</option>
+        <option value="gameboy">Game Boy Camera (128px + 4계조)</option>
+      </select>
+    </div>
+
+    <!-- 컬러 팔레트 선택 -->
+    <label style="font-weight: 600; font-size: 0.88rem; color: #343a40;">모니터 / 기기 컬러 테마</label>
+    <div class="palette-grid" id="paletteGrid">
+      <button type="button" class="pal-btn active" data-pal="mac">
+        <span class="dot-swatch" style="background: #111;"></span> 매킨토시 흑백
+      </button>
+      <button type="button" class="pal-btn" data-pal="gb">
+        <span class="dot-swatch" style="background: #8bac0f;"></span> 게임보이 그린
+      </button>
+      <button type="button" class="pal-btn" data-pal="crtGreen">
+        <span class="dot-swatch" style="background: #00ff66;"></span> CRT 그린
+      </button>
+      <button type="button" class="pal-btn" data-pal="crtAmber">
+        <span class="dot-swatch" style="background: #ffb000;"></span> CRT 앰버
+      </button>
+      <button type="button" class="pal-btn" data-pal="cyber">
+        <span class="dot-swatch" style="background: #00f0ff;"></span> 사이버 시안
+      </button>
+      <button type="button" class="pal-btn" data-pal="thermal">
+        <span class="dot-swatch" style="background: #f4f1ea;"></span> 감열지 영수증
+      </button>
+    </div>
+
+    <!-- 도트 해상도 (가로 픽셀 수) -->
+    <div class="control-row" id="resRow">
+      <label for="widthRange">도트 밀도 (해상도)</label>
+      <div class="slider-box">
+        <input type="range" id="widthRange" min="96" max="512" step="16" value="240">
+        <span id="widthVal">240px</span>
+      </div>
+    </div>
+
+    <!-- 대비 조절 -->
+    <div class="control-row">
+      <label for="contrastRange">명암 대비 (Contrast)</label>
+      <div class="slider-box">
+        <input type="range" id="contrastRange" min="-50" max="80" value="15">
+        <span id="contrastVal">+15</span>
+      </div>
+    </div>
+
+    <!-- 밝기(임계점) 조절 -->
+    <div class="control-row">
+      <label for="brightRange">노출 밝기 (Offset)</label>
+      <div class="slider-box">
+        <input type="range" id="brightRange" min="-60" max="60" value="0">
+        <span id="brightVal">0</span>
+      </div>
+    </div>
+
+    <!-- 게임보이 프레임 보더 체크 -->
+    <div class="control-row">
+      <label for="frameCheck">레트로 스탬프 하단 바 추가</label>
+      <input type="checkbox" id="frameCheck" checked style="width: 20px; height: 20px;">
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn" id="downloadBtn" disabled>도트 아트워크 저장 (고화질)</button>
+  </div>
+</div>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const previewArea = document.getElementById('previewArea');
+  const algoLabel = document.getElementById('algoLabel');
+  const resLabel = document.getElementById('resLabel');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const algoSelect = document.getElementById('algoSelect');
+  const paletteGrid = document.getElementById('paletteGrid');
+  const widthRange = document.getElementById('widthRange');
+  const widthVal = document.getElementById('widthVal');
+  const contrastRange = document.getElementById('contrastRange');
+  const contrastVal = document.getElementById('contrastVal');
+  const brightRange = document.getElementById('brightRange');
+  const brightVal = document.getElementById('brightVal');
+  const frameCheck = document.getElementById('frameCheck');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  let sourceImg = null;
+  let currentPalette = 'mac';
+
+  // 팔레트 정의 (2색 및 4색 지원)
+  const PALETTES = {
+    mac: {
+      colors: [[26, 26, 26], [255, 255, 255]],
+      colors4: [[20, 20, 20], [95, 95, 95], [175, 175, 175], [250, 250, 250]]
+    },
+    gb: {
+      colors: [[15, 56, 15], [155, 188, 15]],
+      colors4: [[15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]]
+    },
+    crtGreen: {
+      colors: [[10, 18, 12], [0, 255, 102]],
+      colors4: [[10, 18, 12], [0, 90, 36], [0, 175, 70], [0, 255, 102]]
+    },
+    crtAmber: {
+      colors: [[20, 12, 4], [255, 176, 0]],
+      colors4: [[20, 12, 4], [105, 65, 0], [185, 120, 0], [255, 176, 0]]
+    },
+    cyber: {
+      colors: [[11, 14, 24], [0, 240, 255]],
+      colors4: [[11, 14, 24], [28, 65, 110], [0, 150, 195], [0, 240, 255]]
+    },
+    thermal: {
+      colors: [[42, 39, 37], [244, 240, 230]],
+      colors4: [[42, 39, 37], [110, 105, 98], [180, 175, 166], [244, 240, 230]]
+    }
+  };
+
+  // 4x4 Bayer 순서형 디더링 행렬 (0~15)
+  const BAYER_4X4 = [
+    [ 0,  8,  2, 10],
+    [12,  4, 14,  6],
+    [ 3, 11,  1,  9],
+    [15,  7, 13,  5]
+  ];
+
+  // 이미지 업로드
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      sourceImg = new Image();
+      sourceImg.onload = () => {
+        previewArea.style.display = 'block';
+        downloadBtn.disabled = false;
+        processDither();
+      };
+      sourceImg.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  // 알고리즘 변경 시 게임보이 모드는 자동으로 게임보이 그린 팔레트 추천
+  algoSelect.addEventListener('change', () => {
+    if (algoSelect.value === 'gameboy') {
+      selectPalette('gb');
+    }
+    processDither();
+  });
+
+  function selectPalette(palKey) {
+    currentPalette = palKey;
+    paletteGrid.querySelectorAll('.pal-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.pal === palKey);
+    });
+  }
+
+  paletteGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pal-btn');
+    if (!btn) return;
+    selectPalette(btn.dataset.pal);
+    processDither();
+  });
+
+  widthRange.addEventListener('input', () => {
+    widthVal.textContent = `${widthRange.value}px`;
+    processDither();
+  });
+  contrastRange.addEventListener('input', () => {
+    const v = parseInt(contrastRange.value, 10);
+    contrastVal.textContent = v > 0 ? `+${v}` : v;
+    processDither();
+  });
+  brightRange.addEventListener('input', () => {
+    const v = parseInt(brightRange.value, 10);
+    brightVal.textContent = v > 0 ? `+${v}` : v;
+    processDither();
+  });
+  frameCheck.addEventListener('change', processDither);
+
+  // 메인 디더링 처리
+  function processDither() {
+    if (!sourceImg) return;
+
+    const algo = algoSelect.value;
+    // 게임보이 카메라 모드는 오리지널 감성인 가로 160px 고정
+    const dotW = (algo === 'gameboy') ? 160 : parseInt(widthRange.value, 10);
+    const aspect = sourceImg.naturalHeight / sourceImg.naturalWidth;
+    const dotH = Math.round(dotW * aspect);
+
+    // 1. 저해상도 버퍼 캔버스 생성
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = dotW;
+    offCanvas.height = dotH;
+    const offCtx = offCanvas.getContext('2d');
+    offCtx.drawImage(sourceImg, 0, 0, dotW, dotH);
+
+    const imgData = offCtx.getImageData(0, 0, dotW, dotH);
+    const data = imgData.data;
+
+    // 2. 그레이스케일 및 밝기/대비 전처리 버퍼 (Float32Array)
+    const lum = new Float32Array(dotW * dotH);
+    const bright = parseInt(brightRange.value, 10) * 2;
+    const contrast = parseInt(contrastRange.value, 10);
+    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+    for (let i = 0; i < dotW * dotH; i++) {
+      const idx = i * 4;
+      let gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      gray += bright;
+      gray = factor * (gray - 128) + 128;
+      lum[i] = Math.min(255, Math.max(0, gray));
+    }
+
+    const palObj = PALETTES[currentPalette];
+
+    // 3. 알고리즘별 디더링 수행
+    if (algo === 'atkinson' || algo === 'floyd') {
+      const cDark = palObj.colors[0];
+      const cLight = palObj.colors[1];
+
+      for (let y = 0; y < dotH; y++) {
+        for (let x = 0; x < dotW; x++) {
+          const i = y * dotW + x;
+          const oldVal = lum[i];
+          const newVal = oldVal < 128 ? 0 : 255;
+          const err = oldVal - newVal;
+          lum[i] = newVal;
+
+          if (algo === 'atkinson') {
+            // Bill Atkinson Dithering (오차의 6/8만 확산하여 하이콘트라스트 질감 생성)
+            const e8 = err / 8;
+            if (x + 1 < dotW)               lum[i + 1] += e8;
+            if (x + 2 < dotW)               lum[i + 2] += e8;
+            if (y + 1 < dotH) {
+              if (x - 1 >= 0)               lum[i + dotW - 1] += e8;
+                                            lum[i + dotW]     += e8;
+              if (x + 1 < dotW)             lum[i + dotW + 1] += e8;
+            }
+            if (y + 2 < dotH)               lum[i + dotW * 2] += e8;
+          } else {
+            // Floyd-Steinberg Dithering (오차의 16/16 전체 확산)
+            if (x + 1 < dotW)               lum[i + 1]        += err * (7 / 16);
+            if (y + 1 < dotH) {
+              if (x - 1 >= 0)               lum[i + dotW - 1] += err * (3 / 16);
+                                            lum[i + dotW]     += err * (5 / 16);
+              if (x + 1 < dotW)             lum[i + dotW + 1] += err * (1 / 16);
+            }
+          }
+
+          const outColor = newVal === 0 ? cDark : cLight;
+          const pIdx = i * 4;
+          data[pIdx]     = outColor[0];
+          data[pIdx + 1] = outColor[1];
+          data[pIdx + 2] = outColor[2];
+          data[pIdx + 3] = 255;
+        }
+      }
+    } else if (algo === 'bayer') {
+      // 1-Bit Ordered Bayer Dithering
+      const cDark = palObj.colors[0];
+      const cLight = palObj.colors[1];
+
+      for (let y = 0; y < dotH; y++) {
+        for (let x = 0; x < dotW; x++) {
+          const i = y * dotW + x;
+          const threshold = ((BAYER_4X4[y % 4][x % 4] + 0.5) / 16) * 255;
+          const outColor = lum[i] < threshold ? cDark : cLight;
+          const pIdx = i * 4;
+          data[pIdx]     = outColor[0];
+          data[pIdx + 1] = outColor[1];
+          data[pIdx + 2] = outColor[2];
+          data[pIdx + 3] = 255;
+        }
+      }
+    } else if (algo === 'gameboy') {
+      // 2-Bit (4계조) Game Boy Camera Bayer Dithering
+      const c4 = palObj.colors4;
+      for (let y = 0; y < dotH; y++) {
+        for (let x = 0; x < dotW; x++) {
+          const i = y * dotW + x;
+          const bayerOffset = (BAYER_4X4[y % 4][x % 4] / 16 - 0.5) * 64;
+          const v = Math.min(255, Math.max(0, lum[i] + bayerOffset));
+          const level = Math.min(3, Math.floor(v / 64));
+          const outColor = c4[level];
+          const pIdx = i * 4;
+          data[pIdx]     = outColor[0];
+          data[pIdx + 1] = outColor[1];
+          data[pIdx + 2] = outColor[2];
+          data[pIdx + 3] = 255;
+        }
+      }
+    }
+
+    offCtx.putImageData(imgData, 0, 0);
+
+    // 4. SNS에 올려도 도트가 뭉개지지 않도록 정수배(약 1200px급)로 최근접 이웃 업스케일링
+    const scaleFactor = Math.max(2, Math.floor(1200 / dotW));
+    const finalImgW = dotW * scaleFactor;
+    const finalImgH = dotH * scaleFactor;
+    const footerH = frameCheck.checked ? 56 : 0;
+
+    canvas.width = finalImgW;
+    canvas.height = finalImgH + footerH;
+
+    // 핵심: 보간법을 꺼서 픽셀 모서리를 칼같이 유지
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(offCanvas, 0, 0, finalImgW, finalImgH);
+
+    // 5. 하단 레트로 스탬프 바
+    if (frameCheck.checked) {
+      const bgCol = palObj.colors[0];
+      const fgCol = palObj.colors[1];
+      ctx.fillStyle = `rgb(${bgCol[0]}, ${bgCol[1]}, ${bgCol[2]})`;
+      ctx.fillRect(0, finalImgH, finalImgW, footerH);
+
+      ctx.fillStyle = `rgb(${fgCol[0]}, ${fgCol[1]}, ${fgCol[2]})`;
+      ctx.font = '700 20px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const modeTitle = algo === 'gameboy' ? 'GAME BOY CAM // 2-BIT' : `${algo.toUpperCase()} // 1-BIT`;
+      ctx.fillText(modeTitle, 24, finalImgH + footerH / 2);
+
+      ctx.textAlign = 'right';
+      ctx.fillText(`${dotW}×${dotH} DOT MATRIX`, finalImgW - 24, finalImgH + footerH / 2);
+    }
+
+    algoLabel.textContent = `${algo.toUpperCase()} MODE`;
+    resLabel.textContent = `DOT: ${dotW}×${dotH} (EXPORT: ${canvas.width}×${canvas.height})`;
+  }
+
+  // 다운로드 (도트 손실 없는 PNG 포맷)
+  downloadBtn.addEventListener('click', () => {
+    canvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `dither_${Date.now()}.png`;
+      link.click();
+    }, 'image/png');
+  });
+</script>
+
+</body>
+</html>
