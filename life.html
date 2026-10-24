@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Conway's Game of Life // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #lifeCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 헤더 */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.5;
+      text-align: right;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 65px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>CONWAY'S GAME OF LIFE</h1>
+  <div class="hud-meta">CELLULAR AUTOMATA · 2D GRID</div>
+</header>
+
+<div class="telemetry-card">
+  <div>GEN: <strong id="valGen">0</strong></div>
+  <div>ALIVE: <strong id="valAlive">0</strong></div>
+  <div>SPEED: <strong id="valSpeed">30</strong> FPS</div>
+</div>
+
+<canvas id="lifeCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnPlay">일시정지</button>
+  <button type="button" class="dock-btn" id="btnStep">1단계 진행</button>
+  <button type="button" class="dock-btn" id="btnClear">초기화</button>
+  <button type="button" class="dock-btn" id="btnRandom">무작위 씨앗</button>
+
+  <div class="dock-sep"></div>
+
+  <!-- 프리셋 패턴 -->
+  <button type="button" class="dock-btn" id="btnGun">글라이더 건</button>
+  <button type="button" class="dock-btn" id="btnPulsar">펄서 진동자</button>
+  <button type="button" class="dock-btn" id="btnSpaceship">우주선 전진</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>속도</span>
+    <input type="range" id="speedRange" min="2" max="60" value="30">
+  </div>
+  <div class="slider-group">
+    <span>셀 크기</span>
+    <input type="range" id="cellSizeRange" min="4" max="20" value="8">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('lifeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valGen = document.getElementById('valGen');
+  const valAlive = document.getElementById('valAlive');
+  const valSpeed = document.getElementById('valSpeed');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnStep = document.getElementById('btnStep');
+  const btnClear = document.getElementById('btnClear');
+  const btnRandom = document.getElementById('btnRandom');
+  const btnGun = document.getElementById('btnGun');
+  const btnPulsar = document.getElementById('btnPulsar');
+  const btnSpaceship = document.getElementById('btnSpaceship');
+  const speedRange = document.getElementById('speedRange');
+  const cellSizeRange = document.getElementById('cellSizeRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  let CELL_SIZE = parseInt(cellSizeRange.value, 10);
+  let cols = Math.floor(width / CELL_SIZE);
+  let rows = Math.floor(height / CELL_SIZE);
+
+  // 셀 나이(생존 세대)를 추적하는 2중 버퍼
+  // 0: 죽은 셀, 1~255: 생존 세대 나이
+  let grid = new Uint8Array(cols * rows);
+  let nextGrid = new Uint8Array(cols * rows);
+
+  let isRunning = true;
+  let generation = 0;
+  let aliveCount = 0;
+  let targetFPS = parseInt(speedRange.value, 10);
+  let lastFrameTime = performance.now();
+
+  let isDrawing = false;
+  let drawMode = 1; // 1: 생성, 0: 삭제
+
+  function resizeGrid() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    const newCols = Math.floor(width / CELL_SIZE);
+    const newRows = Math.floor(height / CELL_SIZE);
+
+    const newGrid = new Uint8Array(newCols * newRows);
+    // 기존 데이터 복사 (중앙 기준)
+    for (let r = 0; r < Math.min(rows, newRows); r++) {
+      for (let c = 0; c < Math.min(cols, newCols); c++) {
+        newGrid[r * newCols + c] = grid[r * cols + c];
+      }
+    }
+    cols = newCols;
+    rows = newRows;
+    grid = newGrid;
+    nextGrid = new Uint8Array(cols * rows);
+  }
+
+  window.addEventListener('resize', resizeGrid);
+
+  // 이웃 셀 개수 계산 (도넛 토러스 경계 조건)
+  function countNeighbors(c, r) {
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nc = (c + dc + cols) % cols;
+        const nr = (r + dr + rows) % rows;
+        if (grid[nr * cols + nc] > 0) count++;
+      }
+    }
+    return count;
+  }
+
+  // 콘웨이의 생명 게임 규칙 적용
+  function step() {
+    aliveCount = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const neighbors = countNeighbors(c, r);
+        const currentAge = grid[idx];
+
+        if (currentAge > 0) {
+          // 생존: 이웃이 2개 또는 3개
+          if (neighbors === 2 || neighbors === 3) {
+            nextGrid[idx] = Math.min(255, currentAge + 1);
+            aliveCount++;
+          } else {
+            // 과밀 또는 고립으로 사망
+            nextGrid[idx] = 0;
+          }
+        } else {
+          // 탄생: 죽은 셀 주변에 정확히 3개의 이웃
+          if (neighbors === 3) {
+            nextGrid[idx] = 1;
+            aliveCount++;
+          } else {
+            nextGrid[idx] = 0;
+          }
+        }
+      }
+    }
+
+    // 버퍼 스왑
+    const temp = grid;
+    grid = nextGrid;
+    nextGrid = temp;
+
+    generation++;
+    valGen.textContent = generation.toLocaleString();
+    valAlive.textContent = aliveCount.toLocaleString();
+  }
+
+  // 렌더링 루프
+  function render() {
+    ctx.fillStyle = '#030407';
+    ctx.fillRect(0, 0, width, height);
+
+    // 격자 가이드 라인 (연한 선)
+    if (CELL_SIZE >= 7) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      for (let c = 0; c <= cols; c++) {
+        ctx.moveTo(c * CELL_SIZE, 0);
+        ctx.lineTo(c * CELL_SIZE, rows * CELL_SIZE);
+      }
+      for (let r = 0; r <= rows; r++) {
+        ctx.moveTo(0, r * CELL_SIZE);
+        ctx.lineTo(cols * CELL_SIZE, r * CELL_SIZE);
+      }
+      ctx.stroke();
+    }
+
+    // 세포 그리기 (나이에 따라 푸른빛에서 은은한 백색으로 성숙)
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const age = grid[r * cols + c];
+        if (age > 0) {
+          const x = c * CELL_SIZE;
+          const y = r * CELL_SIZE;
+
+          if (age === 1) {
+            // 갓 태어난 신생 세포: 시안 네온
+            ctx.fillStyle = '#38bdf8';
+          } else if (age < 8) {
+            // 성장기 세포: 부드러운 청백색
+            ctx.fillStyle = '#7dd3fc';
+          } else {
+            // 오래된 안정 세포: 차분한 오프화이트
+            ctx.fillStyle = '#e2e8f0';
+          }
+
+          // 약간의 여백을 두어 블록 느낌 연출
+          ctx.fillRect(x + 1, y + 1, CELL_SIZE - 1.5, CELL_SIZE - 1.5);
+        }
+      }
+    }
+  }
+
+  // 메인 애니메이션 루프 (속도 조절 지원)
+  function loop(now) {
+    requestAnimationFrame(loop);
+
+    const interval = 1000 / targetFPS;
+    const delta = now - lastFrameTime;
+
+    if (delta >= interval) {
+      lastFrameTime = now - (delta % interval);
+      if (isRunning) {
+        step();
+      }
+      render();
+    }
+  }
+
+  // 마우스/터치로 세포 생성 및 지우기
+  function setCellByPointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const c = Math.floor(x / CELL_SIZE);
+    const r = Math.floor(y / CELL_SIZE);
+
+    if (c >= 0 && c < cols && r >= 0 && r < rows) {
+      grid[r * cols + c] = drawMode ? 1 : 0;
+      render();
+    }
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDrawing = true;
+    const c = Math.floor(e.clientX / CELL_SIZE);
+    const r = Math.floor(e.clientY / CELL_SIZE);
+    // 클릭한 셀이 살아있으면 지우개 모드, 죽어있으면 펜 모드
+    drawMode = (grid[r * cols + c] > 0) ? 0 : 1;
+    setCellByPointer(e);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDrawing) setCellByPointer(e);
+  });
+
+  window.addEventListener('mouseup', () => { isDrawing = false; });
+
+  // 모바일 터치
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDrawing = true;
+      const t = e.touches[0];
+      const c = Math.floor(t.clientX / CELL_SIZE);
+      const r = Math.floor(t.clientY / CELL_SIZE);
+      drawMode = (grid[r * cols + c] > 0) ? 0 : 1;
+      setCellByPointer(t);
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDrawing && e.touches.length === 1) {
+      setCellByPointer(e.touches[0]);
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => { isDrawing = false; });
+
+  // 프리셋 삽입 유틸리티
+  function insertPattern(pattern, startC, startR) {
+    for (let r = 0; r < pattern.length; r++) {
+      for (let c = 0; c < pattern[r].length; c++) {
+        const targetC = (startC + c + cols) % cols;
+        const targetR = (startR + r + rows) % rows;
+        grid[targetR * cols + targetC] = pattern[r][c];
+      }
+    }
+    render();
+  }
+
+  // 1. 고스퍼 글라이더 건 (Gosper Glider Gun)
+  function loadGliderGun() {
+    clearGrid();
+    const sc = Math.floor(cols / 2) - 18;
+    const sr = Math.floor(rows / 2) - 6;
+    const gun = [
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+      [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+      [1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [1,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    ];
+    insertPattern(gun, sc, sr);
+  }
+
+  // 2. 펄서 (Pulsar - 3주기 대칭 진동자)
+  function loadPulsar() {
+    clearGrid();
+    const sc = Math.floor(cols / 2) - 6;
+    const sr = Math.floor(rows / 2) - 6;
+    const p = [
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,1,0,1,0,0,0,0,1],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0]
+    ];
+    insertPattern(p, sc, sr);
+  }
+
+  // 3. 우주선 전진 (LWSS - Lightweight Spaceship)
+  function loadSpaceship() {
+    clearGrid();
+    const sc = Math.floor(cols / 4);
+    const sr = Math.floor(rows / 2);
+    const lwss = [
+      [0,1,0,0,1],
+      [1,0,0,0,0],
+      [1,0,0,0,1],
+      [1,1,1,1,0]
+    ];
+    insertPattern(lwss, sc, sr);
+  }
+
+  function clearGrid() {
+    grid.fill(0);
+    generation = 0;
+    aliveCount = 0;
+    valGen.textContent = '0';
+    valAlive.textContent = '0';
+    render();
+  }
+
+  function randomizeGrid() {
+    clearGrid();
+    aliveCount = 0;
+    for (let i = 0; i < grid.length; i++) {
+      if (Math.random() < 0.16) {
+        grid[i] = 1;
+        aliveCount++;
+      }
+    }
+    valAlive.textContent = aliveCount.toLocaleString();
+    render();
+  }
+
+  // UI 버튼 이벤트 바인딩
+  btnPlay.addEventListener('click', () => {
+    isRunning = !isRunning;
+    btnPlay.textContent = isRunning ? '일시정지' : '재생';
+    btnPlay.classList.toggle('active', isRunning);
+  });
+
+  btnStep.addEventListener('click', () => {
+    if (!isRunning) {
+      step();
+      render();
+    }
+  });
+
+  btnClear.addEventListener('click', clearGrid);
+  btnRandom.addEventListener('click', randomizeGrid);
+  btnGun.addEventListener('click', loadGliderGun);
+  btnPulsar.addEventListener('click', loadPulsar);
+  btnSpaceship.addEventListener('click', loadSpaceship);
+
+  speedRange.addEventListener('input', (e) => {
+    targetFPS = parseInt(e.target.value, 10);
+    valSpeed.textContent = targetFPS;
+  });
+
+  cellSizeRange.addEventListener('input', (e) => {
+    CELL_SIZE = parseInt(e.target.value, 10);
+    resizeGrid();
+    render();
+  });
+
+  // 초기화 및 랜덤 생성 실행
+  randomizeGrid();
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
