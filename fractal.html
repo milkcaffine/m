@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Fractal Deep Explorer // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020205;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #glCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+    #glCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 60px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>FRACTAL DEEP EXPLORER</h1>
+  <div class="hud-meta">COMPLEX DYNAMICS · GPU PARALLEL GLSL</div>
+</header>
+
+<div class="telemetry-card">
+  <div>TYPE: <strong id="valType">MANDELBROT</strong></div>
+  <div>ZOOM: <strong id="valZoom">1.00x</strong></div>
+  <div>ITERS: <strong id="valIters">180</strong></div>
+  <div>FPS: <strong id="valFps">60</strong></div>
+</div>
+
+<canvas id="glCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnMandel">만델브로 (Mandelbrot)</button>
+  <button type="button" class="dock-btn" id="btnJulia">줄리아 집합 (Julia)</button>
+  <button type="button" class="dock-btn" id="btnPalette">팔레트 전환</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnReset">원점 리셋</button>
+  <button type="button" class="dock-btn" id="btnSeahorse">해마 골짜기 줌</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>연산 깊이</span>
+    <input type="range" id="iterRange" min="60" max="600" step="20" value="180">
+  </div>
+</div>
+
+<!-- 버텍스 셰이더 (전체 화면 쿼드) -->
+<script id="vs" type="x-shader/x-vertex">
+  attribute vec2 position;
+  void main() {
+    gl_Position = vec4(position, 0.0, 1.0);
+  }
+</script>
+
+<!-- 프래그먼트 셰이더 (복소수 프랙탈 수치 반복 & 스무스 셰이딩) -->
+<script id="fs" type="x-shader/x-fragment">
+  precision highp float;
+
+  uniform vec2 u_resolution;
+  uniform vec2 u_center;
+  uniform float u_zoom;
+  uniform int u_max_iters;
+  uniform int u_type; // 0: Mandelbrot, 1: Julia
+  uniform vec2 u_julia_c;
+  uniform int u_palette;
+
+  // 코사인 기반 절차적 컬러 팔레트 (Inigo Quilez Palette)
+  vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
+    return a + b * cos(6.28318 * (c * t + d));
+  }
+
+  void main() {
+    // 종횡비 보정된 정규화 화면 좌표
+    vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+
+    // 복소평면 좌표 z = x + iy 매핑
+    vec2 c, z;
+    if (u_type == 0) {
+      // 만델브로 집합: z0 = 0, c = 픽셀 좌표
+      c = u_center + st * (3.0 / u_zoom);
+      z = vec2(0.0);
+    } else {
+      // 줄리아 집합: z0 = 픽셀 좌표, c = 마우스/파라미터 상수
+      z = u_center + st * (3.0 / u_zoom);
+      c = u_julia_c;
+    }
+
+    float n = 0.0;
+    float maxItersF = float(u_max_iters);
+    float escaped = 0.0;
+
+    // 복소 점화식: z = z^2 + c
+    // (x + iy)^2 = (x^2 - y^2) + i(2xy)
+    for (int i = 0; i < 600; i++) {
+      if (float(i) >= maxItersF) break;
+
+      float x2 = z.x * z.x;
+      float y2 = z.y * z.y;
+
+      if (x2 + y2 > 4.0) {
+        n = float(i);
+        escaped = 1.0;
+        break;
+      }
+
+      z = vec2(x2 - y2, 2.0 * z.x * z.y) + c;
+    }
+
+    vec3 col = vec3(0.015, 0.018, 0.024); // 집합 내부 (발산하지 않는 영역: 심연의 암흑)
+
+    if (escaped > 0.5) {
+      // 밴딩 현상을 없애는 연속 부드러운 탈출 시간 계산 (Smooth Coloring / Normalized Iteration Count)
+      float nu = log(log(dot(z, z)) / 2.0) / log(2.0);
+      float iter = n + 1.0 - nu;
+      float t = iter * 0.045;
+
+      if (u_palette == 0) {
+        // 1. 네온 사이언-마젠타 (#38bdf8 & #f43f5e)
+        col = palette(t, vec3(0.5, 0.5, 0.5), vec3(0.5, 0.5, 0.5), vec3(1.0, 1.0, 1.0), vec3(0.0, 0.33, 0.67));
+        col = mix(col, vec3(0.22, 0.74, 0.97), sin(t * 3.14) * 0.5 + 0.5);
+      } else if (u_palette == 1) {
+        // 2. 앰버 골드-코즈믹
+        col = palette(t, vec3(0.5, 0.4, 0.2), vec3(0.5, 0.4, 0.2), vec3(2.0, 1.0, 0.5), vec3(0.5, 0.20, 0.25));
+      } else if (u_palette == 2) {
+        // 3. 에메랄드 오로라
+        col = palette(t, vec3(0.2, 0.5, 0.3), vec3(0.2, 0.5, 0.3), vec3(1.0, 1.0, 1.0), vec3(0.3, 0.20, 0.8));
+      } else {
+        // 4. 모노크롬 X선 형광체
+        float lum = sin(t * 6.28) * 0.5 + 0.5;
+        col = vec3(pow(lum, 1.8) * 0.95);
+      }
+    }
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+</script>
+
+<script>
+  const canvas = document.getElementById('glCanvas');
+  const gl = canvas.getContext('webgl');
+  if (!gl) alert('WebGL을 지원하지 않는 브라우저입니다.');
+
+  const valType = document.getElementById('valType');
+  const valZoom = document.getElementById('valZoom');
+  const valIters = document.getElementById('valIters');
+  const valFps = document.getElementById('valFps');
+
+  const btnMandel = document.getElementById('btnMandel');
+  const btnJulia = document.getElementById('btnJulia');
+  const btnPalette = document.getElementById('btnPalette');
+  const btnReset = document.getElementById('btnReset');
+  const btnSeahorse = document.getElementById('btnSeahorse');
+  const iterRange = document.getElementById('iterRange');
+
+  // 셰이더 컴파일
+  function createShader(gl, type, source) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, source);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(s));
+      gl.deleteShader(s);
+      return null;
+    }
+    return s;
+  }
+
+  const vsSource = document.getElementById('vs').text;
+  const fsSource = document.getElementById('fs').text;
+  const program = gl.createProgram();
+  gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+  gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+  gl.linkProgram(program);
+  gl.useProgram(program);
+
+  // 쿼드 버퍼
+  const posBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,  1, -1, -1,  1,
+    -1,  1,  1, -1,  1,  1
+  ]), gl.STATIC_DRAW);
+
+  const posLoc = gl.getAttribLocation(program, 'position');
+  gl.enableVertexAttribArray(posLoc);
+  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+  // 유니폼 위치
+  const uRes = gl.getUniformLocation(program, 'u_resolution');
+  const uCenter = gl.getUniformLocation(program, 'u_center');
+  const uZoom = gl.getUniformLocation(program, 'u_zoom');
+  const uMaxIters = gl.getUniformLocation(program, 'u_max_iters');
+  const uType = gl.getUniformLocation(program, 'u_type');
+  const uJuliaC = gl.getUniformLocation(program, 'u_julia_c');
+  const uPalette = gl.getUniformLocation(program, 'u_palette');
+
+  // 프랙탈 뷰포트 상태
+  let fractalType = 0; // 0: Mandelbrot, 1: Julia
+  let centerX = -0.5;
+  let centerY = 0.0;
+  let zoom = 1.0;
+  let targetCenterX = -0.5;
+  let targetCenterY = 0.0;
+  let targetZoom = 1.0;
+  let paletteIndex = 0;
+  let maxIters = parseInt(iterRange.value, 10);
+
+  // 줄리아 복소 상수 c
+  let juliaC = { x: -0.7269, y: 0.1889 }; // 대표적인 아름다운 덴드라이트 줄리아 해
+  let isDragging = false;
+  let lastMouseX = 0, lastMouseY = 0;
+
+  // FPS
+  let frameCount = 0;
+  let lastFpsTime = performance.now();
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // 좌표 변환 헬퍼 (스크린 픽셀 ➔ 복소평면 좌표)
+  function screenToComplex(px, py) {
+    const minDim = Math.min(canvas.width, canvas.height);
+    const stX = (px - 0.5 * canvas.width) / minDim;
+    const stY = (py - 0.5 * canvas.height) / minDim;
+    return {
+      x: centerX + stX * (3.0 / zoom),
+      y: centerY - stY * (3.0 / zoom) // WebGL Y축 반전 보정
+    };
+  }
+
+  // --- 마우스 / 터치 줌 & 패닝 인터랙션 ---
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      const minDim = Math.min(canvas.width, canvas.height);
+      const dx = (e.clientX - lastMouseX) / minDim;
+      const dy = (e.clientY - lastMouseY) / minDim;
+
+      targetCenterX -= dx * (3.0 / targetZoom);
+      targetCenterY += dy * (3.0 / targetZoom);
+
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    } else if (fractalType === 1 && !isDragging) {
+      // 줄리아 모드일 때는 마우스 위치에 따라 상수 c를 실시간 변조
+      const c = screenToComplex(e.clientX, e.clientY);
+      juliaC.x = c.x * 0.4;
+      juliaC.y = c.y * 0.4;
+    }
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  // 마우스 휠 부드러운 줌
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 1.25 : 0.8;
+
+    // 마우스 커서가 가리키는 지점을 중심축으로 줌인
+    const mouseBefore = screenToComplex(e.clientX, e.clientY);
+    targetZoom *= zoomFactor;
+    targetZoom = Math.max(0.5, Math.min(1e11, targetZoom));
+
+    // 줌 후 커서 위치 오차 보정
+    const minDim = Math.min(canvas.width, canvas.height);
+    const stX = (e.clientX - 0.5 * canvas.width) / minDim;
+    const stY = (e.clientY - 0.5 * canvas.height) / minDim;
+
+    targetCenterX = mouseBefore.x - stX * (3.0 / targetZoom);
+    targetCenterY = mouseBefore.y + stY * (3.0 / targetZoom);
+  }, { passive: false });
+
+  // 모바일 터치 대응
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastMouseX = e.touches[0].clientX;
+      lastMouseY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging && e.touches.length === 1) {
+      const minDim = Math.min(canvas.width, canvas.height);
+      const dx = (e.touches[0].clientX - lastMouseX) / minDim;
+      const dy = (e.touches[0].clientY - lastMouseY) / minDim;
+
+      targetCenterX -= dx * (3.0 / targetZoom);
+      targetCenterY += dy * (3.0 / targetZoom);
+
+      lastMouseX = e.touches[0].clientX;
+      lastMouseY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  // 버튼 바인딩
+  btnMandel.addEventListener('click', () => {
+    fractalType = 0;
+    btnMandel.classList.add('active');
+    btnJulia.classList.remove('active');
+    valType.textContent = 'MANDELBROT';
+    targetCenterX = -0.5;
+    targetCenterY = 0.0;
+    targetZoom = 1.0;
+  });
+
+  btnJulia.addEventListener('click', () => {
+    fractalType = 1;
+    btnJulia.classList.add('active');
+    btnMandel.classList.remove('active');
+    valType.textContent = 'JULIA SET';
+    targetCenterX = 0.0;
+    targetCenterY = 0.0;
+    targetZoom = 1.0;
+  });
+
+  btnPalette.addEventListener('click', () => {
+    paletteIndex = (paletteIndex + 1) % 4;
+  });
+
+  btnReset.addEventListener('click', () => {
+    targetCenterX = (fractalType === 0) ? -0.5 : 0.0;
+    targetCenterY = 0.0;
+    targetZoom = 1.0;
+  });
+
+  // 유명한 해마 골짜기(Seahorse Valley) 좌표로 카메라 이동
+  btnSeahorse.addEventListener('click', () => {
+    fractalType = 0;
+    btnMandel.classList.add('active');
+    btnJulia.classList.remove('active');
+    valType.textContent = 'MANDELBROT';
+    targetCenterX = -0.743643887037158704752191506114774;
+    targetCenterY = 0.131825904205311970493132056385139;
+    targetZoom = 18000.0;
+  });
+
+  iterRange.addEventListener('input', (e) => {
+    maxIters = parseInt(e.target.value, 10);
+    valIters.textContent = maxIters;
+  });
+
+  // 메인 렌더 루프 (부드러운 카메라 보간 감속)
+  function render(time) {
+    // 지연 보간(Lerp)으로 부드러운 카메라 관성 구현
+    centerX += (targetCenterX - centerX) * 0.14;
+    centerY += (targetCenterY - centerY) * 0.14;
+    zoom += (targetZoom - zoom) * 0.14;
+
+    // 텔레메트리 갱신
+    if (zoom >= 1000) {
+      valZoom.textContent = (zoom / 1000).toFixed(1) + 'k x';
+    } else {
+      valZoom.textContent = zoom.toFixed(2) + 'x';
+    }
+
+    // 셰이더 유니폼 전송
+    gl.uniform2f(uCenter, centerX, centerY);
+    gl.uniform1f(uZoom, zoom);
+    gl.uniform1i(uMaxIters, maxIters);
+    gl.uniform1i(uType, fractalType);
+    gl.uniform2f(uJuliaC, juliaC.x, juliaC.y);
+    gl.uniform1i(uPalette, paletteIndex);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // FPS
+    frameCount++;
+    if (time - lastFpsTime >= 500) {
+      valFps.textContent = Math.round((frameCount * 1000) / (time - lastFpsTime));
+      frameCount = 0;
+      lastFpsTime = time;
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
