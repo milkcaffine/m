@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Hyperspeed Tube Racer // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020205;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #tunnelCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* CRT 스캔라인 오버레이 */
+    .crt-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+      z-index: 5;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+      min-width: 170px;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .speed-alert { color: #f43f5e; text-shadow: 0 0 8px rgba(244, 63, 94, 0.6); }
+
+    /* 중앙 상태 알림 배너 */
+    .status-banner {
+      position: absolute;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      z-index: 20;
+      pointer-events: none;
+      display: none;
+    }
+    .status-title {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+      text-shadow: 0 0 25px currentColor;
+    }
+    .status-sub {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    /* 모바일 좌우 터치 컨트롤러 */
+    .mobile-touch-zones {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60%;
+      display: flex;
+      z-index: 15;
+    }
+    .touch-zone {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      padding: 24px;
+      opacity: 0.25;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 2rem;
+      color: #94a3b8;
+    }
+    .touch-zone.right { justify-content: flex-end; }
+
+    /* 하단 조작 가이드 힌트 */
+    .control-hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #64748b;
+      pointer-events: none;
+      z-index: 10;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>HYPERSPEED TUBE RACER</h1>
+  <div class="hud-meta">3D PSEUDO PERSPECTIVE · SYNTH ENGINE</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SCORE: <strong id="hudScore">0</strong></div>
+  <div>SPEED: <strong id="hudSpeed" class="speed-alert">620</strong> km/h</div>
+  <div>DISTANCE: <strong id="hudDist">0</strong> m</div>
+  <div>AUDIO: <strong id="hudAudio">SYNTH LIVE</strong></div>
+</div>
+
+<div class="status-banner" id="statusBanner">
+  <div class="status-title" id="statusTitle">HULL CRUSHED</div>
+  <div class="status-sub" id="statusSub">[SPACE] 또는 화면 클릭으로 재출격</div>
+</div>
+
+<div class="mobile-touch-zones">
+  <div class="touch-zone" id="touchLeft">◀</div>
+  <div class="touch-zone right" id="touchRight">▶</div>
+</div>
+
+<div class="control-hint">
+  [◀ ▶ / A D] 터널 벽면 360° 롤링 회전 · [SPACE] 부스트 가속 / 재도전
+</div>
+
+<canvas id="tunnelCanvas"></canvas>
+<div class="crt-overlay"></div>
+
+<script>
+  const canvas = document.getElementById('tunnelCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const hudScore = document.getElementById('hudScore');
+  const hudSpeed = document.getElementById('hudSpeed');
+  const hudDist = document.getElementById('hudDist');
+  const hudAudio = document.getElementById('hudAudio');
+
+  const statusBanner = document.getElementById('statusBanner');
+  const statusTitle = document.getElementById('statusTitle');
+  const statusSub = document.getElementById('statusSub');
+
+  const touchLeft = document.getElementById('touchLeft');
+  const touchRight = document.getElementById('touchRight');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // --- Web Audio API 절차적 사운드트랙 & 효과음 ---
+  let audioCtx = null;
+  let masterGain = null;
+  let windFilter = null;
+  let windGain = null;
+  let synthStep = 0;
+  let synthTimer = null;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.35;
+    masterGain.connect(audioCtx.destination);
+
+    // 1. 하이퍼스피드 풍절음 (화이트 노이즈 버퍼)
+    const bufSize = audioCtx.sampleRate * 2;
+    const noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+    const out = noiseBuf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) out[i] = Math.random() * 2 - 1;
+
+    const windSrc = audioCtx.createBufferSource();
+    windSrc.buffer = noiseBuf;
+    windSrc.loop = true;
+
+    windFilter = audioCtx.createBiquadFilter();
+    windFilter.type = 'bandpass';
+    windFilter.frequency.value = 350;
+    windFilter.Q.value = 2.5;
+
+    windGain = audioCtx.createGain();
+    windGain.gain.value = 0.08;
+
+    windSrc.connect(windFilter);
+    windFilter.connect(windGain);
+    windGain.connect(masterGain);
+    windSrc.start();
+
+    // 2. 신스웨이브 아르페지오 베이스 시퀀서 (16분음표)
+    const baseFreqs = [55, 55, 82.4, 73.4, 55, 65.4, 55, 82.4]; // A-E-D-F 아르페지오
+    synthTimer = setInterval(() => {
+      if (gameState !== 'PLAYING' || !audioCtx) return;
+      const freq = baseFreqs[synthStep % baseFreqs.length] * (boostActive ? 2 : 1);
+      playSynthBassNote(freq);
+      synthStep++;
+    }, 125);
+  }
+
+  function playSynthBassNote(freq) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1400, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.18);
+
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.22);
+  }
+
+  function playCrashSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.7);
+
+    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.75);
+  }
+
+  // --- 3D 원근법 및 터널 기하학 파라미터 ---
+  const NUM_SPOKES = 12; // 터널 방사형 스포크 개수
+  const NUM_RINGS = 24;  // 전진하는 원형 링 개수
+  const RING_SPACING = 55; // 링 간격
+  const TUNNEL_RADIUS = 360; // 터널 기준 반경
+  const FOV = 420; // 3D 원근 투영 초점 거리
+
+  let gameState = 'PLAYING'; // PLAYING, CRASHED
+  let score = 0;
+  let distanceTraveled = 0;
+  let baseSpeed = 8.5;
+  let speed = baseSpeed;
+  let boostActive = false;
+
+  // 플레이어 기체 상태 (터널 벽면 각도)
+  let playerAngle = 0; // 라디안 (0 ~ 2π)
+  let targetAngle = 0;
+  let playerRoll = 0;
+  let keyLeft = false;
+  let keyRight = false;
+
+  // 장애물 격벽 목록: [{ z, startAngle, arcSpan, color }]
+  let obstacles = [];
+  let particles = [];
+
+  function spawnObstacle(zDistance) {
+    const spokeAngle = (Math.PI * 2) / NUM_SPOKES;
+    // 3~5개 섹터를 막아서 틈새(Gap)를 통과하도록 유도
+    const spanSectors = Math.floor(Math.random() * 3) + 3;
+    const startSector = Math.floor(Math.random() * NUM_SPOKES);
+
+    obstacles.push({
+      z: zDistance,
+      startAngle: startSector * spokeAngle,
+      arcSpan: spanSectors * spokeAngle,
+      color: Math.random() > 0.4 ? '#f43f5e' : '#fbbf24'
+    });
+  }
+
+  function resetGame() {
+    gameState = 'PLAYING';
+    score = 0;
+    distanceTraveled = 0;
+    speed = baseSpeed;
+    playerAngle = 0;
+    targetAngle = 0;
+    obstacles = [];
+    particles = [];
+    statusBanner.style.display = 'none';
+
+    // 전방에 초기 장애물 배치
+    for (let i = 0; i < 7; i++) {
+      spawnObstacle(600 + i * 380);
+    }
+  }
+
+  // 3D ➔ 2D 화면 투영 함수
+  function project(x, y, z) {
+    if (z <= 1) z = 1;
+    const scale = FOV / z;
+    return {
+      x: width * 0.5 + x * scale,
+      y: height * 0.5 + y * scale,
+      scale
+    };
+  }
+
+  // 폭발 파편 파티클
+  function createExplosion() {
+    for (let i = 0; i < 50; i++) {
+      const spd = Math.random() * 8 + 2;
+      const ang = Math.random() * Math.PI * 2;
+      particles.push({
+        x: Math.cos(ang) * 40,
+        y: Math.sin(ang) * 40,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        life: 1.0,
+        decay: 0.02 + Math.random() * 0.02,
+        color: Math.random() > 0.5 ? '#f43f5e' : '#38bdf8'
+      });
+    }
+  }
+
+  // --- 메인 업데이트 루프 ---
+  function update() {
+    if (gameState === 'PLAYING') {
+      // 속도 점진 가속 및 부스트
+      speed = (boostActive ? baseSpeed * 1.6 : baseSpeed) + Math.min(12, distanceTraveled * 0.0008);
+      distanceTraveled += speed;
+      score += Math.round(speed * 0.2);
+
+      // 회전 조작
+      const rotSpeed = 0.055;
+      if (keyLeft) targetAngle -= rotSpeed;
+      if (keyRight) targetAngle += rotSpeed;
+
+      // 부드러운 롤링 보간
+      playerAngle += (targetAngle - playerAngle) * 0.25;
+
+      // 풍절음 필터 변조
+      if (windFilter && windGain) {
+        windFilter.frequency.setValueAtTime(300 + speed * 35, audioCtx.currentTime);
+        windGain.gain.setValueAtTime(boostActive ? 0.16 : 0.08, audioCtx.currentTime);
+      }
+
+      // 장애물 전진 및 충돌 검사
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.z -= speed;
+
+        // 플레이어 기체 통과 위치(Z ≈ 70 근방)에서 충돌 판정
+        if (obs.z <= 85 && obs.z >= 55) {
+          // 각도 중첩 검사 (0 ~ 2π 정규화)
+          let pNorm = ((playerAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+          let oStart = ((obs.startAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+          let oEnd = oStart + obs.arcSpan;
+
+          let hit = false;
+          if (oEnd > Math.PI * 2) {
+            hit = (pNorm >= oStart) || (pNorm <= (oEnd % (Math.PI * 2)));
+          } else {
+            hit = (pNorm >= oStart && pNorm <= oEnd);
+          }
+
+          if (hit) {
+            gameState = 'CRASHED';
+            playCrashSound();
+            createExplosion();
+            statusTitle.textContent = 'HULL CRUSHED';
+            statusTitle.style.color = '#f43f5e';
+            statusSub.textContent = `기록: ${score} PTS (${Math.round(distanceTraveled)}m) · [SPACE] 재도전`;
+            statusBanner.style.display = 'block';
+            break;
+          }
+        }
+
+        // 화면 뒤로 지나간 장애물 제거 및 전방 재생성
+        if (obs.z < 20) {
+          obstacles.splice(i, 1);
+          const maxZ = obstacles.reduce((max, o) => Math.max(max, o.z), 600);
+          spawnObstacle(maxZ + 380 - Math.min(120, distanceTraveled * 0.02));
+        }
+      }
+    }
+
+    // 파티클
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    updateHUD();
+  }
+
+  function updateHUD() {
+    hudScore.textContent = score;
+    hudDist.textContent = Math.round(distanceTraveled);
+    const kmh = Math.round(speed * 62);
+    hudSpeed.textContent = kmh;
+    hudSpeed.className = boostActive ? 'speed-alert' : '';
+  }
+
+  // --- 화면 렌더링 루프 ---
+  function draw() {
+    ctx.fillStyle = '#020205';
+    ctx.fillRect(0, 0, width, height);
+
+    const cx = width * 0.5;
+    const cy = height * 0.5;
+
+    // 1. 끝없는 터널 깊이 소실점(Vanishing Point) 글로우
+    const vanishGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 140);
+    vanishGrad.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+    vanishGrad.addColorStop(0.3, 'rgba(15, 23, 42, 0.3)');
+    vanishGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = vanishGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 140, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 터널 원형 링(Rings) 원근 렌더링
+    // Z 오프셋을 통해 카메라가 전진하는 시각적 연속성 부여
+    const zOffset = distanceTraveled % RING_SPACING;
+
+    for (let i = NUM_RINGS; i >= 1; i--) {
+      const z = i * RING_SPACING - zOffset;
+      if (z <= 10) continue;
+
+      const pCenter = project(0, 0, z);
+      const ringR = TUNNEL_RADIUS * pCenter.scale;
+
+      const depthAlpha = Math.max(0.03, Math.min(0.65, 1.0 - (z / (NUM_RINGS * RING_SPACING))));
+      ctx.strokeStyle = `rgba(56, 189, 248, ${depthAlpha})`;
+      ctx.lineWidth = Math.max(0.8, 2.2 * pCenter.scale);
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 3. 터널 세로 방사형 스포크 선 (Spokes)
+    // 플레이어 회전 각도에 맞춰 터널 전체가 반대로 회전하는 롤링 연출
+    ctx.lineWidth = 1.0;
+    const spokeAngleStep = (Math.PI * 2) / NUM_SPOKES;
+    for (let s = 0; s < NUM_SPOKES; s++) {
+      const ang = s * spokeAngleStep - playerAngle;
+
+      // 가장 가까운 링과 가장 먼 링을 잇는 투영 선분
+      const pFar = project(Math.cos(ang) * TUNNEL_RADIUS, Math.sin(ang) * TUNNEL_RADIUS, NUM_RINGS * RING_SPACING);
+      const pNear = project(Math.cos(ang) * TUNNEL_RADIUS, Math.sin(ang) * TUNNEL_RADIUS, RING_SPACING);
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+      ctx.beginPath();
+      ctx.moveTo(pFar.x, pFar.y);
+      ctx.lineTo(pNear.x, pNear.y);
+      ctx.stroke();
+    }
+
+    // 4. 장애물 레이저 격벽 (Obstacles)
+    // 깊이(Z) 정렬하여 먼 곳부터 순서대로 렌더링
+    const sortedObs = [...obstacles].sort((a, b) => b.z - a.z);
+
+    sortedObs.forEach(obs => {
+      const p = project(0, 0, obs.z);
+      const r = TUNNEL_RADIUS * p.scale;
+      const alpha = Math.max(0.1, Math.min(0.9, 1.2 - obs.z / 1200));
+
+      const start = obs.startAngle - playerAngle;
+      const end = start + obs.arcSpan;
+
+      // 외곽 두꺼운 레이저 호(Arc)
+      ctx.strokeStyle = obs.color;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = Math.max(2, 6 * p.scale);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, start, end);
+      ctx.stroke();
+
+      // 내부 부채꼴 위험 구역 음영 채우기
+      ctx.fillStyle = obs.color;
+      ctx.globalAlpha = alpha * 0.16;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, start, end);
+      ctx.closePath();
+      ctx.fill();
+
+      // 가장자리 차단 와이어
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(start) * r, cy + Math.sin(start) * r);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(end) * r, cy + Math.sin(end) * r);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1.0;
+    });
+
+    // 5. 플레이어 기체 (3D 와이어프레임 쐐기형 전투기)
+    if (gameState !== 'CRASHED') {
+      const shipZ = 70;
+      const pShip = project(0, TUNNEL_RADIUS * 0.86, shipZ);
+
+      ctx.save();
+      ctx.translate(cx, pShip.y);
+
+      // 하단 네온 제트 분사 글로우
+      const engineGlow = ctx.createRadialGradient(0, 10, 1, 0, 10, 22);
+      engineGlow.addColorStop(0, '#38bdf8');
+      engineGlow.addColorStop(0.5, boostActive ? '#f43f5e' : 'rgba(56, 189, 248, 0.4)');
+      engineGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = engineGlow;
+      ctx.beginPath();
+      ctx.arc(0, 10, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 기체 와이어프레임 본체
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      // 전방 쐐기 코
+      ctx.moveTo(0, -14);
+      ctx.lineTo(-14, 10);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(14, 10);
+      ctx.closePath();
+      ctx.stroke();
+
+      // 날개 내부 핀
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(0, 6);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // 6. 충돌 파편 파티클
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.life;
+      ctx.fillRect(cx + p.x, cy + p.y, 3, 3);
+    });
+    ctx.globalAlpha = 1.0;
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // --- 사용자 입력 이벤트 ---
+  window.addEventListener('keydown', (e) => {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyLeft = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keyRight = true;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (gameState === 'PLAYING') boostActive = true;
+      else resetGame();
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyLeft = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keyRight = false;
+    if (e.code === 'Space') boostActive = false;
+  });
+
+  // 모바일 터치 이벤트
+  touchLeft.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    initAudio();
+    keyLeft = true;
+  }, { passive: false });
+  touchLeft.addEventListener('touchend', () => keyLeft = false);
+
+  touchRight.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    initAudio();
+    keyRight = true;
+  }, { passive: false });
+  touchRight.addEventListener('touchend', () => keyRight = false);
+
+  canvas.addEventListener('click', () => {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (gameState === 'CRASHED') resetGame();
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  // 시작
+  resetGame();
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
