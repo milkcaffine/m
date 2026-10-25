@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Morse Telegraph & Tape // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #tapeCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 중앙 텍스트 입력 HUD 박스 */
+    .input-console {
+      position: absolute;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92%, 580px);
+      background: rgba(10, 15, 26, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 10px 14px;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .text-input {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: #f8fafc;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .text-input:focus { border-color: #38bdf8; }
+    .morse-preview {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #38bdf8;
+      min-height: 1.2rem;
+      word-break: break-all;
+      letter-spacing: 1px;
+    }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+    /* 수동 전건 키 */
+    .key-btn {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.5);
+      color: #f43f5e;
+      font-weight: 700;
+      padding: 6px 14px;
+    }
+    .key-btn:hover, .key-btn.down {
+      background: #f43f5e;
+      color: #fff;
+      box-shadow: 0 0 14px rgba(244, 63, 94, 0.6);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 55px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>CW MORSE TELEGRAPH</h1>
+  <div class="hud-meta">AUDIO SYNTHESIS · PAPER TAPE REGISTER</div>
+</header>
+
+<div class="telemetry-card">
+  <div>STATUS: <strong id="valStatus">IDLE</strong></div>
+  <div>SPEED: <strong id="valWpm">18</strong> WPM</div>
+  <div>TONE: <strong id="valFreq">700</strong> Hz</div>
+  <div>KEY: <strong id="valKey">UP</strong></div>
+</div>
+
+<div class="input-console">
+  <div class="input-row">
+    <input type="text" id="textInput" class="text-input" placeholder="전송할 텍스트 입력 (영문/숫자)..." value="MARSKO CQ CQ DX">
+    <button type="button" class="dock-btn active" id="btnTransmit">송신 ▶</button>
+  </div>
+  <div class="morse-preview" id="morsePreview"></div>
+</div>
+
+<canvas id="tapeCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn key-btn" id="btnManualKey">전건 타전 [SPACE]</button>
+  <button type="button" class="dock-btn" id="btnSos">SOS 긴급호출</button>
+  <button type="button" class="dock-btn" id="btnClearTape">테이프 비우기</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>속도(WPM)</span>
+    <input type="range" id="wpmRange" min="8" max="32" value="18">
+  </div>
+  <div class="slider-group">
+    <span>주파수(Hz)</span>
+    <input type="range" id="freqRange" min="400" max="1000" step="50" value="700">
+  </div>
+  <div class="slider-group">
+    <span>볼륨</span>
+    <input type="range" id="volRange" min="0" max="100" value="65">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('tapeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const textInput = document.getElementById('textInput');
+  const morsePreview = document.getElementById('morsePreview');
+  const btnTransmit = document.getElementById('btnTransmit');
+  const btnManualKey = document.getElementById('btnManualKey');
+  const btnSos = document.getElementById('btnSos');
+  const btnClearTape = document.getElementById('btnClearTape');
+
+  const valStatus = document.getElementById('valStatus');
+  const valWpm = document.getElementById('valWpm');
+  const valFreq = document.getElementById('valFreq');
+  const valKey = document.getElementById('valKey');
+
+  const wpmRange = document.getElementById('wpmRange');
+  const freqRange = document.getElementById('freqRange');
+  const volRange = document.getElementById('volRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 표준 ITU-R 모스 부호 사전
+  const MORSE_MAP = {
+    'A': '.-',    'B': '-...',  'C': '-.-.',  'D': '-..',
+    'E': '.',     'F': '..-.',  'G': '--.',   'H': '....',
+    'I': '..',    'J': '.---',  'K': '-.-',   'L': '.-..',
+    'M': '--',    'N': '-.',    'O': '---',   'P': '.--.',
+    'Q': '--.-',  'R': '.-.',   'S': '...',   'T': '-',
+    'U': '..-',   'V': '...-',  'W': '.--',   'X': '-..-',
+    'Y': '-.--',  'Z': '--..',
+    '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....',
+    '6': '-....', '7': '--...', '8': '---..', '9': '----.', '0': '-----',
+    '.': '.-.-.-', ',': '--..--', '?': '..--..', '/': '-..-.',
+    '-': '-....-', '(': '-.--.',  ')': '-.--.-', '=': '-...-',
+    '+': '.-.-.',  '@': '.--.-.', ':': '---...', ' ': '/'
+  };
+
+  // --- Web Audio API 오디오 엔진 ---
+  let audioCtx = null;
+  let osc = null;
+  let gainNode = null;
+  let isToneOn = false;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    osc = audioCtx.createOscillator();
+    gainNode = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(parseInt(freqRange.value, 10), audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.start();
+  }
+
+  // 클릭 잡음(Click/Thump)을 없애는 5ms 부드러운 엔벨로프
+  function startBeep() {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    const vol = (parseInt(volRange.value, 10) / 100) * 0.35;
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(vol, now + 0.005);
+    isToneOn = true;
+    valKey.textContent = 'DOWN';
+    valKey.style.color = '#f43f5e';
+  }
+
+  function stopBeep() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(0.0001, now + 0.008);
+    isToneOn = false;
+    valKey.textContent = 'UP';
+    valKey.style.color = '#94a3b8';
+  }
+
+  // --- 테이프 레지스터 시뮬레이션 데이터 ---
+  // 테이프는 오른쪽에서 나와서 왼쪽으로 실시간 스크롤됨
+  const tapeHistory = []; // { on: boolean, letter: string|null }
+  const MAX_TAPE_POINTS = 1600;
+
+  let isTransmitting = false;
+  let transmitQueue = []; // { type: 'on'|'off', duration: number, char: string }
+  let transmitTimer = null;
+
+  function textToMorse(txt) {
+    return txt.toUpperCase().split('').map(ch => MORSE_MAP[ch] || '').filter(Boolean).join(' ');
+  }
+
+  function updatePreview() {
+    const raw = textInput.value;
+    morsePreview.textContent = textToMorse(raw);
+  }
+
+  textInput.addEventListener('input', updatePreview);
+
+  // PARIS 기준 속도 계산 (1 WPM = 50 dot 단위/분)
+  function getDotDuration() {
+    const wpm = parseInt(wpmRange.value, 10);
+    return 1200 / wpm; // ms
+  }
+
+  // 송신 큐 스케줄링
+  function transmitText(text) {
+    if (isTransmitting) {
+      clearTimeout(transmitTimer);
+      stopBeep();
+      isTransmitting = false;
+    }
+
+    initAudio();
+    const dot = getDotDuration();
+    const clean = text.toUpperCase();
+    transmitQueue = [];
+
+    for (let i = 0; i < clean.length; i++) {
+      const ch = clean[i];
+      if (ch === ' ') {
+        transmitQueue.push({ type: 'off', duration: dot * 7, char: ' ' });
+        continue;
+      }
+      const code = MORSE_MAP[ch];
+      if (!code) continue;
+
+      for (let j = 0; j < code.length; j++) {
+        const symbol = code[j];
+        const isDash = (symbol === '-');
+        const dur = isDash ? dot * 3 : dot;
+
+        transmitQueue.push({ type: 'on', duration: dur, char: (j === 0 ? ch : '') });
+        // 부호 간 간격 (1 dot)
+        transmitQueue.push({ type: 'off', duration: dot, char: '' });
+      }
+      // 문자 간 간격 (3 dot, 이미 1 dot 쉬었으므로 2 dot 추가)
+      transmitQueue.push({ type: 'off', duration: dot * 2, char: '' });
+    }
+
+    if (transmitQueue.length === 0) return;
+
+    isTransmitting = true;
+    valStatus.textContent = 'TX (ACTIVE)';
+    valStatus.style.color = '#38bdf8';
+    btnTransmit.textContent = '정지 ■';
+
+    processQueue();
+  }
+
+  function processQueue() {
+    if (!isTransmitting || transmitQueue.length === 0) {
+      stopBeep();
+      isTransmitting = false;
+      valStatus.textContent = 'IDLE';
+      valStatus.style.color = '#94a3b8';
+      btnTransmit.textContent = '송신 ▶';
+      return;
+    }
+
+    const item = transmitQueue.shift();
+    if (item.type === 'on') {
+      startBeep();
+      currentTapeLetter = item.char || null;
+    } else {
+      stopBeep();
+      currentTapeLetter = null;
+    }
+
+    transmitTimer = setTimeout(processQueue, item.duration);
+  }
+
+  let currentTapeLetter = null;
+
+  // --- 화면 렌더링 루프 ---
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    // 1. 테이프 기록 데이터 전진
+    tapeHistory.push({
+      on: isToneOn,
+      letter: currentTapeLetter
+    });
+    if (tapeHistory.length > MAX_TAPE_POINTS) {
+      tapeHistory.shift();
+    }
+
+    // 2. 아날로그 전보 테이프(Paper Strip) 렌더링
+    const tapeHeight = 110;
+    const tapeY = height * 0.48;
+
+    // 종이 테이프 배경 (빈티지 크라프트지/아이보리 미니멀 밴드)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, tapeY, width, tapeHeight);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, tapeY);
+    ctx.lineTo(width, tapeY);
+    ctx.moveTo(0, tapeY + tapeHeight);
+    ctx.lineTo(width, tapeY + tapeHeight);
+    ctx.stroke();
+
+    // 테이프 중심선
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.1)';
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(0, tapeY + tapeHeight / 2);
+    ctx.lineTo(width, tapeY + tapeHeight / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3. 잉크 핀(Stylus) 궤적 드로잉
+    const needleX = width * 0.78; // 우측 스타일러스 위치
+    const stepX = 2.4; // 테이프 이동 속도
+
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+
+    for (let i = 0; i < tapeHistory.length; i++) {
+      const idxFromEnd = tapeHistory.length - 1 - i;
+      const x = needleX - idxFromEnd * stepX;
+      if (x < -20 || x > width + 20) continue;
+
+      const pt = tapeHistory[i];
+      if (pt.on) {
+        // 타전 중일 때 잉크 궤적 (발광 네온 시안)
+        ctx.strokeStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(x - stepX, tapeY + tapeHeight * 0.42);
+        ctx.lineTo(x, tapeY + tapeHeight * 0.42);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // 문자 인쇄 마킹
+      if (pt.letter) {
+        ctx.font = '700 13px "IBM Plex Mono", monospace';
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(pt.letter, x, tapeY + tapeHeight * 0.82);
+      }
+    }
+
+    // 4. 전신 잉크 핀 헤드 (Stylus Needle)
+    ctx.strokeStyle = isToneOn ? '#f43f5e' : '#64748b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(needleX, tapeY - 25);
+    const needleTipY = isToneOn ? tapeY + tapeHeight * 0.42 : tapeY + tapeHeight * 0.28;
+    ctx.lineTo(needleX, needleTipY);
+    ctx.stroke();
+
+    ctx.fillStyle = isToneOn ? '#f43f5e' : '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(needleX, needleTipY, isToneOn ? 4.5 : 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. 하단 실시간 오디오 파형 (Oscilloscope View)
+    const scopeY = height * 0.78;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, scopeY);
+    ctx.lineTo(width, scopeY);
+    ctx.stroke();
+
+    if (isToneOn) {
+      const freq = parseInt(freqRange.value, 10);
+      const timeSec = performance.now() * 0.001;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 6;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+
+      for (let x = 0; x < width; x += 3) {
+        const wave = Math.sin((x * 0.04) + timeSec * (freq * 0.08)) * 24.0;
+        if (x === 0) ctx.moveTo(x, scopeY + wave);
+        else ctx.lineTo(x, scopeY + wave);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0, scopeY);
+      ctx.lineTo(width, scopeY);
+      ctx.stroke();
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  // --- 수동 전건(Manual Key) 마우스 및 키보드 조작 ---
+  let isKeyDown = false;
+
+  function pressKey() {
+    if (isKeyDown) return;
+    if (isTransmitting) {
+      clearTimeout(transmitTimer);
+      isTransmitting = false;
+      valStatus.textContent = 'MANUAL';
+      btnTransmit.textContent = '송신 ▶';
+    }
+    isKeyDown = true;
+    btnManualKey.classList.add('down');
+    startBeep();
+  }
+
+  function releaseKey() {
+    if (!isKeyDown) return;
+    isKeyDown = false;
+    btnManualKey.classList.remove('down');
+    stopBeep();
+  }
+
+  btnManualKey.addEventListener('mousedown', pressKey);
+  window.addEventListener('mouseup', releaseKey);
+
+  btnManualKey.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    pressKey();
+  });
+  window.addEventListener('touchend', releaseKey);
+
+  // 스페이스바를 누르고 있는 동안 타전
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && document.activeElement !== textInput) {
+      e.preventDefault();
+      pressKey();
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space' && document.activeElement !== textInput) {
+      e.preventDefault();
+      releaseKey();
+    }
+  });
+
+  // 버튼 이벤트
+  btnTransmit.addEventListener('click', () => {
+    if (isTransmitting) {
+      clearTimeout(transmitTimer);
+      stopBeep();
+      isTransmitting = false;
+      valStatus.textContent = 'IDLE';
+      btnTransmit.textContent = '송신 ▶';
+    } else {
+      transmitText(textInput.value || 'CQ');
+    }
+  });
+
+  btnSos.addEventListener('click', () => {
+    textInput.value = 'SOS';
+    updatePreview();
+    transmitText('SOS');
+  });
+
+  btnClearTape.addEventListener('click', () => {
+    tapeHistory.length = 0;
+  });
+
+  wpmRange.addEventListener('input', (e) => {
+    valWpm.textContent = e.target.value;
+  });
+
+  freqRange.addEventListener('input', (e) => {
+    const f = parseInt(e.target.value, 10);
+    valFreq.textContent = f;
+    if (osc && audioCtx) {
+      osc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.03);
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  // 초기 실행
+  updatePreview();
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
