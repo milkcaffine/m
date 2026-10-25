@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#020306">
+  <title>Particle Life Simulation // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #lifeCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 좌측 하단 인력/척력 규칙 매트릭스 미니 HUD */
+    .matrix-card {
+      position: absolute;
+      bottom: 74px;
+      left: 16px;
+      background: rgba(10, 15, 26, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.64rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      z-index: 10;
+      line-height: 1.5;
+    }
+    .matrix-title {
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 22px);
+      gap: 3px;
+      text-align: center;
+    }
+    .m-cell {
+      padding: 2px 0;
+      border-radius: 2px;
+      font-weight: 600;
+      font-size: 0.58rem;
+    }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 55px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>PARTICLE LIFE EMERGENCE</h1>
+  <div class="hud-meta">ATTRACTION MATRIX · TOROIDAL ECOLOGY</div>
+</header>
+
+<div class="telemetry-card">
+  <div>PRESET: <strong id="valPreset">PROTO-CELLS</strong></div>
+  <div>PARTICLES: <strong id="valCount">1,200</strong></div>
+  <div>FRICTION: <strong id="valFriction">0.85</strong></div>
+  <div>FPS: <strong id="valFps">60</strong></div>
+</div>
+
+<div class="matrix-card">
+  <div class="matrix-title">ATTRACTION MATRIX (Fij)</div>
+  <div class="matrix-grid" id="matrixGrid"></div>
+</div>
+
+<canvas id="lifeCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnCells">원시 세포 (Cells)</button>
+  <button type="button" class="dock-btn" id="btnSnakes">뱀 군무 (Snakes)</button>
+  <button type="button" class="dock-btn" id="btnPrey">포식자-피식자</button>
+  <button type="button" class="dock-btn" id="btnChaos">혼돈 클러스터</button>
+  <button type="button" class="dock-btn" id="btnRandom">무작위 진화 🎲</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnScatter">입자 재분산</button>
+  <button type="button" class="dock-btn" id="btnPause">❚❚ 일시정지</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>상호작용 반경</span>
+    <input type="range" id="radiusRange" min="50" max="150" value="85">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('lifeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valPreset = document.getElementById('valPreset');
+  const valCount = document.getElementById('valCount');
+  const valFriction = document.getElementById('valFriction');
+  const valFps = document.getElementById('valFps');
+  const matrixGrid = document.getElementById('matrixGrid');
+
+  const btnCells = document.getElementById('btnCells');
+  const btnSnakes = document.getElementById('btnSnakes');
+  const btnPrey = document.getElementById('btnPrey');
+  const btnChaos = document.getElementById('btnChaos');
+  const btnRandom = document.getElementById('btnRandom');
+  const btnScatter = document.getElementById('btnScatter');
+  const btnPause = document.getElementById('btnPause');
+  const radiusRange = document.getElementById('radiusRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 4종 색상 정의 (시안, 옐로우, 마젠타, 에메랄드)
+  const COLORS = [
+    { name: 'CYAN',    hex: '#38bdf8', r: 56,  g: 189, b: 248 },
+    { name: 'AMBER',   hex: '#fbbf24', r: 251, g: 191, b: 36  },
+    { name: 'ROSE',    hex: '#f43f5e', r: 244, g: 63,  b: 94  },
+    { name: 'EMERALD', hex: '#34d399', r: 52,  g: 211, b: 153 }
+  ];
+  const NUM_TYPES = COLORS.length;
+  const PARTICLES_PER_TYPE = 300;
+  const TOTAL_PARTICLES = NUM_TYPES * PARTICLES_PER_TYPE;
+
+  valCount.textContent = TOTAL_PARTICLES.toLocaleString();
+
+  // 상호작용 규칙 매트릭스 (4x4)
+  // matrix[i][j] > 0 이면 i가 j를 끌어당김, < 0 이면 밀어냄
+  let matrix = Array.from({ length: NUM_TYPES }, () => new Float32Array(NUM_TYPES));
+
+  // 파라미터
+  let friction = 0.85;
+  let maxRadius = parseInt(radiusRange.value, 10);
+  let isRunning = true;
+
+  // 입자 구조 배열
+  const particles = [];
+  function initParticles() {
+    particles.length = 0;
+    for (let t = 0; t < NUM_TYPES; t++) {
+      for (let i = 0; i < PARTICLES_PER_TYPE; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: 0,
+          vy: 0,
+          type: t
+        });
+      }
+    }
+  }
+
+  // 대표적 생태계 프리셋 정의
+  const PRESETS = {
+    cells: {
+      name: "PROTO-CELLS",
+      matrix: [
+        [ 0.85, -0.45,  0.20, -0.65],
+        [-0.45,  0.80, -0.35,  0.10],
+        [ 0.20, -0.35,  0.75, -0.50],
+        [-0.65,  0.10, -0.50,  0.90]
+      ],
+      friction: 0.84, radius: 85
+    },
+    snakes: {
+      name: "SNAKE BALLET",
+      matrix: [
+        [ 0.35,  0.80, -0.70,  0.00],
+        [ 0.00,  0.35,  0.80, -0.70],
+        [-0.70,  0.00,  0.35,  0.80],
+        [ 0.80, -0.70,  0.00,  0.35]
+      ],
+      friction: 0.86, radius: 95
+    },
+    prey: {
+      name: "PREDATOR & PREY",
+      matrix: [
+        [ 0.40,  1.00, -0.90,  0.00],
+        [-0.85,  0.30,  1.00,  0.00],
+        [ 0.00, -0.90,  0.40,  1.00],
+        [ 1.00,  0.00, -0.85,  0.30]
+      ],
+      friction: 0.87, radius: 80
+    },
+    chaos: {
+      name: "CHAOS SWARM",
+      matrix: [
+        [-0.20,  0.90, -0.60,  0.50],
+        [-0.80, -0.10,  0.70, -0.40],
+        [ 0.50, -0.70, -0.20,  0.80],
+        [-0.40,  0.60, -0.90, -0.10]
+      ],
+      friction: 0.83, radius: 100
+    }
+  };
+
+  function applyPreset(key) {
+    [btnCells, btnSnakes, btnPrey, btnChaos, btnRandom].forEach(b => b.classList.remove('active'));
+
+    if (key === 'random') {
+      btnRandom.classList.add('active');
+      valPreset.textContent = 'MUTATED';
+      for (let i = 0; i < NUM_TYPES; i++) {
+        for (let j = 0; j < NUM_TYPES; j++) {
+          matrix[i][j] = (Math.random() * 2 - 1).toFixed(2);
+        }
+      }
+    } else {
+      const p = PRESETS[key];
+      valPreset.textContent = p.name;
+      if (key === 'cells') btnCells.classList.add('active');
+      if (key === 'snakes') btnSnakes.classList.add('active');
+      if (key === 'prey') btnPrey.classList.add('active');
+      if (key === 'chaos') btnChaos.classList.add('active');
+
+      friction = p.friction;
+      maxRadius = p.radius;
+      radiusRange.value = maxRadius;
+      valFriction.textContent = friction.toFixed(2);
+
+      for (let i = 0; i < NUM_TYPES; i++) {
+        for (let j = 0; j < NUM_TYPES; j++) {
+          matrix[i][j] = p.matrix[i][j];
+        }
+      }
+    }
+    renderMatrixHUD();
+  }
+
+  function renderMatrixHUD() {
+    matrixGrid.innerHTML = '';
+    for (let i = 0; i < NUM_TYPES; i++) {
+      for (let j = 0; j < NUM_TYPES; j++) {
+        const val = matrix[i][j];
+        const cell = document.createElement('div');
+        cell.className = 'm-cell';
+        cell.textContent = (val > 0 ? '+' : '') + parseFloat(val).toFixed(1);
+        if (val > 0) {
+          cell.style.backgroundColor = `rgba(56, 189, 248, ${Math.min(0.9, val * 0.8)})`;
+          cell.style.color = '#020306';
+        } else {
+          cell.style.backgroundColor = `rgba(244, 63, 94, ${Math.min(0.9, Math.abs(val) * 0.8)})`;
+          cell.style.color = '#fff';
+        }
+        matrixGrid.appendChild(cell);
+      }
+    }
+  }
+
+  // 힘 계산 함수 (근거리 척력 + 원거리 인력/척력)
+  // d < rMin: 강한 충돌 척력
+  // rMin < d < rMax: 규칙 매트릭스에 따른 인력 또는 척력 삼각 함수 곡선
+  function getForce(rNorm, attraction) {
+    const beta = 0.3; // 최근접 반경 비율 (30% 이내에서는 무조건 밀어냄)
+    if (rNorm < beta) {
+      return rNorm / beta - 1.0; // -1.0 ~ 0.0 (강한 척력)
+    } else if (beta <= rNorm && rNorm <= 1.0) {
+      // 거리에 따라 부드럽게 0 -> 1 -> 0 피크를 찍는 포텐셜
+      return attraction * (1.0 - Math.abs(2.0 * rNorm - 1.0 - beta) / (1.0 - beta));
+    }
+    return 0.0;
+  }
+
+  // --- 물리 시뮬레이션 루프 (토로이달 주기 경계) ---
+  function updatePhysics() {
+    if (!isRunning) return;
+
+    const rMax = maxRadius;
+    const forceFactor = 0.045;
+
+    // 공간 분할 격자(Spatial Grid)를 이용한 초고속 이웃 탐색
+    const cellSize = rMax;
+    const gridCols = Math.ceil(width / cellSize);
+    const gridRows = Math.ceil(height / cellSize);
+    const grid = Array.from({ length: gridCols * gridRows }, () => []);
+
+    for (let i = 0; i < TOTAL_PARTICLES; i++) {
+      const p = particles[i];
+      const gx = Math.min(gridCols - 1, Math.max(0, Math.floor(p.x / cellSize)));
+      const gy = Math.min(gridRows - 1, Math.max(0, Math.floor(p.y / cellSize)));
+      grid[gy * gridCols + gx].push(p);
+    }
+
+    // 힘 상호작용 계산
+    for (let i = 0; i < TOTAL_PARTICLES; i++) {
+      const p1 = particles[i];
+      let totalFx = 0;
+      let totalFy = 0;
+
+      const gx = Math.floor(p1.x / cellSize);
+      const gy = Math.floor(p1.y / cellSize);
+
+      // 인접 9개 셀 탐색
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const ngx = (gx + dx + gridCols) % gridCols;
+          const ngy = (gy + dy + gridRows) % gridRows;
+          const neighbors = grid[ngy * gridCols + ngx];
+
+          for (let k = 0; k < neighbors.length; k++) {
+            const p2 = neighbors[k];
+            if (p1 === p2) continue;
+
+            // 토로이달 최단 거리 계산
+            let distDx = p2.x - p1.x;
+            let distDy = p2.y - p1.y;
+
+            if (distDx > width * 0.5) distDx -= width;
+            if (distDx < -width * 0.5) distDx += width;
+            if (distDy > height * 0.5) distDy -= height;
+            if (distDy < -height * 0.5) distDy += height;
+
+            const distSq = distDx * distDx + distDy * distDy;
+            if (distSq > 0 && distSq < rMax * rMax) {
+              const dist = Math.sqrt(distSq);
+              const rNorm = dist / rMax;
+              const f = getForce(rNorm, matrix[p1.type][p2.type]);
+
+              totalFx += (distDx / dist) * f;
+              totalFy += (distDy / dist) * f;
+            }
+          }
+        }
+      }
+
+      // 마우스 인터랙션 (누르고 있으면 파티클들이 마우스로 블랙홀처럼 빨려듦)
+      if (mouse.down) {
+        let mDx = mouse.x - p1.x;
+        let mDy = mouse.y - p1.y;
+        const mDistSq = mDx * mDx + mDy * mDy;
+        if (mDistSq < 250 * 250 && mDistSq > 10) {
+          const mDist = Math.sqrt(mDistSq);
+          totalFx += (mDx / mDist) * 1.8;
+          totalFy += (mDy / mDist) * 1.8;
+        }
+      }
+
+      // 속도 갱신
+      p1.vx = (p1.vx + totalFx * forceFactor * rMax) * friction;
+      p1.vy = (p1.vy + totalFy * forceFactor * rMax) * friction;
+    }
+
+    // 위치 이동 및 화면 경계 토러스 래핑
+    for (let i = 0; i < TOTAL_PARTICLES; i++) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0) p.x += width;
+      if (p.x >= width) p.x -= width;
+      if (p.y < 0) p.y += height;
+      if (p.y >= height) p.y -= height;
+    }
+  }
+
+  // --- 화면 렌더링 루프 ---
+  function render() {
+    // 잔상 효과 (아름다운 꼬리 형성)
+    ctx.fillStyle = 'rgba(2, 3, 6, 0.35)';
+    ctx.fillRect(0, 0, width, height);
+
+    // 색상별 일괄 배칭 렌더링으로 드로우콜 최소화
+    for (let t = 0; t < NUM_TYPES; t++) {
+      const col = COLORS[t];
+      ctx.fillStyle = col.hex;
+      ctx.shadowColor = col.hex;
+      ctx.shadowBlur = 4;
+
+      ctx.beginPath();
+      for (let i = 0; i < TOTAL_PARTICLES; i++) {
+        const p = particles[i];
+        if (p.type === t) {
+          ctx.moveTo(p.x + 1.8, p.y);
+          ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
+        }
+      }
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  let frameCount = 0;
+  let lastTime = performance.now();
+
+  function loop() {
+    updatePhysics();
+    render();
+
+    frameCount++;
+    const now = performance.now();
+    if (now - lastTime >= 500) {
+      valFps.textContent = Math.round((frameCount * 1000) / (now - lastTime));
+      frameCount = 0;
+      lastTime = now;
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // --- 마우스 / 터치 인터랙션 ---
+  const mouse = { x: 0, y: 0, down: false };
+
+  canvas.addEventListener('mousedown', (e) => {
+    mouse.down = true;
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+  window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+  window.addEventListener('mouseup', () => { mouse.down = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      mouse.down = true;
+      mouse.x = e.touches[0].clientX;
+      mouse.y = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (mouse.down && e.touches.length === 1) {
+      mouse.x = e.touches[0].clientX;
+      mouse.y = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { mouse.down = false; });
+
+  // 버튼 바인딩
+  btnCells.addEventListener('click', () => applyPreset('cells'));
+  btnSnakes.addEventListener('click', () => applyPreset('snakes'));
+  btnPrey.addEventListener('click', () => applyPreset('prey'));
+  btnChaos.addEventListener('click', () => applyPreset('chaos'));
+  btnRandom.addEventListener('click', () => applyPreset('random'));
+
+  btnScatter.addEventListener('click', initParticles);
+
+  btnPause.addEventListener('click', () => {
+    isRunning = !isRunning;
+    btnPause.textContent = isRunning ? '❚❚ 일시정지' : '▶ 재생';
+    btnPause.classList.toggle('active', isRunning);
+  });
+
+  radiusRange.addEventListener('input', (e) => {
+    maxRadius = parseInt(e.target.value, 10);
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  // 초기 시작
+  initParticles();
+  applyPreset('cells');
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
