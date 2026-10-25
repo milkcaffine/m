@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Lorenz Attractor Soundscope // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #lorenzCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+    #lorenzCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 실시간 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    .dock-btn.audio-on {
+      background: rgba(244, 63, 94, 0.15);
+      border-color: #f43f5e;
+      color: #f43f5e;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 65px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>LORENZ ATTRACTOR SOUNDSCOPE</h1>
+  <div class="hud-meta">CHAOS SONIFICATION · RK4 DYNAMICS</div>
+</header>
+
+<div class="telemetry-card">
+  <div>X: <strong id="valX">+0.00</strong> | PAN</div>
+  <div>Y: <strong id="valY">+0.00</strong> | PITCH</div>
+  <div>Z: <strong id="valZ">+0.00</strong> | FILTER</div>
+  <div>AUDIO: <strong id="valAudio">MUTED</strong></div>
+</div>
+
+<canvas id="lorenzCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn" id="btnAudio">🔊 소리 켜기</button>
+  <button type="button" class="dock-btn active" id="btnAutoSpin">자동 회전</button>
+  <button type="button" class="dock-btn" id="btnClear">궤적 비우기</button>
+  <button type="button" class="dock-btn" id="btnPerturb">미세 섭동(나비효과)</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>음량</span>
+    <input type="range" id="volRange" min="0" max="100" value="70">
+  </div>
+  <div class="slider-group">
+    <span>연산 속도</span>
+    <input type="range" id="speedRange" min="2" max="16" value="6">
+  </div>
+  <div class="slider-group">
+    <span>궤적 길이</span>
+    <input type="range" id="lengthRange" min="800" max="4000" step="200" value="2400">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('lorenzCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valX = document.getElementById('valX');
+  const valY = document.getElementById('valY');
+  const valZ = document.getElementById('valZ');
+  const valAudio = document.getElementById('valAudio');
+
+  const btnAudio = document.getElementById('btnAudio');
+  const btnAutoSpin = document.getElementById('btnAutoSpin');
+  const btnClear = document.getElementById('btnClear');
+  const btnPerturb = document.getElementById('btnPerturb');
+  const volRange = document.getElementById('volRange');
+  const speedRange = document.getElementById('speedRange');
+  const lengthRange = document.getElementById('lengthRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 로렌츠 카오스 파라미터
+  const sigma = 10.0;
+  const rho = 28.0;
+  const beta = 8.0 / 3.0;
+  const dt = 0.005;
+
+  // 상태 변수
+  let x = 0.1, y = 0.0, z = 0.0;
+  let points = [];
+  let maxPoints = parseInt(lengthRange.value, 10);
+
+  // 3D 뷰 및 회전 조작
+  let rotX = 0.35;
+  let rotY = 0.65;
+  let autoSpin = true;
+  let scale = Math.min(width, height) * 0.024;
+  let isDragging = false;
+  let lastMouseX = 0, lastMouseY = 0;
+
+  // --- Web Audio API 사운드 합성 엔진 ---
+  let audioCtx = null;
+  let masterGain = null;
+  let pannerNode = null;
+  let filterNode = null;
+  let osc1 = null; // 메인 멜로디 (Sine)
+  let osc2 = null; // 서브 옥타브 배음 (Triangle)
+  let isAudioActive = false;
+
+  function initAudioEngine() {
+    if (audioCtx) return;
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+
+    // 입체 음향 스테레오 패너
+    pannerNode = audioCtx.createStereoPanner();
+
+    // 컷오프 필터 (z축 연동)
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = 'lowpass';
+    filterNode.frequency.value = 800;
+    filterNode.Q.value = 3.5;
+
+    // 오실레이터 1: 주 톤
+    osc1 = audioCtx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.value = 220;
+
+    // 오실레이터 2: 서브 배음
+    osc2 = audioCtx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.value = 110;
+
+    const osc2Gain = audioCtx.createGain();
+    osc2Gain.gain.value = 0.45;
+
+    // 부드러운 코러스/디튠 효과를 위한 연결
+    osc1.connect(filterNode);
+    osc2.connect(osc2Gain);
+    osc2Gain.connect(filterNode);
+
+    filterNode.connect(pannerNode);
+    pannerNode.connect(masterGain);
+    masterGain.connect(audioCtx.destination);
+
+    osc1.start();
+    osc2.start();
+  }
+
+  function updateAudio(currentX, currentY, currentZ) {
+    if (!audioCtx || !isAudioActive) return;
+
+    const now = audioCtx.currentTime;
+
+    // 1. x축 ➔ Stereo Panning (-1.0 ~ +1.0)
+    const panVal = Math.max(-1.0, Math.min(1.0, currentX / 18.0));
+    pannerNode.pan.setTargetAtTime(panVal, now, 0.03);
+
+    // 2. y축 ➔ 주파수 피치 매핑 (120Hz ~ 520Hz)
+    // 날개 중심을 맴돌며 펜타토닉 음계 같은 미묘한 선율 형성
+    const baseFreq = 220.0 + (currentY * 7.5);
+    const clampedFreq = Math.max(80.0, Math.min(880.0, baseFreq));
+    osc1.frequency.setTargetAtTime(clampedFreq, now, 0.03);
+    osc2.frequency.setTargetAtTime(clampedFreq * 0.5, now, 0.03);
+
+    // 3. z축 ➔ 필터 컷오프 (z: 0 ~ 50 ➔ 300Hz ~ 3200Hz)
+    const cutoff = 300.0 + (currentZ * 58.0);
+    filterNode.frequency.setTargetAtTime(cutoff, now, 0.04);
+  }
+
+  // --- 4차 룽게-쿠타(RK4) 미분 계산 ---
+  function lorenzDerivatives(px, py, pz) {
+    return {
+      dx: sigma * (py - px),
+      dy: px * (rho - pz) - py,
+      dz: px * py - beta * pz
+    };
+  }
+
+  function rk4Step() {
+    const k1 = lorenzDerivatives(x, y, z);
+
+    const k2 = lorenzDerivatives(
+      x + k1.dx * dt * 0.5,
+      y + k1.dy * dt * 0.5,
+      z + k1.dz * dt * 0.5
+    );
+
+    const k3 = lorenzDerivatives(
+      x + k2.dx * dt * 0.5,
+      y + k2.dy * dt * 0.5,
+      z + k2.dz * dt * 0.5
+    );
+
+    const k4 = lorenzDerivatives(
+      x + k3.dx * dt,
+      y + k3.dy * dt,
+      z + k3.dz * dt
+    );
+
+    x += (dt / 6.0) * (k1.dx + 2.0 * k2.dx + 2.0 * k3.dx + k4.dx);
+    y += (dt / 6.0) * (k1.dy + 2.0 * k2.dy + 2.0 * k3.dy + k4.dy);
+    z += (dt / 6.0) * (k1.dz + 2.0 * k2.dz + 2.0 * k3.dz + k4.dz);
+
+    points.push({ x, y, z });
+    if (points.length > maxPoints) {
+      points.shift();
+    }
+  }
+
+  // --- 3D ➔ 2D 회전 및 투영 변환 ---
+  function project(p) {
+    // 중심축 높이 보정 (로렌츠 어트랙터의 z축 중심은 약 25 근방)
+    const cx = p.x;
+    const cy = p.y;
+    const cz = p.z - 25.0;
+
+    // Y축 회전
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    const x1 = cx * cosY + cz * sinY;
+    const y1 = cy;
+    const z1 = -cx * sinY + cz * cosY;
+
+    // X축 회전
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    const x2 = x1;
+    const y2 = y1 * cosX - z1 * sinX;
+    const z2 = y1 * sinX + z1 * cosX;
+
+    // 스크린 좌표 투영
+    return {
+      x: width * 0.5 + x2 * scale,
+      y: height * 0.55 - y2 * scale,
+      depth: z2
+    };
+  }
+
+  // --- 메인 루프 ---
+  function loop() {
+    // 서브스텝 연산
+    const steps = parseInt(speedRange.value, 10);
+    for (let i = 0; i < steps; i++) {
+      rk4Step();
+    }
+
+    if (autoSpin && !isDragging) {
+      rotY += 0.0035;
+    }
+
+    // 오디오 동기화
+    updateAudio(x, y, z);
+
+    // 텔레메트리 갱신
+    valX.textContent = (x >= 0 ? '+' : '') + x.toFixed(2);
+    valY.textContent = (y >= 0 ? '+' : '') + y.toFixed(2);
+    valZ.textContent = z.toFixed(2);
+
+    // 렌더링
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  function render() {
+    ctx.fillStyle = '#030407';
+    ctx.fillRect(0, 0, width, height);
+
+    if (points.length < 2) return;
+
+    // 네온 궤적 렌더링 (시간 순으로 투명도와 그라데이션 적용)
+    ctx.lineWidth = 1.3;
+    const len = points.length;
+
+    for (let i = 1; i < len; i += 2) {
+      const pPrev = project(points[i - 1]);
+      const pCurr = project(points[i]);
+
+      const progress = i / len; // 0.0(과거) ~ 1.0(현재)
+      const alpha = progress * 0.85;
+
+      // x좌표에 따라 좌/우 날개 색상 믹스 (좌: 청록, 우: 마젠타)
+      const pOrig = points[i];
+      const wingFactor = Math.max(0, Math.min(1, (pOrig.x + 18) / 36));
+
+      // RGB 그라데이션 보간 (#38bdf8 ➔ #f43f5e)
+      const r = Math.round(56 + (244 - 56) * wingFactor);
+      const g = Math.round(189 + (63 - 189) * wingFactor);
+      const b = Math.round(248 + (94 - 248) * wingFactor);
+
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(pPrev.x, pPrev.y);
+      ctx.lineTo(pCurr.x, pCurr.y);
+      ctx.stroke();
+    }
+
+    // 현재 어트랙터 선두 머리(Head) 발광체
+    const head = project({ x, y, z });
+    const headGrad = ctx.createRadialGradient(head.x, head.y, 1, head.x, head.y, 12);
+    headGrad.addColorStop(0, '#ffffff');
+    headGrad.addColorStop(0.3, 'rgba(56, 189, 248, 0.9)');
+    headGrad.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = headGrad;
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // --- 인터랙션 이벤트 ---
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastMouseX;
+    const dy = e.clientY - lastMouseY;
+    rotY += dx * 0.008;
+    rotX += dy * 0.008;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  // 모바일 터치 대응
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastMouseX = e.touches[0].clientX;
+      lastMouseY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - lastMouseX;
+      const dy = e.touches[0].clientY - lastMouseY;
+      rotY += dx * 0.008;
+      rotX += dy * 0.008;
+      lastMouseX = e.touches[0].clientX;
+      lastMouseY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  // 휠 줌 인/아웃
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.08 : 0.92;
+    scale = Math.max(5.0, Math.min(80.0, scale * factor));
+  }, { passive: false });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    scale = Math.min(width, height) * 0.024;
+  });
+
+  // 버튼 바인딩
+  btnAudio.addEventListener('click', async () => {
+    initAudioEngine();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    isAudioActive = !isAudioActive;
+    btnAudio.classList.toggle('audio-on', isAudioActive);
+    btnAudio.textContent = isAudioActive ? '🔊 소리 끄기' : '🔈 소리 켜기';
+    valAudio.textContent = isAudioActive ? 'LIVE' : 'MUTED';
+    valAudio.style.color = isAudioActive ? '#f43f5e' : '#38bdf8';
+
+    const targetGain = isAudioActive ? (parseInt(volRange.value, 10) / 100) * 0.25 : 0;
+    masterGain.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.08);
+  });
+
+  volRange.addEventListener('input', (e) => {
+    if (masterGain && isAudioActive) {
+      masterGain.gain.setTargetAtTime((parseInt(e.target.value, 10) / 100) * 0.25, audioCtx.currentTime, 0.03);
+    }
+  });
+
+  btnAutoSpin.addEventListener('click', () => {
+    autoSpin = !autoSpin;
+    btnAutoSpin.classList.toggle('active', autoSpin);
+  });
+
+  btnClear.addEventListener('click', () => {
+    points = [];
+  });
+
+  btnPerturb.addEventListener('click', () => {
+    // 0.001 단위의 극미세 섭동으로 나비효과 유발
+    x += (Math.random() - 0.5) * 0.05;
+    y += (Math.random() - 0.5) * 0.05;
+    z += (Math.random() - 0.5) * 0.05;
+  });
+
+  lengthRange.addEventListener('input', (e) => {
+    maxPoints = parseInt(e.target.value, 10);
+    while (points.length > maxPoints) points.shift();
+  });
+
+  // 실행
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
