@@ -29,7 +29,6 @@
       height: 100%;
       display: block;
       cursor: crosshair;
-      image-rendering: pixelated;
     }
 
     /* 상단 헤더 HUD */
@@ -123,9 +122,10 @@
     }
     .dock-btn:hover { background: #334155; color: #38bdf8; }
     .dock-btn.active {
-      background: rgba(56, 189, 248, 0.15);
+      background: rgba(56, 189, 248, 0.18);
       border-color: #38bdf8;
       color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
     }
 
     .dock-sep {
@@ -145,7 +145,7 @@
       white-space: nowrap;
     }
     .slider-group input[type="range"] {
-      width: 60px;
+      width: 55px;
       height: 4px;
       accent-color: #38bdf8;
       background: #334155;
@@ -174,15 +174,14 @@
 
 <div class="telemetry-card">
   <div>SCENARIO: <strong id="valScene">DOUBLE SLIT</strong></div>
-  <div>WAVELENGTH: <strong id="valLambda">12 px</strong></div>
-  <div>DAMPING: <strong id="valDamp">0.994</strong></div>
+  <div>STATUS: <strong id="valStatus">RUNNING</strong></div>
+  <div>CONTRAST: <strong id="valGain">2.4x</strong></div>
   <div>FPS: <strong id="valFps">60</strong></div>
 </div>
 
 <canvas id="waveCanvas"></canvas>
 
 <div class="control-dock">
-  <!-- 프리셋 시나리오 -->
   <button type="button" class="dock-btn active" id="btnDouble">이중 슬릿 (양자 간섭)</button>
   <button type="button" class="dock-btn" id="btnSingle">단일 슬릿 (회절)</button>
   <button type="button" class="dock-btn" id="btnDoppler">도플러 파동</button>
@@ -190,7 +189,6 @@
 
   <div class="dock-sep"></div>
 
-  <!-- 브러시 모드 -->
   <div class="slider-group">
     <span>모드</span>
     <select id="toolSelect">
@@ -201,17 +199,17 @@
   </div>
 
   <button type="button" class="dock-btn" id="btnClear">초기화</button>
-  <button type="button" class="dock-btn active" id="btnPause">일시정지</button>
+  <button type="button" class="dock-btn" id="btnPause">❚❚ 일시정지</button>
 
   <div class="dock-sep"></div>
 
   <div class="slider-group">
-    <span>파장/주파수</span>
-    <input type="range" id="freqRange" min="5" max="30" value="16">
+    <span>감도(Gain)</span>
+    <input type="range" id="gainRange" min="10" max="60" value="24">
   </div>
   <div class="slider-group">
-    <span>감쇠율</span>
-    <input type="range" id="dampRange" min="980" max="999" value="994">
+    <span>파장/주파수</span>
+    <input type="range" id="freqRange" min="8" max="32" value="18">
   </div>
 </div>
 
@@ -220,8 +218,8 @@
   const ctx = canvas.getContext('2d');
 
   const valScene = document.getElementById('valScene');
-  const valLambda = document.getElementById('valLambda');
-  const valDamp = document.getElementById('valDamp');
+  const valStatus = document.getElementById('valStatus');
+  const valGain = document.getElementById('valGain');
   const valFps = document.getElementById('valFps');
 
   const btnDouble = document.getElementById('btnDouble');
@@ -232,30 +230,31 @@
   const btnPause = document.getElementById('btnPause');
 
   const toolSelect = document.getElementById('toolSelect');
+  const gainRange = document.getElementById('gainRange');
   const freqRange = document.getElementById('freqRange');
-  const dampRange = document.getElementById('dampRange');
 
-  // 내부 유한차분 그리드 해상도 (연산 가속을 위해 고정된 정밀도 사용)
-  let GRID_W = 320;
-  let GRID_H = 200;
+  // 내부 유한차분 시뮬레이션 그리드 해상도
+  const GRID_W = 320;
+  const GRID_H = 200;
 
-  // 3개 시간 단계 버퍼 (u_t-1, u_t, u_t+1)
+  // 3단계 시간 버퍼
   let uPrev = new Float32Array(GRID_W * GRID_H);
   let uCurr = new Float32Array(GRID_W * GRID_H);
   let uNext = new Float32Array(GRID_W * GRID_H);
-  let walls = new Uint8Array(GRID_W * GRID_H); // 1: 반사벽, 0: 수면
+  let walls = new Uint8Array(GRID_W * GRID_H);
 
-  // 렌더링용 ImageData 버퍼
+  // 렌더링용 오프스크린 캔버스
   const offscreenCanvas = document.createElement('canvas');
   offscreenCanvas.width = GRID_W;
   offscreenCanvas.height = GRID_H;
   const offCtx = offscreenCanvas.getContext('2d');
   let imgData = offCtx.createImageData(GRID_W, GRID_H);
 
-  // 물리 파라미터
-  let c2 = 0.48; // 파속 제곱 계수 (CFL 조건 c^2 * dt^2 / dx^2 <= 0.5 충족)
-  let damping = 0.994;
-  let frequency = 0.16;
+  // 물리 파라미터 (CFL 안정 조건 엄수)
+  let c2 = 0.42; 
+  let damping = 0.996;
+  let frequency = 0.18;
+  let gain = 2.4;
   let isRunning = true;
   let currentScene = 'double';
   let simStep = 0;
@@ -264,22 +263,17 @@
   let dopplerX = 40;
   let dopplerSpeed = 0.45;
 
-  // 마우스/터치 인터랙션
-  let isPointerDown = false;
-  let lastGridX = 0, lastGridY = 0;
-
-  // FPS
-  let frameCount = 0;
-  let lastTime = performance.now();
+  let width = window.innerWidth;
+  let height = window.innerHeight;
 
   function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // 프리셋 구성
+  // 프리셋 시나리오 구성
   function buildScene(name) {
     currentScene = name;
     uPrev.fill(0);
@@ -290,7 +284,7 @@
 
     [btnDouble, btnSingle, btnDoppler, btnMirror].forEach(b => b.classList.remove('active'));
 
-    const midX = Math.floor(GRID_W * 0.36);
+    const midX = Math.floor(GRID_W * 0.32);
     const midY = Math.floor(GRID_H * 0.5);
 
     if (name === 'double') {
@@ -300,14 +294,17 @@
       // 세로 벽 세우기
       for (let y = 0; y < GRID_H; y++) {
         walls[y * GRID_W + midX] = 1;
+        walls[y * GRID_W + midX + 1] = 1; // 2px 두께
       }
 
-      // 두 개의 좁은 틈새(이중 슬릿) 뚫기
-      const slitDist = 24;
-      const slitWidth = 4;
+      // 두 개의 슬릿 (너비 8px, 간격 28px)
+      const slitDist = 28;
+      const slitWidth = 8;
       for (let w = -slitWidth/2; w <= slitWidth/2; w++) {
-        walls[Math.floor(midY - slitDist/2 + w) * GRID_W + midX] = 0;
-        walls[Math.floor(midY + slitDist/2 + w) * GRID_W + midX] = 0;
+        for (let th = 0; th <= 1; th++) {
+          walls[Math.floor(midY - slitDist/2 + w) * GRID_W + midX + th] = 0;
+          walls[Math.floor(midY + slitDist/2 + w) * GRID_W + midX + th] = 0;
+        }
       }
     } else if (name === 'single') {
       btnSingle.classList.add('active');
@@ -315,11 +312,13 @@
 
       for (let y = 0; y < GRID_H; y++) {
         walls[y * GRID_W + midX] = 1;
+        walls[y * GRID_W + midX + 1] = 1;
       }
-      // 단일 슬릿 틈새 1개
-      const slitWidth = 6;
-      for (let w = -slitWidth; w <= slitWidth; w++) {
-        walls[(midY + w) * GRID_W + midX] = 0;
+      const slitWidth = 10;
+      for (let w = -slitWidth/2; w <= slitWidth/2; w++) {
+        for (let th = 0; th <= 1; th++) {
+          walls[Math.floor(midY + w) * GRID_W + midX + th] = 0;
+        }
       }
     } else if (name === 'doppler') {
       btnDoppler.classList.add('active');
@@ -329,15 +328,14 @@
       btnMirror.classList.add('active');
       valScene.textContent = 'PARABOLIC MIRROR';
 
-      // 우측에 포물선/오목 거울 형성: x = x0 - (y - y0)^2 / (4*f)
-      const f = 40;
-      const mirrorApexX = GRID_W - 25;
+      const f = 45;
+      const mirrorApexX = GRID_W - 20;
       for (let y = 15; y < GRID_H - 15; y++) {
         const dy = y - midY;
         const x = Math.floor(mirrorApexX - (dy * dy) / (4 * f));
-        if (x >= 0 && x < GRID_W) {
+        if (x >= 0 && x < GRID_W - 1) {
           walls[y * GRID_W + x] = 1;
-          walls[y * GRID_W + x + 1] = 1; // 두께
+          walls[y * GRID_W + x + 1] = 1;
         }
       }
     }
@@ -346,33 +344,29 @@
   // --- 유한차분법(FDTD) 2D 파동 방정식 솔버 ---
   function updatePhysics() {
     if (!isRunning) return;
-
     simStep++;
 
-    // 1. 연속 평면파/점음원 드라이버 공급
-    const amp = Math.sin(simStep * frequency) * 1.8;
+    // 1. 연속 파원 드라이버 공급
+    const amp = Math.sin(simStep * frequency) * 2.2;
 
     if (currentScene === 'double' || currentScene === 'single') {
-      // 좌측 벽면에서 입사하는 균일한 평면파 (Plane Wave)
-      for (let y = 2; y < GRID_H - 2; y++) {
-        uCurr[y * GRID_W + 8] = amp;
+      // 좌측 수면에서 밀려오는 균일한 평면파
+      for (let y = 4; y < GRID_H - 4; y++) {
+        uCurr[y * GRID_W + 6] = amp;
       }
     } else if (currentScene === 'doppler') {
-      // 오른쪽으로 일정한 속도로 이동하는 점 파원
       dopplerX += dopplerSpeed;
       if (dopplerX > GRID_W - 40) dopplerX = 40;
       const dX = Math.floor(dopplerX);
       const dY = Math.floor(GRID_H * 0.5);
-      uCurr[dY * GRID_W + dX] = amp * 2.0;
+      uCurr[dY * GRID_W + dX] = amp * 2.5;
     } else if (currentScene === 'mirror') {
-      // 오목 거울을 향해 들어가는 넓은 평면파
       for (let y = 20; y < GRID_H - 20; y++) {
-        uCurr[y * GRID_W + 15] = amp;
+        uCurr[y * GRID_W + 10] = amp;
       }
     }
 
-    // 2. 2D 라플라시안 계산 및 2차 중앙 차분
-    // u(t+dt) = 2*u(t) - u(t-dt) + c^2 * dt^2 * Δu
+    // 2. 2D 라플라시안 2차 중앙 차분
     for (let y = 1; y < GRID_H - 1; y++) {
       let idx = y * GRID_W + 1;
       for (let x = 1; x < GRID_W - 1; x++, idx++) {
@@ -381,60 +375,59 @@
           continue;
         }
 
-        // 라플라시안 (5점 스텐실)
         const laplacian = uCurr[idx - 1] + uCurr[idx + 1] +
-                          uCurr[idx - GRID_W] + uCurr[idx + GRID_W] - 4 * uCurr[idx];
+                          uCurr[idx - GRID_W] + uCurr[idx + GRID_W] - 4.0 * uCurr[idx];
 
-        uNext[idx] = (2 * uCurr[idx] - uPrev[idx] + c2 * laplacian) * damping;
+        uNext[idx] = (2.0 * uCurr[idx] - uPrev[idx] + c2 * laplacian) * damping;
       }
     }
 
-    // 3. 흡수 경계 조건 (Mur Absorbing Boundary / 수조 가장자리 반사 방지)
+    // 3. 가장자리 흡수 경계 (반사 완화)
     for (let x = 0; x < GRID_W; x++) {
-      uNext[x] *= 0.85;
-      uNext[(GRID_H - 1) * GRID_W + x] *= 0.85;
+      uNext[x] *= 0.88;
+      uNext[(GRID_H - 1) * GRID_W + x] *= 0.88;
     }
     for (let y = 0; y < GRID_H; y++) {
-      uNext[y * GRID_W] *= 0.85;
-      uNext[y * GRID_W + (GRID_W - 1)] *= 0.85;
+      uNext[y * GRID_W] *= 0.88;
+      uNext[y * GRID_W + (GRID_W - 1)] *= 0.88;
     }
 
-    // 버퍼 핑퐁 스왑
+    // 핑퐁 버퍼 스왑
     const temp = uPrev;
     uPrev = uCurr;
     uCurr = uNext;
     uNext = temp;
   }
 
-  // --- 화면 렌더링 루프 ---
+  // --- 화면 렌더링 루프 (비선형 tanh 네온 감마 보정) ---
   function render() {
     const data = imgData.data;
-
-    // 파동 높이에 따른 간섭 무늬 픽셀 매핑
     let ptr = 0;
+
     for (let idx = 0; idx < GRID_W * GRID_H; idx++) {
       if (walls[idx] === 1) {
-        // 장애물 슬릿 벽: 차분한 콘크리트 슬레이트
+        // 장애물 슬릿 벽: 선명한 슬레이트 그레이
         data[ptr++] = 148;
         data[ptr++] = 163;
         data[ptr++] = 184;
         data[ptr++] = 255;
       } else {
         const u = uCurr[idx];
+        // 비선형 감마: 미세한 투과파(0.02)도 눈부시게 끌어올림
+        const norm = Math.tanh(u * gain);
 
-        if (u > 0) {
-          // 마루 (Crest): 눈부신 청록-백색 네온 (#38bdf8)
-          const val = Math.min(255, Math.floor(u * 140));
-          data[ptr++] = Math.min(255, Math.floor(val * 0.22));
-          data[ptr++] = Math.min(255, Math.floor(val * 0.74));
-          data[ptr++] = Math.min(255, Math.floor(val * 0.97 + val * 0.15));
+        if (norm >= 0) {
+          // 마루 (Crest): 깊은 감청색 ➔ 눈부신 네온 시안/백색 (#38bdf8)
+          data[ptr++] = Math.min(255, Math.floor(6 + norm * (248 - 6)));
+          data[ptr++] = Math.min(255, Math.floor(12 + norm * (252 - 12)));
+          data[ptr++] = Math.min(255, Math.floor(24 + norm * (255 - 24)));
           data[ptr++] = 255;
         } else {
-          // 골 (Trough): 묵직한 심해 감청색 (#0f172a)
-          const val = Math.min(255, Math.floor(-u * 140));
-          data[ptr++] = Math.min(255, Math.floor(val * 0.08));
-          data[ptr++] = Math.min(255, Math.floor(val * 0.12));
-          data[ptr++] = Math.min(255, Math.floor(val * 0.32));
+          // 골 (Trough): 깊은 감청색 ➔ 칠흑의 심해 암청색
+          const absNorm = -norm;
+          data[ptr++] = Math.max(0, Math.floor(6 * (1.0 - absNorm)));
+          data[ptr++] = Math.max(0, Math.floor(12 * (1.0 - absNorm)));
+          data[ptr++] = Math.max(0, Math.floor(24 * (1.0 - absNorm * 0.7)));
           data[ptr++] = 255;
         }
       }
@@ -442,11 +435,19 @@
 
     offCtx.putImageData(imgData, 0, 0);
 
-    // 전체 브라우저 화면에 캔버스 스케일링 복사
+    // 메인 화면으로 전사 (부드러운 보간 적용)
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(offscreenCanvas, 0, 0, width, height);
+  }
 
-    // FPS
+  let frameCount = 0;
+  let lastTime = performance.now();
+
+  function loop() {
+    updatePhysics();
+    updatePhysics();
+    render();
+
     frameCount++;
     const now = performance.now();
     if (now - lastTime >= 500) {
@@ -454,78 +455,63 @@
       frameCount = 0;
       lastTime = now;
     }
-  }
 
-  function loop() {
-    // 1프레임당 2회 서브스텝 계산으로 파동 전파 부드러움 극대화
-    updatePhysics();
-    updatePhysics();
-    render();
     requestAnimationFrame(loop);
   }
 
-  // --- 마우스 / 터치 조작 ---
+  // --- 마우스 / 터치 인터랙션 ---
+  let isPointerDown = false;
+
   function handlePointer(clientX, clientY) {
     const gx = Math.floor((clientX / width) * GRID_W);
     const gy = Math.floor((clientY / height) * GRID_H);
-
-    if (gx < 1 || gx >= GRID_W - 1 || gy < 1 || gy >= GRID_H - 1) return;
+    if (gx < 2 || gx >= GRID_W - 2 || gy < 2 || gy >= GRID_H - 2) return;
 
     const tool = toolSelect.value;
     if (tool === 'drop') {
-      // 물방울 투하 (가우시안 파문)
-      const r = 4;
+      const r = 5;
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
           const d2 = dx * dx + dy * dy;
           if (d2 <= r * r) {
             const idx = (gy + dy) * GRID_W + (gx + dx);
             if (walls[idx] === 0) {
-              uCurr[idx] += Math.exp(-d2 / 6.0) * 2.8;
+              uCurr[idx] += Math.exp(-d2 / 7.0) * 3.5;
             }
           }
         }
       }
     } else if (tool === 'wall') {
-      // 실시간 벽 그리기
       walls[gy * GRID_W + gx] = 1;
       uCurr[gy * GRID_W + gx] = 0;
     } else if (tool === 'erase') {
-      // 벽 지우기
       walls[gy * GRID_W + gx] = 0;
     }
-    lastGridX = gx;
-    lastGridY = gy;
   }
 
   canvas.addEventListener('mousedown', (e) => {
     isPointerDown = true;
     handlePointer(e.clientX, e.clientY);
   });
-
   window.addEventListener('mousemove', (e) => {
     if (isPointerDown) handlePointer(e.clientX, e.clientY);
   });
-
   window.addEventListener('mouseup', () => { isPointerDown = false; });
 
-  // 모바일 터치 대응
   canvas.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
       isPointerDown = true;
       handlePointer(e.touches[0].clientX, e.touches[0].clientY);
     }
   }, { passive: true });
-
   canvas.addEventListener('touchmove', (e) => {
     if (isPointerDown && e.touches.length === 1) {
       handlePointer(e.touches[0].clientX, e.touches[0].clientY);
     }
   }, { passive: true });
-
   canvas.addEventListener('touchend', () => { isPointerDown = false; });
 
-  // UI 바인딩
+  // UI 버튼 바인딩
   btnDouble.addEventListener('click', () => buildScene('double'));
   btnSingle.addEventListener('click', () => buildScene('single'));
   btnDoppler.addEventListener('click', () => buildScene('doppler'));
@@ -539,24 +525,22 @@
 
   btnPause.addEventListener('click', () => {
     isRunning = !isRunning;
-    btnPause.textContent = isRunning ? '일시정지' : '재개';
+    btnPause.textContent = isRunning ? '❚❚ 일시정지' : '▶ 재생';
     btnPause.classList.toggle('active', isRunning);
+    valStatus.textContent = isRunning ? 'RUNNING' : 'PAUSED';
+    valStatus.style.color = isRunning ? '#38bdf8' : '#94a3b8';
+  });
+
+  gainRange.addEventListener('input', (e) => {
+    gain = parseInt(e.target.value, 10) / 10.0;
+    valGain.textContent = `${gain.toFixed(1)}x`;
   });
 
   freqRange.addEventListener('input', (e) => {
-    const v = parseInt(e.target.value, 10);
-    frequency = v / 100.0;
-    // 파장(px) 근사치 표시: lambda = c / f
-    const lambda = Math.round(Math.sqrt(c2) / frequency * 4.0);
-    valLambda.textContent = `${lambda} px`;
+    frequency = parseInt(e.target.value, 10) / 100.0;
   });
 
-  dampRange.addEventListener('input', (e) => {
-    damping = parseInt(e.target.value, 10) / 1000.0;
-    valDamp.textContent = damping.toFixed(3);
-  });
-
-  // 시작
+  // 초기 시작
   buildScene('double');
   requestAnimationFrame(loop);
 </script>
