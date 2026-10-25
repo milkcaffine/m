@@ -13,7 +13,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #030407;
+      background: #020306;
       color: #cbd5e1;
       overflow: hidden;
       height: 100vh;
@@ -29,6 +29,7 @@
       height: 100%;
       display: block;
       cursor: crosshair;
+      image-rendering: auto;
     }
 
     /* 상단 헤더 HUD */
@@ -62,7 +63,7 @@
       font-weight: 700;
       letter-spacing: 1px;
       color: #f8fafc;
-      text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
     }
     .hud-meta {
       font-family: 'IBM Plex Mono', monospace;
@@ -86,6 +87,7 @@
       pointer-events: none;
       line-height: 1.6;
       text-align: right;
+      z-index: 10;
     }
     .telemetry-card strong { color: #38bdf8; }
 
@@ -95,8 +97,8 @@
       bottom: 16px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(10, 15, 26, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 14px;
       padding: 8px 14px;
       display: flex;
@@ -121,9 +123,10 @@
     }
     .dock-btn:hover { background: #334155; color: #38bdf8; }
     .dock-btn.active {
-      background: rgba(56, 189, 248, 0.15);
+      background: rgba(56, 189, 248, 0.18);
       border-color: #38bdf8;
       color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
     }
 
     .dock-sep {
@@ -143,7 +146,7 @@
       white-space: nowrap;
     }
     .slider-group input[type="range"] {
-      width: 60px;
+      width: 55px;
       height: 4px;
       accent-color: #38bdf8;
       background: #334155;
@@ -155,389 +158,339 @@
 
 <header>
   <a href="index.html" class="home-link">← marsko</a>
-  <h1>GRAY-SCOTT REACTION-DIFFUSION</h1>
-  <div class="hud-meta">TURING PATTERNS · GPU PDE SOLVER</div>
+  <h1>REACTION-DIFFUSION LAB</h1>
+  <div class="hud-meta">GRAY-SCOTT MODEL · TURING MORPHOGENESIS</div>
 </header>
 
 <div class="telemetry-card">
-  <div>PATTERN: <strong id="valPattern">CORAL</strong></div>
-  <div>FEED (F): <strong id="valFeed">0.0545</strong></div>
-  <div>KILL (K): <strong id="valKill">0.0620</strong></div>
+  <div>PATTERN: <strong id="valPreset">MITOSIS</strong></div>
+  <div>FEED (F): <strong id="valF">0.0367</strong></div>
+  <div>KILL (k): <strong id="valK">0.0649</strong></div>
   <div>FPS: <strong id="valFps">60</strong></div>
 </div>
 
 <canvas id="simCanvas"></canvas>
 
 <div class="control-dock">
-  <!-- 프리셋 패턴 모드 -->
-  <button type="button" class="dock-btn active" id="btnCoral">산호초 (Coral)</button>
-  <button type="button" class="dock-btn" id="btnMitosis">세포 분열 (Mitosis)</button>
-  <button type="button" class="dock-btn" id="btnSpirals">나선 파동 (Spirals)</button>
-  <button type="button" class="dock-btn" id="btnSolitons">펄스 알갱이 (Solitons)</button>
+  <button type="button" class="dock-btn active" id="btnMitosis">세포 분열</button>
+  <button type="button" class="dock-btn" id="btnCoral">산호초</button>
+  <button type="button" class="dock-btn" id="btnMaze">지문 미궁</button>
+  <button type="button" class="dock-btn" id="btnSpirals">나선 파동</button>
+  <button type="button" class="dock-btn" id="btnChaos">카오스</button>
 
   <div class="dock-sep"></div>
 
-  <button type="button" class="dock-btn" id="btnColorMap">팔레트 전환</button>
+  <button type="button" class="dock-btn" id="btnSeed">씨앗 재주입</button>
   <button type="button" class="dock-btn" id="btnClear">초기화</button>
-  <button type="button" class="dock-btn" id="btnSeed">중앙 씨앗 주입</button>
+  <button type="button" class="dock-btn" id="btnPause">❚❚ 일시정지</button>
 
   <div class="dock-sep"></div>
 
   <div class="slider-group">
-    <span>주입 반경</span>
-    <input type="range" id="brushRange" min="5" max="50" value="20">
+    <span>브러시 반경</span>
+    <input type="range" id="brushRange" min="2" max="16" value="7">
   </div>
 </div>
 
-<!-- 공통 버텍스 셰이더 -->
-<script id="vs" type="x-shader/x-vertex">
-  attribute vec2 position;
-  varying vec2 vUv;
-  void main() {
-    vUv = position * 0.5 + 0.5;
-    gl_Position = vec4(position, 0.0, 1.0);
-  }
-</script>
-
-<!-- 편미분 계산 셰이더 (핑퐁 시뮬레이션 패스) -->
-<script id="fs-sim" type="x-shader/x-fragment">
-  precision highp float;
-  varying vec2 vUv;
-  uniform sampler2D u_state;
-  uniform vec2 u_texel;
-  uniform float u_feed;
-  uniform float u_kill;
-  uniform vec2 u_mouse;
-  uniform float u_brush;
-  uniform float u_inject;
-
-  #define DA 1.0
-  #define DB 0.5
-  #define DT 1.0
-
-  void main() {
-    vec2 uv = vUv;
-    vec2 c = texture2D(u_state, uv).rg;
-    float a = c.r;
-    float b = c.g;
-
-    // 5포인트 라플라시안 확산 연산자 (Laplacian Δ)
-    vec2 n = texture2D(u_state, uv + vec2(0.0, u_texel.y)).rg;
-    vec2 s = texture2D(u_state, uv - vec2(0.0, u_texel.y)).rg;
-    vec2 e = texture2D(u_state, uv + vec2(u_texel.x, 0.0)).rg;
-    vec2 w = texture2D(u_state, uv - vec2(u_texel.x, 0.0)).rg;
-
-    vec2 lap = (n + s + e + w) - 4.0 * c;
-
-    // 그레이-스콧 반응-확산 미분 방정식:
-    // ∂A/∂t = DA*ΔA - A*B^2 + feed*(1 - A)
-    // ∂B/∂t = DB*ΔB + A*B^2 - (feed + kill)*B
-    float abb = a * b * b;
-    float newA = a + (DA * lap.r - abb + u_feed * (1.0 - a)) * DT;
-    float newB = b + (DB * lap.g + abb - (u_feed + u_kill) * b) * DT;
-
-    // 마우스/터치 인터랙티브 화학물질 B 주입
-    if (u_inject > 0.5) {
-      float d = distance(uv, u_mouse);
-      if (d < u_brush) {
-        newB = mix(newB, 0.9, smoothstep(u_brush, 0.0, d));
-        newA = mix(newA, 0.1, smoothstep(u_brush, 0.0, d));
-      }
-    }
-
-    gl_FragColor = vec4(clamp(newA, 0.0, 1.0), clamp(newB, 0.0, 1.0), 0.0, 1.0);
-  }
-</script>
-
-<!-- 디스플레이 컬러 렌더링 셰이더 -->
-<script id="fs-render" type="x-shader/x-fragment">
-  precision highp float;
-  varying vec2 vUv;
-  uniform sampler2D u_state;
-  uniform int u_palette;
-
-  void main() {
-    float b = texture2D(u_state, vUv).g;
-
-    vec3 col = vec3(0.015, 0.02, 0.03); // 바탕 심해 암흑
-
-    if (u_palette == 0) {
-      // 1. 네온 사이언-화이트 (marsko 시그니처)
-      vec3 c1 = vec3(0.02, 0.12, 0.22);
-      vec3 c2 = vec3(0.22, 0.74, 0.97); // #38bdf8
-      vec3 c3 = vec3(0.95, 0.98, 1.00);
-
-      if (b < 0.2) col = mix(col, c1, b / 0.2);
-      else if (b < 0.5) col = mix(c1, c2, (b - 0.2) / 0.3);
-      else col = mix(c2, c3, (b - 0.5) / 0.5);
-    } else if (u_palette == 1) {
-      // 2. 바이오 루미네선스 앰버-마젠타
-      vec3 c1 = vec3(0.25, 0.05, 0.15);
-      vec3 c2 = vec3(0.95, 0.25, 0.37);
-      vec3 c3 = vec3(0.98, 0.80, 0.15);
-
-      if (b < 0.2) col = mix(col, c1, b / 0.2);
-      else if (b < 0.5) col = mix(c1, c2, (b - 0.2) / 0.3);
-      else col = mix(c2, c3, (b - 0.5) / 0.5);
-    } else {
-      // 3. 미니멀 흑백 단색 (X선 형광판)
-      col = vec3(smoothstep(0.1, 0.6, b) * 0.9);
-    }
-
-    gl_FragColor = vec4(col, 1.0);
-  }
-</script>
-
 <script>
   const canvas = document.getElementById('simCanvas');
-  const gl = canvas.getContext('webgl');
-  if (!gl) alert('WebGL 미지원 브라우저입니다.');
+  const ctx = canvas.getContext('2d');
 
-  // 부동소수점 텍스처 확장 활성화
-  const extFloat = gl.getExtension('OES_texture_float');
-  const extHalf = gl.getExtension('OES_texture_half_float');
-
-  const valPattern = document.getElementById('valPattern');
-  const valFeed = document.getElementById('valFeed');
-  const valKill = document.getElementById('valKill');
+  const valPreset = document.getElementById('valPreset');
+  const valF = document.getElementById('valF');
+  const valK = document.getElementById('valK');
   const valFps = document.getElementById('valFps');
 
-  const btnCoral = document.getElementById('btnCoral');
   const btnMitosis = document.getElementById('btnMitosis');
+  const btnCoral = document.getElementById('btnCoral');
+  const btnMaze = document.getElementById('btnMaze');
   const btnSpirals = document.getElementById('btnSpirals');
-  const btnSolitons = document.getElementById('btnSolitons');
-  const btnColorMap = document.getElementById('btnColorMap');
-  const btnClear = document.getElementById('btnClear');
+  const btnChaos = document.getElementById('btnChaos');
   const btnSeed = document.getElementById('btnSeed');
+  const btnClear = document.getElementById('btnClear');
+  const btnPause = document.getElementById('btnPause');
   const brushRange = document.getElementById('brushRange');
 
-  // 내부 시뮬레이션 그리드 해상도 (연산 효율과 선명도의 균형)
-  const SIM_WIDTH = 512;
-  const SIM_HEIGHT = 512;
+  // 내부 수치 연산 그리드 해상도 (초당 12스텝 고속 처리용 최적 크기)
+  const GW = 280;
+  const GH = 180;
+  const TOTAL_CELLS = GW * GH;
 
-  // 셰이더 컴파일러
-  function compileShader(type, src) {
-    const s = gl.createShader(type);
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      console.error(gl.getShaderInfoLog(s));
-      gl.deleteShader(s);
-      return null;
-    }
-    return s;
-  }
+  // 화학물질 U, V 농도 버퍼
+  let u = new Float32Array(TOTAL_CELLS);
+  let v = new Float32Array(TOTAL_CELLS);
+  let nextU = new Float32Array(TOTAL_CELLS);
+  let nextV = new Float32Array(TOTAL_CELLS);
 
-  function createProgram(vsSrc, fsSrc) {
-    const p = gl.createProgram();
-    gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vsSrc));
-    gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fsSrc));
-    gl.linkProgram(p);
-    return p;
-  }
+  // 오프스크린 렌더 캔버스
+  const offscreen = document.createElement('canvas');
+  offscreen.width = GW;
+  offscreen.height = GH;
+  const offCtx = offscreen.getContext('2d');
+  let imgData = offCtx.createImageData(GW, GH);
 
-  const vsSource = document.getElementById('vs').text;
-  const simProgram = createProgram(vsSource, document.getElementById('fs-sim').text);
-  const renderProgram = createProgram(vsSource, document.getElementById('fs-render').text);
+  // 물리 확산 계수 및 반응 속도
+  const Du = 0.2097;
+  const Dv = 0.105;
+  const dt = 1.0;
 
-  // 사각형 버텍스 버퍼
-  const quadBuf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    -1, -1,  1, -1, -1,  1,
-    -1,  1,  1, -1,  1,  1
-  ]), gl.STATIC_DRAW);
+  // 대표적 피어슨(Pearson) 튜링 패턴 파라미터 프리셋
+  const PRESETS = {
+    mitosis: { name: 'MITOSIS (SPOTS)', F: 0.0367, k: 0.0649 },
+    coral:   { name: 'CORAL REEF',     F: 0.0545, k: 0.0620 },
+    maze:    { name: 'LABYRINTH',      F: 0.0290, k: 0.0570 },
+    spirals: { name: 'SPIRAL WAVES',   F: 0.0180, k: 0.0510 },
+    chaos:   { name: 'CHAOS DIVIDE',   F: 0.0260, k: 0.0550 }
+  };
 
-  // 핑퐁 텍스처 및 프레임버퍼 2벌 생성
-  let currentTex = 0;
-  const textures = [gl.createTexture(), gl.createTexture()];
-  const framebuffers = [gl.createFramebuffer(), gl.createFramebuffer()];
+  let currentPreset = 'mitosis';
+  let F = PRESETS.mitosis.F;
+  let k = PRESETS.mitosis.k;
+  let isRunning = true;
+  let brushRadius = parseInt(brushRange.value, 10);
 
-  function initTextures() {
-    const initData = new Float32Array(SIM_WIDTH * SIM_HEIGHT * 4);
-    for (let i = 0; i < SIM_WIDTH * SIM_HEIGHT; i++) {
-      initData[i * 4 + 0] = 1.0; // A = 1.0
-      initData[i * 4 + 1] = 0.0; // B = 0.0
-      initData[i * 4 + 2] = 0.0;
-      initData[i * 4 + 3] = 1.0;
-    }
-
-    // 중앙 초기 사각 씨앗 주입
-    const cx = SIM_WIDTH / 2;
-    const cy = SIM_HEIGHT / 2;
-    const r = 16;
-    for (let y = cy - r; y <= cy + r; y++) {
-      for (let x = cx - r; x <= cx + r; x++) {
-        const idx = (y * SIM_WIDTH + x) * 4;
-        initData[idx + 0] = 0.5 + (Math.random() - 0.5) * 0.1;
-        initData[idx + 1] = 0.25 + (Math.random() - 0.5) * 0.1;
-      }
-    }
-
-    for (let i = 0; i < 2; i++) {
-      gl.bindTexture(gl.TEXTURE_2D, textures[i]);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIM_WIDTH, SIM_HEIGHT, 0, gl.RGBA, gl.FLOAT, initData);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i]);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textures[i], 0);
-    }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  }
-
-  initTextures();
-
-  // 튜링 반응-확산 파라미터 (F: Feed Rate, K: Kill Rate)
-  let feed = 0.0545;
-  let kill = 0.0620;
-  let paletteMode = 0;
-
-  // 인터랙션 상태
-  let mouseUv = { x: 0.5, y: 0.5 };
-  let isMouseDown = false;
-
-  // FPS
-  let frameCount = 0;
-  let lastTime = performance.now();
-
-  function setPreset(f, k, name, btn) {
-    feed = f;
-    kill = k;
-    valFeed.textContent = f.toFixed(4);
-    valKill.textContent = k.toFixed(4);
-    valPattern.textContent = name;
-    [btnCoral, btnMitosis, btnSpirals, btnSolitons].forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-
-  btnCoral.addEventListener('click', () => setPreset(0.0545, 0.0620, 'CORAL', btnCoral));
-  btnMitosis.addEventListener('click', () => setPreset(0.0367, 0.0649, 'MITOSIS', btnMitosis));
-  btnSpirals.addEventListener('click', () => setPreset(0.0180, 0.0510, 'SPIRALS', btnSpirals));
-  btnSolitons.addEventListener('click', () => setPreset(0.0300, 0.0620, 'SOLITONS', btnSolitons));
-
-  btnColorMap.addEventListener('click', () => {
-    paletteMode = (paletteMode + 1) % 3;
-  });
-
-  btnClear.addEventListener('click', () => {
-    const emptyData = new Float32Array(SIM_WIDTH * SIM_HEIGHT * 4);
-    for (let i = 0; i < SIM_WIDTH * SIM_HEIGHT; i++) {
-      emptyData[i * 4 + 0] = 1.0;
-      emptyData[i * 4 + 1] = 0.0;
-    }
-    for (let i = 0; i < 2; i++) {
-      gl.bindTexture(gl.TEXTURE_2D, textures[i]);
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, SIM_WIDTH, SIM_HEIGHT, gl.RGBA, gl.FLOAT, emptyData);
-    }
-  });
-
-  btnSeed.addEventListener('click', () => {
-    initTextures();
-  });
-
-  // 포인터 인터랙션
-  function updatePointer(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = 1.0 - (e.clientY - rect.top) / rect.height;
-    mouseUv.x = Math.max(0.0, Math.min(1.0, x));
-    mouseUv.y = Math.max(0.0, Math.min(1.0, y));
-  }
-
-  canvas.addEventListener('mousedown', (e) => {
-    isMouseDown = true;
-    updatePointer(e);
-  });
-  window.addEventListener('mousemove', (e) => {
-    if (isMouseDown) updatePointer(e);
-  });
-  window.addEventListener('mouseup', () => { isMouseDown = false; });
-
-  canvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-      isMouseDown = true;
-      updatePointer(e.touches[0]);
-    }
-  }, { passive: true });
-  canvas.addEventListener('touchmove', (e) => {
-    if (isMouseDown && e.touches.length === 1) {
-      updatePointer(e.touches[0]);
-    }
-  }, { passive: true });
-  canvas.addEventListener('touchend', () => { isMouseDown = false; });
+  let width = window.innerWidth;
+  let height = window.innerHeight;
 
   function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // 메인 연산 및 렌더 루프
-  function render(time) {
-    // 1프레임당 편미분 방정식을 8번 반복 수치적분(Sub-stepping)하여 유기체 전파 가속
-    gl.useProgram(simProgram);
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-    const posLocSim = gl.getAttribLocation(simProgram, 'position');
-    gl.enableVertexAttribArray(posLocSim);
-    gl.vertexAttribPointer(posLocSim, 2, gl.FLOAT, false, 0, 0);
+  // 시스템 초기화
+  function initSimulation(presetKey = currentPreset) {
+    currentPreset = presetKey;
+    const p = PRESETS[presetKey];
+    F = p.F;
+    k = p.k;
 
-    gl.uniform2f(gl.getUniformLocation(simProgram, 'u_texel'), 1.0 / SIM_WIDTH, 1.0 / SIM_HEIGHT);
-    gl.uniform1f(gl.getUniformLocation(simProgram, 'u_feed'), feed);
-    gl.uniform1f(gl.getUniformLocation(simProgram, 'u_kill'), kill);
-    gl.uniform2f(gl.getUniformLocation(simProgram, 'u_mouse'), mouseUv.x, mouseUv.y);
-    gl.uniform1f(gl.getUniformLocation(simProgram, 'u_brush'), parseInt(brushRange.value, 10) / 512.0);
+    valPreset.textContent = p.name;
+    valF.textContent = F.toFixed(4);
+    valK.textContent = k.toFixed(4);
 
-    const SUB_STEPS = 8;
-    for (let s = 0; s < SUB_STEPS; s++) {
-      const readIdx = currentTex;
-      const writeIdx = 1 - currentTex;
+    [btnMitosis, btnCoral, btnMaze, btnSpirals, btnChaos].forEach(b => b.classList.remove('active'));
+    if (presetKey === 'mitosis') btnMitosis.classList.add('active');
+    if (presetKey === 'coral') btnCoral.classList.add('active');
+    if (presetKey === 'maze') btnMaze.classList.add('active');
+    if (presetKey === 'spirals') btnSpirals.classList.add('active');
+    if (presetKey === 'chaos') btnChaos.classList.add('active');
 
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[writeIdx]);
-      gl.viewport(0, 0, SIM_WIDTH, SIM_HEIGHT);
+    // U = 1.0, V = 0.0 기저 상태
+    u.fill(1.0);
+    v.fill(0.0);
+    nextU.fill(1.0);
+    nextV.fill(0.0);
 
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, textures[readIdx]);
-      gl.uniform1i(gl.getUniformLocation(simProgram, 'u_state'), 0);
-
-      // 마지막 서브스텝에서만 마우스 주입 적용
-      gl.uniform1f(gl.getUniformLocation(simProgram, 'u_inject'), (s === SUB_STEPS - 1 && isMouseDown) ? 1.0 : 0.0);
-
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      currentTex = writeIdx;
-    }
-
-    // 최종 화면 디스플레이 렌더링
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.useProgram(renderProgram);
-
-    const posLocRender = gl.getAttribLocation(renderProgram, 'position');
-    gl.enableVertexAttribArray(posLocRender);
-    gl.vertexAttribPointer(posLocRender, 2, gl.FLOAT, false, 0, 0);
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
-    gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_state'), 0);
-    gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_palette'), paletteMode);
-
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    // FPS 카운터
-    frameCount++;
-    if (time - lastTime >= 500) {
-      valFps.textContent = Math.round((frameCount * 1000) / (time - lastTime));
-      frameCount = 0;
-      lastTime = time;
-    }
-
-    requestAnimationFrame(render);
+    // 씨앗(Seed) 투하
+    seedSpots();
   }
 
-  requestAnimationFrame(render);
+  // 화면 여러 곳에 활성 씨앗 투하
+  function seedSpots() {
+    const cx = Math.floor(GW / 2);
+    const cy = Math.floor(GH / 2);
+
+    // 중앙 메인 클러스터
+    addDrop(cx, cy, 14);
+
+    // 주변 보조 씨앗들
+    const offsets = [
+      [-45, -25], [45, -25],
+      [-50, 30],  [50, 30],
+      [0, -45],   [0, 45]
+    ];
+    offsets.forEach(([ox, oy]) => {
+      addDrop(cx + ox, cy + oy, 8);
+    });
+  }
+
+  // 특정 위치에 화학물질 V 투입
+  function addDrop(gx, gy, radius = brushRadius) {
+    const r2 = radius * radius;
+    for (let dy = -radius; dy <= radius; dy++) {
+      const y = gy + dy;
+      if (y < 1 || y >= GH - 1) continue;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = gx + dx;
+        if (x < 1 || x >= GW - 1) continue;
+
+        if (dx * dx + dy * dy <= r2) {
+          const idx = y * GW + x;
+          // 활성 물질 V 투입 및 기저 물질 U 치환
+          v[idx] = 0.75 + Math.random() * 0.15;
+          u[idx] = 0.25;
+        }
+      }
+    }
+  }
+
+  // --- 그레이-스콧 수치 해석 엔진 (등방성 9점 스텐실) ---
+  function stepPhysics() {
+    // 9점 라플라시안 가중치:
+    // 중심: -1.0, 상하좌우: +0.2, 대각선: +0.05
+    for (let y = 1; y < GH - 1; y++) {
+      let idx = y * GW + 1;
+      for (let x = 1; x < GW - 1; x++, idx++) {
+        const uVal = u[idx];
+        const vVal = v[idx];
+
+        // 9-point Laplacian
+        const lapU = 
+          0.20 * (u[idx - 1] + u[idx + 1] + u[idx - GW] + u[idx + GW]) +
+          0.05 * (u[idx - GW - 1] + u[idx - GW + 1] + u[idx + GW - 1] + u[idx + GW + 1]) -
+          uVal;
+
+        const lapV = 
+          0.20 * (v[idx - 1] + v[idx + 1] + v[idx - GW] + v[idx + GW]) +
+          0.05 * (v[idx - GW - 1] + v[idx - GW + 1] + v[idx + GW - 1] + v[idx + GW + 1]) -
+          vVal;
+
+        // 반응 항: uv^2
+        const uvv = uVal * vVal * vVal;
+
+        // ∂u/∂t = Du ∇²u - uv² + F(1 - u)
+        // ∂v/∂t = Dv ∇²v + uv² - (F + k)v
+        const nU = uVal + (Du * lapU - uvv + F * (1.0 - uVal)) * dt;
+        const nV = vVal + (Dv * lapV + uvv - (F + k) * vVal) * dt;
+
+        // 수치 클램핑
+        nextU[idx] = nU < 0 ? 0 : (nU > 1 ? 1 : nU);
+        nextV[idx] = nV < 0 ? 0 : (nV > 1 ? 1 : nV);
+      }
+    }
+
+    // 버퍼 스왑
+    const tempU = u; u = nextU; nextU = tempU;
+    const tempV = v; v = nextV; nextV = tempV;
+  }
+
+  // --- 화면 렌더링 루프 (마젠타-시안 네온 팔레트) ---
+  function render() {
+    const data = imgData.data;
+    let ptr = 0;
+
+    for (let i = 0; i < TOTAL_CELLS; i++) {
+      const vVal = v[i];
+
+      if (vVal < 0.05) {
+        // 배경: 심연의 다크 네이비 (#020306 ~ #08101e)
+        data[ptr++] = 3;
+        data[ptr++] = 6;
+        data[ptr++] = 12;
+        data[ptr++] = 255;
+      } else {
+        // 활성 물질 V를 부드럽게 강조하는 비선형 보간 (0.05 ~ 0.45)
+        const t = Math.min(1.0, (vVal - 0.05) / 0.38);
+
+        // 경계선: 매혹적인 마젠타/바이올렛 (#a855f7)
+        // 코어: 눈부신 네온 시안/아쿠아 (#38bdf8) -> 화이트 코어
+        if (t < 0.5) {
+          const ratio = t * 2.0;
+          data[ptr++] = Math.floor(168 * ratio + 10 * (1 - ratio));
+          data[ptr++] = Math.floor(85 * ratio + 25 * (1 - ratio));
+          data[ptr++] = Math.floor(247 * ratio + 40 * (1 - ratio));
+        } else {
+          const ratio = (t - 0.5) * 2.0;
+          data[ptr++] = Math.floor(56 + 180 * ratio);
+          data[ptr++] = Math.floor(189 + 60 * ratio);
+          data[ptr++] = Math.floor(248 + 7 * ratio);
+        }
+        data[ptr++] = 255;
+      }
+    }
+
+    offCtx.putImageData(imgData, 0, 0);
+
+    // 부드러운 스케일링으로 전체 화면에 복사
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(offscreen, 0, 0, width, height);
+  }
+
+  let frameCount = 0;
+  let lastTime = performance.now();
+
+  function loop() {
+    if (isRunning) {
+      // 1프레임당 12회 고속 서브스텝 계산!
+      for (let s = 0; s < 12; s++) {
+        stepPhysics();
+      }
+    }
+
+    render();
+
+    frameCount++;
+    const now = performance.now();
+    if (now - lastTime >= 500) {
+      valFps.textContent = Math.round((frameCount * 1000) / (now - lastTime));
+      frameCount = 0;
+      lastTime = now;
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // --- 마우스 / 터치 인터랙션 (씨앗 그리기) ---
+  let isPointerDown = false;
+
+  function handlePointer(clientX, clientY) {
+    const gx = Math.floor((clientX / width) * GW);
+    const gy = Math.floor((clientY / height) * GH);
+    addDrop(gx, gy, brushRadius);
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    isPointerDown = true;
+    handlePointer(e.clientX, e.clientY);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isPointerDown) handlePointer(e.clientX, e.clientY);
+  });
+  window.addEventListener('mouseup', () => { isPointerDown = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isPointerDown = true;
+      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (isPointerDown && e.touches.length === 1) {
+      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { isPointerDown = false; });
+
+  // 프리셋 버튼 바인딩
+  btnMitosis.addEventListener('click', () => initSimulation('mitosis'));
+  btnCoral.addEventListener('click', () => initSimulation('coral'));
+  btnMaze.addEventListener('click', () => initSimulation('maze'));
+  btnSpirals.addEventListener('click', () => initSimulation('spirals'));
+  btnChaos.addEventListener('click', () => initSimulation('chaos'));
+
+  btnSeed.addEventListener('click', seedSpots);
+  btnClear.addEventListener('click', () => {
+    u.fill(1.0);
+    v.fill(0.0);
+    nextU.fill(1.0);
+    nextV.fill(0.0);
+  });
+
+  btnPause.addEventListener('click', () => {
+    isRunning = !isRunning;
+    btnPause.textContent = isRunning ? '❚❚ 일시정지' : '▶ 재생';
+    btnPause.classList.toggle('active', isRunning);
+  });
+
+  brushRange.addEventListener('input', (e) => {
+    brushRadius = parseInt(e.target.value, 10);
+  });
+
+  // 시작
+  initSimulation('mitosis');
+  requestAnimationFrame(loop);
 </script>
 
 </body>
