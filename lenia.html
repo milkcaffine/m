@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#020306">
+  <title>Lenia Artificial Life // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #leniaCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+      image-rendering: auto;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 55px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>LENIA CONTINUOUS LIFE</h1>
+  <div class="hud-meta">NON-LINEAR MORPHOGENESIS · CONV KERNEL</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SPECIES: <strong id="valSpecies">ORBIUM</strong></div>
+  <div>GROWTH (μ): <strong id="valMu">0.156</strong></div>
+  <div>SPREAD (σ): <strong id="valSigma">0.022</strong></div>
+  <div>ORGANISMS: <strong id="valCells">ALIVE</strong></div>
+  <div>FPS: <strong id="valFps">60</strong></div>
+</div>
+
+<canvas id="leniaCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnOrbium">원반 유영체 (Orbium)</button>
+  <button type="button" class="dock-btn" id="btnJelly">심해 해파리</button>
+  <button type="button" class="dock-btn" id="btnAmoeba">박동 아메바</button>
+  <button type="button" class="dock-btn" id="btnDividers">자가 분열체</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnSpawn">배양액 투입</button>
+  <button type="button" class="dock-btn" id="btnClear">소독 (Clear)</button>
+  <button type="button" class="dock-btn" id="btnPause">❚❚ 일시정지</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>성장 중심(μ)</span>
+    <input type="range" id="muRange" min="110" max="210" value="156">
+  </div>
+  <div class="slider-group">
+    <span>허용 폭(σ)</span>
+    <input type="range" id="sigmaRange" min="12" max="38" value="22">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('leniaCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valSpecies = document.getElementById('valSpecies');
+  const valMu = document.getElementById('valMu');
+  const valSigma = document.getElementById('valSigma');
+  const valFps = document.getElementById('valFps');
+
+  const btnOrbium = document.getElementById('btnOrbium');
+  const btnJelly = document.getElementById('btnJelly');
+  const btnAmoeba = document.getElementById('btnAmoeba');
+  const btnDividers = document.getElementById('btnDividers');
+  const btnSpawn = document.getElementById('btnSpawn');
+  const btnClear = document.getElementById('btnClear');
+  const btnPause = document.getElementById('btnPause');
+
+  const muRange = document.getElementById('muRange');
+  const sigmaRange = document.getElementById('sigmaRange');
+
+  // 내부 격자 해상도 (토러스 연속 공간 근사)
+  const GW = 192;
+  const GH = 120;
+  const TOTAL = GW * GH;
+
+  let field = new Float32Array(TOTAL);
+  let nextField = new Float32Array(TOTAL);
+
+  // 렌더링용 오프스크린 캔버스
+  const offscreen = document.createElement('canvas');
+  offscreen.width = GW;
+  offscreen.height = GH;
+  const offCtx = offscreen.getContext('2d');
+  let imgData = offCtx.createImageData(GW, GH);
+
+  // Lenia 종별 파라미터 (커널 반경 R, 피크 위치 r0, 성장 중심 mu, 성장 폭 sigma)
+  const SPECIES = {
+    orbium:   { name: "ORBIUM (GLIDER)", R: 10, r0: 0.5, mu: 0.156, sigma: 0.0224, dt: 0.12 },
+    jelly:    { name: "DEEP JELLYFISH", R: 12, r0: 0.55, mu: 0.142, sigma: 0.0195, dt: 0.10 },
+    amoeba:   { name: "PULSING AMOEBA", R: 11, r0: 0.48, mu: 0.174, sigma: 0.0310, dt: 0.14 },
+    dividers: { name: "SELF-DIVIDER",   R: 10, r0: 0.52, mu: 0.150, sigma: 0.0175, dt: 0.11 }
+  };
+
+  let curSpecies = 'orbium';
+  let R = SPECIES.orbium.R;
+  let r0 = SPECIES.orbium.r0;
+  let mu = SPECIES.orbium.mu;
+  let sigma = SPECIES.orbium.sigma;
+  let dt = SPECIES.orbium.dt;
+  let isRunning = true;
+
+  // 사전 연산된 커널 오프셋 테이블 (가중치 합 = 1.0)
+  let kernelOffsets = [];
+
+  function buildKernel(radius, peakR) {
+    kernelOffsets = [];
+    let sum = 0;
+
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const dist = Math.hypot(dx, dy);
+        if (dist <= radius) {
+          const rNorm = dist / radius;
+          // 환형 가우시안 범프: 특정 거리(peakR)에서 가장 높은 가중치
+          const dr = (rNorm - peakR) / 0.18;
+          const weight = Math.exp(-0.5 * dr * dr);
+
+          kernelOffsets.push({ dx, dy, weight });
+          sum += weight;
+        }
+      }
+    }
+
+    // 커널 정규화 (합이 정확히 1.0이 되도록)
+    for (let k of kernelOffsets) {
+      k.weight /= sum;
+    }
+  }
+
+  // 대표적 Lenia 성장 함수: G(u) = 2 * exp(-(u - mu)^2 / (2 * sigma^2)) - 1  (범위: -1.0 ~ +1.0)
+  function growthFunc(uVal) {
+    const d = (uVal - mu) / sigma;
+    return 2.0 * Math.exp(-0.5 * d * d) - 1.0;
+  }
+
+  // 무작위 유기체 클러스터(배양액) 투입
+  function spawnOrganism(cx, cy, radius = 9) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const d = Math.hypot(dx, dy);
+        if (d <= radius) {
+          const x = (cx + dx + GW) % GW;
+          const y = (cy + dy + GH) % GH;
+          const idx = y * GW + x;
+          const amp = Math.exp(-((d / radius) ** 2) * 2.5);
+          field[idx] = Math.min(1.0, field[idx] + (amp * 0.75 + Math.random() * 0.2));
+        }
+      }
+    }
+  }
+
+  function setSpecies(key) {
+    curSpecies = key;
+    const sp = SPECIES[key];
+    R = sp.R;
+    r0 = sp.r0;
+    mu = sp.mu;
+    sigma = sp.sigma;
+    dt = sp.dt;
+
+    buildKernel(R, r0);
+
+    valSpecies.textContent = sp.name;
+    valMu.textContent = mu.toFixed(3);
+    valSigma.textContent = sigma.toFixed(3);
+    muRange.value = Math.round(mu * 1000);
+    sigmaRange.value = Math.round(sigma * 1000);
+
+    [btnOrbium, btnJelly, btnAmoeba, btnDividers].forEach(b => b.classList.remove('active'));
+    if (key === 'orbium') btnOrbium.classList.add('active');
+    if (key === 'jelly') btnJelly.classList.add('active');
+    if (key === 'amoeba') btnAmoeba.classList.add('active');
+    if (key === 'dividers') btnDividers.classList.add('active');
+
+    // 화면 초기화 후 생명체 씨앗 배치
+    field.fill(0);
+    nextField.fill(0);
+
+    const midX = Math.floor(GW / 2);
+    const midY = Math.floor(GH / 2);
+
+    // 중앙 및 주변에 3~4개의 씨앗 방출
+    spawnOrganism(midX, midY, 11);
+    spawnOrganism(midX - 35, midY + 15, 8);
+    spawnOrganism(midX + 35, midY - 20, 8);
+  }
+
+  // --- Lenia 물리 적분 루프 (토로이달 주기 경계) ---
+  function updatePhysics() {
+    const kLen = kernelOffsets.length;
+
+    for (let y = 0; y < GH; y++) {
+      const rowOffset = y * GW;
+      for (let x = 0; x < GW; x++) {
+        const idx = rowOffset + x;
+
+        // 1. 공간 환형 합성곱 (Convolution: U = K * A)
+        let potential = 0.0;
+        for (let k = 0; k < kLen; k++) {
+          const ko = kernelOffsets[k];
+          const nx = (x + ko.dx + GW) % GW;
+          const ny = (y + ko.dy + GH) % GH;
+          potential += field[ny * GW + nx] * ko.weight;
+        }
+
+        // 2. 연속 성장 함수 적분: A(t+dt) = clamp(A + dt * G(U), 0, 1)
+        const g = growthFunc(potential);
+        const newVal = field[idx] + dt * g;
+        nextField[idx] = newVal < 0.0 ? 0.0 : (newVal > 1.0 ? 1.0 : newVal);
+      }
+    }
+
+    // 버퍼 핑퐁 스왑
+    const temp = field;
+    field = nextField;
+    nextField = temp;
+  }
+
+  // --- 화면 렌더링 루프 (심해 발광체 컬러 매핑) ---
+  function render() {
+    const data = imgData.data;
+    let ptr = 0;
+
+    for (let i = 0; i < TOTAL; i++) {
+      const val = field[i];
+
+      if (val < 0.015) {
+        // 심해 암청색 기저 (#020306)
+        data[ptr++] = 2;
+        data[ptr++] = 3;
+        data[ptr++] = 6;
+        data[ptr++] = 255;
+      } else {
+        // 비선형 형광 발광 그라디언트
+        // 외곽 막(0.02~0.3): 바이올렛/로즈 (#a855f7)
+        // 중간 살(0.3~0.7): 네온 시안 (#38bdf8)
+        // 핵/코어(0.7~1.0): 눈부신 백색광
+        if (val < 0.35) {
+          const t = val / 0.35;
+          data[ptr++] = Math.floor(168 * t);
+          data[ptr++] = Math.floor(65 * t);
+          data[ptr++] = Math.floor(240 * t);
+        } else if (val < 0.75) {
+          const t = (val - 0.35) / 0.40;
+          data[ptr++] = Math.floor(168 * (1 - t) + 56 * t);
+          data[ptr++] = Math.floor(65 * (1 - t) + 189 * t);
+          data[ptr++] = Math.floor(240 * (1 - t) + 248 * t);
+        } else {
+          const t = (val - 0.75) / 0.25;
+          data[ptr++] = Math.floor(56 + 199 * t);
+          data[ptr++] = Math.floor(189 + 66 * t);
+          data[ptr++] = 255;
+        }
+        data[ptr++] = 255;
+      }
+    }
+
+    offCtx.putImageData(imgData, 0, 0);
+
+    // 부드러운 바이리니어 스케일링으로 전체 화면 투사
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
+  }
+
+  let frameCount = 0;
+  let lastTime = performance.now();
+
+  function loop() {
+    if (isRunning) {
+      updatePhysics();
+    }
+    render();
+
+    frameCount++;
+    const now = performance.now();
+    if (now - lastTime >= 500) {
+      valFps.textContent = Math.round((frameCount * 1000) / (now - lastTime));
+      frameCount = 0;
+      lastTime = now;
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // --- 마우스 / 터치 인터랙션 (실시간 영양액 투입) ---
+  let isPointerDown = false;
+
+  function feedAt(clientX, clientY) {
+    const gx = Math.floor((clientX / canvas.width) * GW);
+    const gy = Math.floor((clientY / canvas.height) * GH);
+    spawnOrganism(gx, gy, 6);
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    isPointerDown = true;
+    feedAt(e.clientX, e.clientY);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isPointerDown) feedAt(e.clientX, e.clientY);
+  });
+  window.addEventListener('mouseup', () => { isPointerDown = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isPointerDown = true;
+      feedAt(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (isPointerDown && e.touches.length === 1) {
+      feedAt(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { isPointerDown = false; });
+
+  // UI 바인딩
+  btnOrbium.addEventListener('click', () => setSpecies('orbium'));
+  btnJelly.addEventListener('click', () => setSpecies('jelly'));
+  btnAmoeba.addEventListener('click', () => setSpecies('amoeba'));
+  btnDividers.addEventListener('click', () => setSpecies('dividers'));
+
+  btnSpawn.addEventListener('click', () => {
+    const rx = Math.floor(Math.random() * (GW - 40)) + 20;
+    const ry = Math.floor(Math.random() * (GH - 40)) + 20;
+    spawnOrganism(rx, ry, 9);
+  });
+
+  btnClear.addEventListener('click', () => {
+    field.fill(0);
+    nextField.fill(0);
+  });
+
+  btnPause.addEventListener('click', () => {
+    isRunning = !isRunning;
+    btnPause.textContent = isRunning ? '❚❚ 일시정지' : '▶ 재생';
+    btnPause.classList.toggle('active', isRunning);
+  });
+
+  muRange.addEventListener('input', (e) => {
+    mu = parseInt(e.target.value, 10) / 1000.0;
+    valMu.textContent = mu.toFixed(3);
+  });
+
+  sigmaRange.addEventListener('input', (e) => {
+    sigma = parseInt(e.target.value, 10) / 1000.0;
+    valSigma.textContent = sigma.toFixed(3);
+  });
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // 시작
+  setSpecies('orbium');
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
