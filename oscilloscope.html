@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030604">
+  <title>CRT Vector Oscilloscope // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020503;
+      color: #9fe8a8;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* 캔버스 및 뷰포트 */
+    #scopeCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* CRT 브라운관 곡면 및 주사선 오버레이 */
+    .crt-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: 
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 3px, 6px 100%;
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(0, 255, 128, 0.1);
+      z-index: 5;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #3b7747;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(4, 20, 8, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(74, 222, 128, 0.15);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #4ade80; border-color: rgba(74, 222, 128, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #bbf7d0;
+      text-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #4ade80;
+      opacity: 0.7;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(4, 20, 8, 0.75);
+      border: 1px solid rgba(74, 222, 128, 0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #86efac;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #4ade80; text-shadow: 0 0 8px rgba(74, 222, 128, 0.6); }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(4, 20, 8, 0.88);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #0d2812;
+      border: 1px solid #1c4a25;
+      color: #bbf7d0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #164320; color: #4ade80; }
+    .dock-btn.active {
+      background: rgba(74, 222, 128, 0.2);
+      border-color: #4ade80;
+      color: #4ade80;
+      box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(74, 222, 128, 0.2);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #86efac;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 55px;
+      height: 4px;
+      accent-color: #4ade80;
+      background: #14381b;
+      cursor: pointer;
+    }
+    .slider-group select {
+      background: #0d2812;
+      border: 1px solid #1c4a25;
+      color: #4ade80;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 0.7rem;
+      outline: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>CRT VECTOR OSCILLOSCOPE</h1>
+  <div class="hud-meta">X-Y LISSAJOUS · P1 PHOSPHOR GLOW</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SOURCE: <strong id="valSource">DUAL SYNTH</strong></div>
+  <div>RATIO (X:Y): <strong id="valRatio">1 : 2</strong></div>
+  <div>PHASE: <strong id="valPhase">0.00π</strong></div>
+  <div>BEAM: <strong id="valBeam">ON (48kHz)</strong></div>
+</div>
+
+<canvas id="scopeCanvas"></canvas>
+<div class="crt-overlay"></div>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnSound">🔊 오디오 모니터</button>
+  <button type="button" class="dock-btn" id="btnMic">🎙️ 마이크 입력</button>
+
+  <div class="dock-sep"></div>
+
+  <!-- 리사주 주파수 비율 프리셋 -->
+  <div class="slider-group">
+    <span>기하비율</span>
+    <select id="ratioSelect">
+      <option value="1:1">1 : 1 (원 / 대각선)</option>
+      <option value="1:2" selected>1 : 2 (8자 매듭)</option>
+      <option value="1:3">1 : 3 (3중 루프)</option>
+      <option value="2:3">2 : 3 (왕관 / 프레츨)</option>
+      <option value="3:4">3 : 4 (복합 하모닉)</option>
+      <option value="5:6">5 : 6 (별자리 격자)</option>
+    </select>
+  </div>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>위상 회전</span>
+    <input type="range" id="phaseSpeedRange" min="0" max="40" value="15">
+  </div>
+  <div class="slider-group">
+    <span>형광체 잔상</span>
+    <input type="range" id="phosphorRange" min="2" max="30" value="12">
+  </div>
+  <div class="slider-group">
+    <span>빔 세기</span>
+    <input type="range" id="beamRange" min="5" max="35" value="18">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('scopeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valSource = document.getElementById('valSource');
+  const valRatio = document.getElementById('valRatio');
+  const valPhase = document.getElementById('valPhase');
+  const valBeam = document.getElementById('valBeam');
+
+  const btnSound = document.getElementById('btnSound');
+  const btnMic = document.getElementById('btnMic');
+  const ratioSelect = document.getElementById('ratioSelect');
+  const phaseSpeedRange = document.getElementById('phaseSpeedRange');
+  const phosphorRange = document.getElementById('phosphorRange');
+  const beamRange = document.getElementById('beamRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // Web Audio 컨텍스트
+  let audioCtx = null;
+  let masterGain = null;
+  let isSoundActive = false;
+  let isMicActive = false;
+  let micStream = null;
+
+  // 마이크 분석용 분리 노드
+  let micAnalyserX = null;
+  let micAnalyserY = null;
+
+  // 내부 합성 신호 파라미터
+  let freqX = 110;
+  let freqY = 220;
+  let phase = 0;
+  let phaseSpeed = 0.015;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.0;
+    masterGain.connect(audioCtx.destination);
+  }
+
+  // 리사주 내부 신호 사운드 생성용 노드
+  let oscXNode = null;
+  let oscYNode = null;
+
+  function startSynthAudio() {
+    if (!audioCtx) initAudio();
+    if (oscXNode) return;
+
+    oscXNode = audioCtx.createOscillator();
+    oscYNode = audioCtx.createOscillator();
+    oscXNode.type = 'sine';
+    oscYNode.type = 'sine';
+    oscXNode.frequency.value = freqX;
+    oscYNode.frequency.value = freqY;
+
+    // L / R 스테레오 분리 출력
+    const merger = audioCtx.createChannelMerger(2);
+    oscXNode.connect(merger, 0, 0);
+    oscYNode.connect(merger, 0, 1);
+
+    merger.connect(masterGain);
+    oscXNode.start();
+    oscYNode.start();
+  }
+
+  function stopSynthAudio() {
+    if (oscXNode) {
+      oscXNode.stop();
+      oscYNode.stop();
+      oscXNode.disconnect();
+      oscYNode.disconnect();
+      oscXNode = null;
+      oscYNode = null;
+    }
+  }
+
+  // 마이크 입력 토글
+  async function toggleMic() {
+    initAudio();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    if (!isMicActive) {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const micSource = audioCtx.createMediaStreamSource(micStream);
+
+        // 시간차 분기 지연으로 가상 X-Y 위상차 형성
+        const delay = audioCtx.createDelay();
+        delay.delayTime.value = 0.002; // 2ms 쿼드러처 지연
+
+        micAnalyserX = audioCtx.createAnalyser();
+        micAnalyserY = audioCtx.createAnalyser();
+        micAnalyserX.fftSize = 2048;
+        micAnalyserY.fftSize = 2048;
+
+        micSource.connect(micAnalyserX);
+        micSource.connect(delay);
+        delay.connect(micAnalyserY);
+
+        stopSynthAudio();
+        isMicActive = true;
+        btnMic.classList.add('active');
+        btnSound.classList.remove('active');
+        isSoundActive = false;
+        valSource.textContent = 'MICROPHONE (MIC)';
+        valRatio.textContent = 'REALTIME';
+      } catch (err) {
+        alert('마이크 접근 권한이 필요합니다.');
+        console.error(err);
+      }
+    } else {
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      isMicActive = false;
+      btnMic.classList.remove('active');
+      valSource.textContent = 'DUAL SYNTH';
+      parseRatio();
+      if (isSoundActive) startSynthAudio();
+    }
+  }
+
+  // 주파수 비율 파싱
+  function parseRatio() {
+    const parts = ratioSelect.value.split(':').map(Number);
+    const rx = parts[0];
+    const ry = parts[1];
+    freqX = 110 * rx;
+    freqY = 110 * ry;
+
+    if (oscXNode && oscYNode && audioCtx) {
+      oscXNode.frequency.setTargetAtTime(freqX, audioCtx.currentTime, 0.04);
+      oscYNode.frequency.setTargetAtTime(freqY, audioCtx.currentTime, 0.04);
+    }
+    valRatio.textContent = `${rx} : ${ry}`;
+  }
+
+  ratioSelect.addEventListener('change', parseRatio);
+
+  btnSound.addEventListener('click', async () => {
+    initAudio();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    isSoundActive = !isSoundActive;
+    btnSound.classList.toggle('active', isSoundActive);
+
+    if (isSoundActive) {
+      if (isMicActive) await toggleMic(); // 마이크 모드 끄기
+      startSynthAudio();
+      masterGain.gain.setTargetAtTime(0.18, audioCtx.currentTime, 0.05);
+      btnSound.textContent = '🔊 오디오 켜짐';
+    } else {
+      masterGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.05);
+      btnSound.textContent = '🔈 오디오 음소거';
+    }
+  });
+
+  btnMic.addEventListener('click', toggleMic);
+
+  phaseSpeedRange.addEventListener('input', (e) => {
+    phaseSpeed = (parseInt(e.target.value, 10) / 1000);
+  });
+
+  // 메인 렌더 루프
+  function render() {
+    // 1. 형광체 잔상 감쇠 페이드 (P1 녹색 형광체 특성 모사)
+    const fadeRate = parseInt(phosphorRange.value, 10) / 100;
+    ctx.fillStyle = `rgba(2, 5, 3, ${fadeRate})`;
+    ctx.fillRect(0, 0, width, height);
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) * 0.36;
+
+    // 2. 오실로스코프 격자선 (레티클 그라티큘) 드로잉
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+
+    const gridDivs = 8;
+    const gridStep = (radius * 2) / gridDivs;
+    const startX = centerX - radius;
+    const startY = centerY - radius;
+
+    for (let i = 0; i <= gridDivs; i++) {
+      // 세로 눈금선
+      ctx.moveTo(startX + i * gridStep, centerY - radius);
+      ctx.lineTo(startX + i * gridStep, centerY + radius);
+      // 가로 눈금선
+      ctx.moveTo(centerX - radius, startY + i * gridStep);
+      ctx.lineTo(centerX + radius, startY + i * gridStep);
+    }
+    ctx.stroke();
+
+    // 십자 축 틱 마크(중앙 눈금)
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.16)';
+    ctx.beginPath();
+    ctx.moveTo(centerX - radius, centerY);
+    ctx.lineTo(centerX + radius, centerY);
+    ctx.moveTo(centerX, centerY - radius);
+    ctx.lineTo(centerX, centerY + radius);
+    ctx.stroke();
+
+    // 3. 리사주 궤적 샘플링
+    const numPoints = 800;
+    const points = [];
+
+    if (isMicActive && micAnalyserX && micAnalyserY) {
+      // 마이크 X-Y 모드
+      const bufX = new Uint8Array(micAnalyserX.frequencyBinCount);
+      const bufY = new Uint8Array(micAnalyserY.frequencyBinCount);
+      micAnalyserX.getByteTimeDomainData(bufX);
+      micAnalyserY.getByteTimeDomainData(bufY);
+
+      const step = Math.floor(bufX.length / numPoints);
+      for (let i = 0; i < numPoints; i++) {
+        const idx = i * step;
+        const xNorm = (bufX[idx] - 128) / 128.0;
+        const yNorm = (bufY[idx] - 128) / 128.0;
+        points.push({
+          x: centerX + xNorm * radius * 1.5,
+          y: centerY - yNorm * radius * 1.5
+        });
+      }
+    } else {
+      // 듀얼 오실레이터 수학 합성 모드: x = sin(a*t + phase), y = sin(b*t)
+      phase = (phase + phaseSpeed) % (Math.PI * 2);
+      valPhase.textContent = `${(phase / Math.PI).toFixed(2)}π`;
+
+      const parts = ratioSelect.value.split(':').map(Number);
+      const rx = parts[0];
+      const ry = parts[1];
+
+      for (let i = 0; i <= numPoints; i++) {
+        const t = (i / numPoints) * Math.PI * 2;
+        const x = Math.sin(rx * t + phase);
+        const y = Math.sin(ry * t);
+        points.push({
+          x: centerX + x * radius,
+          y: centerY - y * radius
+        });
+      }
+    }
+
+    // 4. 전자빔 글로우 (Beam Bloom) 다중 패스 렌더링
+    const beamIntensity = parseInt(beamRange.value, 10) / 10;
+
+    // 패스 1: 넓은 형광체 산란광 (광역 글로우)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = 4.5 * beamIntensity;
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.15)';
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i++) {
+      if (i === 0) ctx.moveTo(points[i].x, points[i].y);
+      else ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.stroke();
+
+    // 패스 2: 중간 에너지 형광선
+    ctx.lineWidth = 2.0 * beamIntensity;
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.45)';
+    ctx.shadowColor = '#4ade80';
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+
+    // 패스 3: 초고에너지 전자빔 중심 코어 (고휘도 백색에 가까운 녹색 선)
+    ctx.lineWidth = 1.0;
+    ctx.strokeStyle = '#dcfce7';
+    ctx.shadowBlur = 0;
+    ctx.stroke();
+    ctx.restore();
+
+    requestAnimationFrame(render);
+  }
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  parseRatio();
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
