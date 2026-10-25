@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Lunar Lander Vector // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #gameCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 비행 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+      min-width: 170px;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .warn { color: #f43f5e !important; }
+    .telemetry-card .safe { color: #4ade80 !important; }
+
+    /* 중앙 상태 알림 배너 (성공/추락) */
+    .status-banner {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      z-index: 20;
+      pointer-events: none;
+      display: none;
+    }
+    .status-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      text-shadow: 0 0 20px currentColor;
+    }
+    .status-sub {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    /* 모바일/터치 온스크린 컨트롤러 */
+    .touch-controls {
+      position: absolute;
+      bottom: 24px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .control-group {
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+    .t-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #f8fafc;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.1s;
+    }
+    .t-btn:active, .t-btn.active {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+      transform: scale(0.95);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+    .t-thrust {
+      width: 76px;
+      height: 76px;
+      border-color: rgba(244, 63, 94, 0.4);
+      color: #f43f5e;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .t-thrust:active, .t-thrust.active {
+      background: rgba(244, 63, 94, 0.25);
+      border-color: #f43f5e;
+      box-shadow: 0 0 14px rgba(244, 63, 94, 0.5);
+    }
+
+    /* 하단 키보드 단축키 힌트 */
+    .key-hints {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #64748b;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    @media (max-width: 768px) {
+      .key-hints { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>VECTOR LUNAR LANDER</h1>
+  <div class="hud-meta">NEWTONIAN DYNAMICS · ATARI 1979</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SCORE: <strong id="hudScore">0</strong></div>
+  <div>FUEL: <strong id="hudFuel">1000</strong></div>
+  <div>ALTITUDE: <strong id="hudAlt">0</strong> m</div>
+  <div>H-SPEED: <strong id="hudVx">0.0</strong> m/s</div>
+  <div>V-SPEED: <strong id="hudVy">0.0</strong> m/s</div>
+  <div>TILT: <strong id="hudTilt">0°</strong></div>
+</div>
+
+<div class="status-banner" id="statusBanner">
+  <div class="status-title" id="statusTitle">LANDED!</div>
+  <div class="status-sub" id="statusSub">[SPACE] 또는 화면을 터치하여 다음 임무로</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- 모바일 터치 컨트롤러 -->
+<div class="touch-controls">
+  <div class="control-group">
+    <div class="t-btn" id="btnLeft">◀</div>
+    <div class="t-btn" id="btnRight">▶</div>
+  </div>
+  <div class="control-group">
+    <div class="t-btn t-thrust" id="btnThrust">THRUST</div>
+  </div>
+</div>
+
+<div class="key-hints">
+  [▲ / W / SPACE] 메인 추진 · [◀ ▶ / A D] 기체 회전 · [R] 재도전
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const hudScore = document.getElementById('hudScore');
+  const hudFuel = document.getElementById('hudFuel');
+  const hudAlt = document.getElementById('hudAlt');
+  const hudVx = document.getElementById('hudVx');
+  const hudVy = document.getElementById('hudVy');
+  const hudTilt = document.getElementById('hudTilt');
+
+  const statusBanner = document.getElementById('statusBanner');
+  const statusTitle = document.getElementById('statusTitle');
+  const statusSub = document.getElementById('statusSub');
+
+  const btnLeft = document.getElementById('btnLeft');
+  const btnRight = document.getElementById('btnRight');
+  const btnThrust = document.getElementById('btnThrust');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // --- Web Audio API 프로시저럴 사운드 엔진 ---
+  let audioCtx = null;
+  let noiseNode = null;
+  let thrusterGain = null;
+  let thrusterFilter = null;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // 1. 메인 엔진 제트 분사용 화이트 노이즈 버퍼 생성
+    const bufferSize = audioCtx.sampleRate * 2;
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+
+    noiseNode = audioCtx.createBufferSource();
+    noiseNode.buffer = noiseBuffer;
+    noiseNode.loop = true;
+
+    // 대기압이 없는 진공 로켓 연소를 위한 로우패스 럼블 필터
+    thrusterFilter = audioCtx.createBiquadFilter();
+    thrusterFilter.type = 'lowpass';
+    thrusterFilter.frequency.value = 420;
+
+    thrusterGain = audioCtx.createGain();
+    thrusterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+
+    noiseNode.connect(thrusterFilter);
+    thrusterFilter.connect(thrusterGain);
+    thrusterGain.connect(audioCtx.destination);
+    noiseNode.start();
+  }
+
+  function setThrusterSound(active) {
+    if (!audioCtx || !thrusterGain) return;
+    const now = audioCtx.currentTime;
+    thrusterGain.gain.cancelScheduledValues(now);
+    thrusterGain.gain.setValueAtTime(thrusterGain.gain.value, now);
+    thrusterGain.gain.linearRampToValueAtTime(active ? 0.35 : 0.0001, now + 0.05);
+  }
+
+  // 착륙 성공 신스 팡파르
+  function playSuccessSound() {
+    if (!audioCtx) return;
+    const notes = [440, 554.37, 659.25, 880]; // A 장조 아르페지오
+    notes.forEach((freq, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, audioCtx.currentTime + idx * 0.1);
+      gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + idx * 0.1 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + idx * 0.1 + 0.5);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + idx * 0.1);
+      osc.stop(audioCtx.currentTime + idx * 0.1 + 0.6);
+    });
+  }
+
+  // 추락 폭발 사운드
+  function playCrashSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.6);
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.7);
+  }
+
+  // --- 게임 상태 및 물리 변수 ---
+  const GRAVITY = 0.028;
+  const MAIN_THRUST = 0.075;
+  const ROT_SPEED = 0.045;
+  const SAFE_MAX_VY = 1.15; // 안전 수직 착륙 속도
+  const SAFE_MAX_VX = 0.75; // 안전 수평 속도
+  const SAFE_MAX_TILT = 11; // 허용 기울기(도)
+
+  let score = 0;
+  let level = 1;
+  let gameState = 'PLAYING'; // PLAYING, LANDED, CRASHED
+
+  const ship = {
+    x: 0, y: 0,
+    vx: 0, vy: 0,
+    angle: 0,
+    fuel: 1000,
+    thrusting: false,
+    rotatingLeft: false,
+    rotatingRight: false,
+    width: 18, height: 16
+  };
+
+  let terrain = []; // [{x, y}]
+  let landingPads = []; // [{x1, x2, y, mult}]
+  let particles = [];
+  let stars = [];
+
+  // 별빛 배경
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 90; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height * 0.7,
+        size: Math.random() * 1.5 + 0.5,
+        alpha: Math.random() * 0.6 + 0.2
+      });
+    }
+  }
+
+  // 절차적 크레이터 지형 및 착륙 패드 생성
+  function generateTerrain() {
+    terrain = [];
+    landingPads = [];
+    const points = 36;
+    const step = width / points;
+
+    // 2~3개의 평평한 착륙 패드 위치 선정
+    const padIndices = [
+      Math.floor(points * 0.22),
+      Math.floor(points * 0.55),
+      Math.floor(points * 0.82)
+    ];
+
+    let baseH = height * 0.78;
+
+    for (let i = 0; i <= points; i++) {
+      const x = i * step;
+      let y = baseH + Math.sin(i * 0.8) * 45 + (Math.random() - 0.5) * 50;
+      y = Math.max(height * 0.55, Math.min(height - 40, y));
+
+      // 패드 구간은 완벽한 수평선 유지
+      const padIndex = padIndices.find(pi => i >= pi && i <= pi + 2);
+      if (padIndex !== undefined) {
+        y = height * 0.82; // 수평 고정
+      }
+
+      terrain.push({ x, y });
+    }
+
+    // 패드 데이터 확정
+    padIndices.forEach((pi, idx) => {
+      const p1 = terrain[pi];
+      const p2 = terrain[pi + 2];
+      landingPads.push({
+        x1: p1.x,
+        x2: p2.x,
+        y: p1.y,
+        mult: idx === 1 ? 5 : (idx === 0 ? 3 : 2) // 폭과 난이도에 따른 배수
+      });
+    });
+  }
+
+  function resetShip() {
+    ship.x = width * 0.15;
+    ship.y = 80;
+    ship.vx = 1.2 + Math.random() * 0.5;
+    ship.vy = 0.2;
+    ship.angle = 0;
+    ship.fuel = Math.max(400, 1000 - (level - 1) * 80);
+    ship.thrusting = false;
+    ship.rotatingLeft = false;
+    ship.rotatingRight = false;
+    gameState = 'PLAYING';
+    statusBanner.style.display = 'none';
+    particles = [];
+  }
+
+  // 파티클 생성
+  function createThrustSparks() {
+    if (ship.fuel <= 0) return;
+    const rad = ship.angle + Math.PI / 2;
+    const rearX = ship.x - Math.cos(rad) * 12;
+    const rearY = ship.y - Math.sin(rad) * 12;
+
+    for (let i = 0; i < 3; i++) {
+      particles.push({
+        x: rearX + (Math.random() - 0.5) * 4,
+        y: rearY + (Math.random() - 0.5) * 4,
+        vx: -Math.cos(rad) * (2.5 + Math.random() * 3) + (Math.random() - 0.5) * 1.5,
+        vy: -Math.sin(rad) * (2.5 + Math.random() * 3) + (Math.random() - 0.5) * 1.5,
+        life: 1.0,
+        decay: 0.05 + Math.random() * 0.05,
+        color: Math.random() > 0.4 ? '#38bdf8' : '#f8fafc'
+      });
+    }
+  }
+
+  function createExplosion(x, y) {
+    for (let i = 0; i < 45; i++) {
+      const spd = Math.random() * 5 + 1;
+      const ang = Math.random() * Math.PI * 2;
+      particles.push({
+        x, y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        life: 1.0,
+        decay: 0.015 + Math.random() * 0.02,
+        color: Math.random() > 0.5 ? '#f43f5e' : (Math.random() > 0.5 ? '#fbbf24' : '#f8fafc')
+      });
+    }
+  }
+
+  // 선분 교차 판정
+  function lineIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+    const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+    if (denom === 0) return false;
+    const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+    const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+    return (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1);
+  }
+
+  // 기체 충돌 및 착륙 검사
+  function checkCollision() {
+    // 착륙선 하단 착지 패드 좌우 발 좌표
+    const cosA = Math.cos(ship.angle);
+    const sinA = Math.sin(ship.angle);
+    const footLX = ship.x - 9 * cosA + 10 * sinA;
+    const footLY = ship.y - 9 * sinA - 10 * cosA;
+    const footRX = ship.x + 9 * cosA + 10 * sinA;
+    const footRY = ship.y + 9 * sinA - 10 * cosA;
+
+    // 1. 착륙 패드 검사
+    for (let pad of landingPads) {
+      if (footLX >= pad.x1 && footRX <= pad.x2 &&
+          Math.abs(ship.y + 10 - pad.y) < 6) {
+        
+        const deg = Math.abs(ship.angle * (180 / Math.PI));
+        const safeVy = Math.abs(ship.vy) <= SAFE_MAX_VY;
+        const safeVx = Math.abs(ship.vx) <= SAFE_MAX_VX;
+        const safeTilt = deg <= SAFE_MAX_TILT;
+
+        if (safeVy && safeVx && safeTilt) {
+          // 완벽한 착륙 성공!
+          gameState = 'LANDED';
+          setThrusterSound(false);
+          const earned = Math.round((ship.fuel * 2 + 500) * pad.mult);
+          score += earned;
+          playSuccessSound();
+          statusTitle.textContent = `TOUCHDOWN! (+${earned})`;
+          statusTitle.style.color = '#4ade80';
+          statusSub.textContent = `[SPACE] 다음 레벨 ${level + 1} 진입`;
+          statusBanner.style.display = 'block';
+          return;
+        } else {
+          // 과속 또는 각도 불량 충돌
+          triggerCrash();
+          return;
+        }
+      }
+    }
+
+    // 2. 일반 거친 지형과의 충돌 검사
+    for (let i = 0; i < terrain.length - 1; i++) {
+      const p1 = terrain[i];
+      const p2 = terrain[i + 1];
+
+      // 기체 4개 꼭짓점 선분과 지형 선분 교차 검출
+      if (lineIntersect(ship.x, ship.y - 10, ship.x, ship.y + 10, p1.x, p1.y, p2.x, p2.y) ||
+          lineIntersect(ship.x - 10, ship.y, ship.x + 10, ship.y, p1.x, p1.y, p2.x, p2.y) ||
+          ship.y + 10 >= Math.min(p1.y, p2.y) && (ship.x >= p1.x && ship.x <= p2.x)) {
+        triggerCrash();
+        return;
+      }
+    }
+
+    // 화면 밖 경계
+    if (ship.x < 0 || ship.x > width) {
+      triggerCrash();
+    }
+  }
+
+  function triggerCrash() {
+    gameState = 'CRASHED';
+    setThrusterSound(false);
+    createExplosion(ship.x, ship.y);
+    playCrashSound();
+    statusTitle.textContent = 'MISSION DESTROYED';
+    statusTitle.style.color = '#f43f5e';
+    statusSub.textContent = '[SPACE] 또는 화면 터치로 재도전';
+    statusBanner.style.display = 'block';
+  }
+
+  // --- 메인 물리 및 렌더 루프 ---
+  function update() {
+    if (gameState === 'PLAYING') {
+      // 회전
+      if (ship.rotatingLeft) ship.angle -= ROT_SPEED;
+      if (ship.rotatingRight) ship.angle += ROT_SPEED;
+
+      // 주 추진 분사
+      if (ship.thrusting && ship.fuel > 0) {
+        ship.fuel = Math.max(0, ship.fuel - 1.2);
+        const rad = ship.angle - Math.PI / 2;
+        ship.vx += Math.cos(rad) * MAIN_THRUST;
+        ship.vy += Math.sin(rad) * MAIN_THRUST;
+        createThrustSparks();
+        setThrusterSound(true);
+      } else {
+        setThrusterSound(false);
+      }
+
+      // 중력 적용
+      ship.vy += GRAVITY;
+
+      // 위치 이동
+      ship.x += ship.vx;
+      ship.y += ship.vy;
+
+      checkCollision();
+    }
+
+    // 파티클 시뮬레이션
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    updateHUD();
+  }
+
+  function updateHUD() {
+    hudScore.textContent = score;
+    hudFuel.textContent = Math.round(ship.fuel);
+    
+    // 고도 (가장 가까운 지형과의 거리)
+    const alt = Math.max(0, Math.round(height * 0.82 - ship.y));
+    hudAlt.textContent = alt;
+
+    // 수평/수직 속도 위험도 컬러링
+    hudVx.textContent = (ship.vx >= 0 ? '+' : '') + ship.vx.toFixed(1);
+    hudVx.className = Math.abs(ship.vx) <= SAFE_MAX_VX ? 'safe' : 'warn';
+
+    hudVy.textContent = (ship.vy >= 0 ? '+' : '') + ship.vy.toFixed(1);
+    hudVy.className = Math.abs(ship.vy) <= SAFE_MAX_VY ? 'safe' : 'warn';
+
+    const deg = Math.round(ship.angle * (180 / Math.PI));
+    hudTilt.textContent = `${deg}°`;
+    hudTilt.className = Math.abs(deg) <= SAFE_MAX_TILT ? 'safe' : 'warn';
+  }
+
+  function draw() {
+    ctx.fillStyle = '#030407';
+    ctx.fillRect(0, 0, width, height);
+
+    // 1. 별빛
+    ctx.fillStyle = '#f8fafc';
+    stars.forEach(s => {
+      ctx.globalAlpha = s.alpha;
+      ctx.fillRect(s.x, s.y, s.size, s.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // 2. 벡터 지형 렌더링
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(terrain[0].x, terrain[0].y);
+    for (let i = 1; i < terrain.length; i++) {
+      ctx.lineTo(terrain[i].x, terrain[i].y);
+    }
+    ctx.stroke();
+
+    // 3. 착륙 패드 하이라이트 (네온 그린 & 배수 텍스트)
+    landingPads.forEach(pad => {
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = 3.0;
+      ctx.shadowColor = '#4ade80';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(pad.x1, pad.y);
+      ctx.lineTo(pad.x2, pad.y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // 패드 점수 배율 표시
+      ctx.font = '700 11px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText(`${pad.mult}X PAD`, (pad.x1 + pad.x2) / 2 - 20, pad.y + 16);
+    });
+
+    // 4. 파티클
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.life;
+      ctx.fillRect(p.x, p.y, 2.5, 2.5);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // 5. 아폴로 LEM 와이어프레임 착륙선 본체 드로잉
+    if (gameState !== 'CRASHED') {
+      ctx.save();
+      ctx.translate(ship.x, ship.y);
+      ctx.rotate(ship.angle);
+
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1.4;
+
+      // 상단 조종 캡슐 (8각형 와이어프레임)
+      ctx.beginPath();
+      ctx.moveTo(-6, -6);
+      ctx.lineTo(6, -6);
+      ctx.lineTo(8, 2);
+      ctx.lineTo(-8, 2);
+      ctx.closePath();
+      ctx.stroke();
+
+      // 하단 하강단 몸체
+      ctx.strokeRect(-9, 2, 18, 6);
+
+      // 좌우 착륙 다리(Legs) 및 패드
+      ctx.beginPath();
+      // 좌측 다리
+      ctx.moveTo(-9, 5);
+      ctx.lineTo(-14, 12);
+      ctx.moveTo(-17, 12);
+      ctx.lineTo(-11, 12);
+      // 우측 다리
+      ctx.moveTo(9, 5);
+      ctx.lineTo(14, 12);
+      ctx.moveTo(11, 12);
+      ctx.lineTo(17, 12);
+      ctx.stroke();
+
+      // 분사구 노즐
+      ctx.strokeRect(-3, 8, 6, 3);
+
+      ctx.restore();
+    }
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // --- 컨트롤 입력 바인딩 ---
+  window.addEventListener('keydown', (e) => {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') {
+      e.preventDefault();
+      if (gameState === 'PLAYING') {
+        ship.thrusting = true;
+      } else {
+        // 성공 시 다음 레벨, 실패 시 재도전
+        if (gameState === 'LANDED') level++;
+        resetShip();
+      }
+    }
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') ship.rotatingLeft = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') ship.rotatingRight = true;
+    if (e.code === 'KeyR') resetShip();
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') ship.thrusting = false;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') ship.rotatingLeft = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') ship.rotatingRight = false;
+  });
+
+  // 터치 버튼 이벤트
+  function bindTouch(btn, onDown, onUp) {
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      initAudio();
+      btn.classList.add('active');
+      onDown();
+    }, { passive: false });
+
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      btn.classList.remove('active');
+      onUp();
+    }, { passive: false });
+  }
+
+  bindTouch(btnLeft, () => ship.rotatingLeft = true, () => ship.rotatingLeft = false);
+  bindTouch(btnRight, () => ship.rotatingRight = true, () => ship.rotatingRight = false);
+  bindTouch(btnThrust, () => {
+    if (gameState === 'PLAYING') ship.thrusting = true;
+    else {
+      if (gameState === 'LANDED') level++;
+      resetShip();
+    }
+  }, () => ship.thrusting = false);
+
+  canvas.addEventListener('click', () => {
+    if (gameState !== 'PLAYING') {
+      if (gameState === 'LANDED') level++;
+      resetShip();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    initStars();
+    generateTerrain();
+  });
+
+  // 초기화 및 시작
+  initStars();
+  generateTerrain();
+  resetShip();
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
