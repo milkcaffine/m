@@ -102,6 +102,9 @@
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
+    <!-- 상단 심해 발광 미생물 배경 캔버스 -->
+<canvas id="bioCanvas" class="absolute top-0 left-0 w-full h-[320px] pointer-events-none z-0"></canvas>
+
     <!-- 헤더 -->
     <header class="relative min-h-[88vh] overflow-hidden">
         <img src="images/cone.jpg" alt="Wet plaza, white trellis, one cone" class="hero-img absolute inset-0 h-full w-full object-cover">
@@ -504,5 +507,141 @@
         renderFavorites();
     })();
     </script>
+    <script>
+(() => {
+  const canvas = document.getElementById('bioCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let width, height;
+  function resize() {
+    width = canvas.width = canvas.offsetWidth;
+    height = canvas.height = canvas.offsetHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // 마우스 위치 추적 (상단 영역 인터랙션)
+  const mouse = { x: -1000, y: -1000, active: false, radius: 90 };
+  window.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+    mouse.active = (mouse.y >= 0 && mouse.y <= height + 30);
+  });
+  window.addEventListener('mouseleave', () => { mouse.active = false; });
+
+  // 모바일 터치 대응
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 0) {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.touches[0].clientX - rect.left;
+      mouse.y = e.touches[0].clientY - rect.top;
+      mouse.active = (mouse.y >= 0 && mouse.y <= height + 30);
+    }
+  }, { passive: true });
+  window.addEventListener('touchend', () => { mouse.active = false; });
+
+  // 심해 플랑크톤/미생물 개체군 생성 (42마리)
+  const COUNT = 42;
+  const organisms = [];
+
+  for (let i = 0; i < COUNT; i++) {
+    organisms.push({
+      x: Math.random() * (width || window.innerWidth),
+      y: Math.random() * (height || 320),
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      baseRadius: Math.random() * 2.2 + 1.2,
+      phase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.02 + Math.random() * 0.025,
+      // 개체별 고유 발광색 (네온 시안 ~ 딥 바이올렛)
+      color: Math.random() > 0.35 ? '56, 189, 248' : '168, 85, 247',
+      luminescence: 0.2 + Math.random() * 0.3
+    });
+  }
+
+  function loop(time) {
+    ctx.clearRect(0, 0, width, height);
+
+    const t = time * 0.001;
+
+    for (let i = 0; i < COUNT; i++) {
+      const org = organisms[i];
+
+      // 1. 심해 해류를 탄 자연스러운 하모닉 유영 (Perlin-like drift)
+      org.phase += org.pulseSpeed;
+      org.vx += Math.sin(t * 0.6 + org.phase) * 0.012;
+      org.vy += Math.cos(t * 0.5 + org.phase) * 0.012;
+
+      // 속도 감쇠
+      org.vx *= 0.98;
+      org.vy *= 0.98;
+
+      // 2. 마우스 접근 시 생체 반응 (빛을 내며 유연하게 회피)
+      if (mouse.active) {
+        const dx = org.x - mouse.x;
+        const dy = org.y - mouse.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < mouse.radius) {
+          const force = (1 - dist / mouse.radius) * 0.5;
+          org.vx += (dx / dist) * force;
+          org.vy += (dy / dist) * force;
+          // 자극받으면 순간적으로 발광 증폭
+          org.luminescence = Math.min(1.0, org.luminescence + 0.05);
+        }
+      }
+
+      // 평상시 원래 밝기로 서서히 복귀
+      org.luminescence += (0.28 - org.luminescence) * 0.03;
+
+      org.x += org.vx;
+      org.y += org.vy;
+
+      // 화면 경계 순환 (Toroidal wrapping)
+      if (org.x < -20) org.x = width + 20;
+      if (org.x > width + 20) org.x = -20;
+      if (org.y < -20) org.y = height + 20;
+      if (org.y > height + 20) org.y = -20;
+
+      // 3. 하단 페이드아웃 계수 (아래쪽 텍스트 영역으로 내려갈수록 투명해짐)
+      const verticalFade = Math.max(0, 1.0 - (org.y / (height * 0.92)));
+
+      // 4. 생체 박동 발광 드로잉
+      const pulse = 1.0 + Math.sin(org.phase) * 0.25;
+      const currentRadius = org.baseRadius * pulse;
+      const alpha = org.luminescence * verticalFade;
+
+      if (alpha > 0.01) {
+        // 외곽 생체 발광 글로우 링
+        const grad = ctx.createRadialGradient(
+          org.x, org.y, 0.5,
+          org.x, org.y, currentRadius * 4.5
+        );
+        grad.addColorStop(0, `rgba(${org.color}, ${alpha * 0.85})`);
+        grad.addColorStop(0.4, `rgba(${org.color}, ${alpha * 0.25})`);
+        grad.addColorStop(1, 'rgba(3, 4, 7, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(org.x, org.y, currentRadius * 4.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 중심 세포핵 (빛나는 코어)
+        ctx.fillStyle = `rgba(248, 250, 252, ${alpha * 0.9})`;
+        ctx.beginPath();
+        ctx.arc(org.x, org.y, currentRadius * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+
 </body>
 </html>
