@@ -102,14 +102,15 @@
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
-    <!-- 상단 심해 발광 미생물 배경 캔버스 -->
-<canvas id="bioCanvas" class="absolute top-0 left-0 w-full h-[320px] pointer-events-none z-0"></canvas>
 
     <!-- 헤더 -->
     <header class="relative min-h-[88vh] overflow-hidden">
         <img src="images/cone.jpg" alt="Wet plaza, white trellis, one cone" class="hero-img absolute inset-0 h-full w-full object-cover">
         <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-zinc-950/15"></div>
         
+        <!-- 심해 발광 미생물 캔버스 (사진 위에서 자연스럽게 발광) -->
+        <canvas id="bioCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-[5] mix-blend-screen opacity-90"></canvas>
+
         <!-- 상단 메뉴 -->
         <nav class="absolute top-0 left-0 right-0 z-20 flex justify-end px-6 py-4 text-xs text-zinc-300/80 tracking-wide">
             <div class="flex gap-4 flex-wrap justify-end">
