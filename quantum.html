@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Quantum Wave Simulator // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #quantCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 범례 오버레이 */
+    .legend-card {
+      position: absolute;
+      top: 76px;
+      left: 16px;
+      background: rgba(10, 15, 26, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #94a3b8;
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .dot-prob { width: 8px; height: 8px; background: #38bdf8; border-radius: 2px; }
+    .dot-re { width: 8px; height: 2px; background: #f43f5e; }
+    .dot-im { width: 8px; height: 2px; background: #a855f7; }
+    .dot-pot { width: 8px; height: 2px; background: #fbbf24; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 55px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>1D SCHRÖDINGER WAVE MECHANICS</h1>
+  <div class="hud-meta">CRANK-NICOLSON PDE · QUANTUM TUNNELING</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SYSTEM: <strong id="valSystem">BARRIER (TUNNELING)</strong></div>
+  <div>PROB NORM: <strong id="valNorm">1.00000</strong></div>
+  <div>TUNNEL PROB: <strong id="valTunnel">0.00%</strong></div>
+  <div>MOMENTUM (k0): <strong id="valK0">0.45</strong></div>
+</div>
+
+<div class="legend-card">
+  <div class="legend-item"><span class="dot-prob"></span><span>확률 밀도 |ψ|²</span></div>
+  <div class="legend-item"><span class="dot-re"></span><span>파동함수 Re(ψ)</span></div>
+  <div class="legend-item"><span class="dot-im"></span><span>파동함수 Im(ψ)</span></div>
+  <div class="legend-item"><span class="dot-pot"></span><span>잠재 장벽 V(x)</span></div>
+</div>
+
+<canvas id="quantCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnBarrier">터널링 장벽</button>
+  <button type="button" class="dock-btn" id="btnDoubleWell">이중 우물</button>
+  <button type="button" class="dock-btn" id="btnHarmonic">조화 진동자</button>
+  <button type="button" class="dock-btn" id="btnFree">자유 입자</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnFire">파속 재발사</button>
+  <button type="button" class="dock-btn active" id="btnPause">일시정지</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>장벽 높이 (V0)</span>
+    <input type="range" id="v0Range" min="0" max="100" value="45">
+  </div>
+  <div class="slider-group">
+    <span>입사 운동량 (k0)</span>
+    <input type="range" id="k0Range" min="15" max="80" value="45">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('quantCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valSystem = document.getElementById('valSystem');
+  const valNorm = document.getElementById('valNorm');
+  const valTunnel = document.getElementById('valTunnel');
+  const valK0 = document.getElementById('valK0');
+
+  const btnBarrier = document.getElementById('btnBarrier');
+  const btnDoubleWell = document.getElementById('btnDoubleWell');
+  const btnHarmonic = document.getElementById('btnHarmonic');
+  const btnFree = document.getElementById('btnFree');
+  const btnFire = document.getElementById('btnFire');
+  const btnPause = document.getElementById('btnPause');
+
+  const v0Range = document.getElementById('v0Range');
+  const k0Range = document.getElementById('k0Range');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 공간 이산화 그리드 (N 포인트)
+  const N = 600;
+  const dx = 1.0;
+  const dt = 0.5;
+  const hbar_over_2m = 0.5; // 자연 단위계 스케일링 상수
+
+  // 복소 파동함수 및 전위 버퍼
+  let psiRe = new Float64Array(N);
+  let psiIm = new Float64Array(N);
+  let V = new Float64Array(N);
+
+  // 3대각 행렬(Tridiagonal matrix) 해법을 위한 토마스 알고리즘 사전 캐시 버퍼
+  let alphaRe = new Float64Array(N);
+  let alphaIm = new Float64Array(N);
+
+  let currentSystem = 'barrier';
+  let isRunning = true;
+  let k0 = parseFloat(k0Range.value) / 100.0;
+  let V0 = parseFloat(v0Range.value) / 100.0;
+
+  // 가우스 파속(Gaussian wave packet) 초기화: ψ(x,0) = A * exp(-(x-x0)^2 / (2*sigma^2)) * exp(i * k0 * x)
+  function spawnWavePacket(x0 = N * 0.22, sigma = 22.0, momentum = k0) {
+    let normSum = 0.0;
+    for (let i = 0; i < N; i++) {
+      const x = i - x0;
+      const envelope = Math.exp(-(x * x) / (2.0 * sigma * sigma));
+      const phase = momentum * (i - x0);
+
+      psiRe[i] = envelope * Math.cos(phase);
+      psiIm[i] = envelope * Math.sin(phase);
+
+      normSum += (psiRe[i] * psiRe[i] + psiIm[i] * psiIm[i]) * dx;
+    }
+
+    // 완전한 확률 규격화 (Total Probability = 1.0)
+    const invSqrtNorm = 1.0 / Math.sqrt(normSum);
+    for (let i = 0; i < N; i++) {
+      psiRe[i] *= invSqrtNorm;
+      psiIm[i] *= invSqrtNorm;
+    }
+  }
+
+  // 전위 함수 V(x) 구성
+  function buildPotential(name) {
+    currentSystem = name;
+    V.fill(0);
+    [btnBarrier, btnDoubleWell, btnHarmonic, btnFree].forEach(b => b.classList.remove('active'));
+
+    const mid = Math.floor(N * 0.55);
+
+    if (name === 'barrier') {
+      btnBarrier.classList.add('active');
+      valSystem.textContent = 'BARRIER (TUNNELING)';
+      // 중앙 얇은 직사각형 전위 장벽
+      const thickness = 18;
+      for (let i = mid - thickness/2; i <= mid + thickness/2; i++) {
+        V[Math.floor(i)] = V0 * 0.35;
+      }
+      spawnWavePacket(N * 0.2, 22.0, k0);
+    } else if (name === 'doublewell') {
+      btnDoubleWell.classList.add('active');
+      valSystem.textContent = 'DOUBLE WELL';
+      // 두 우물 사이에 솟은 중앙 장벽
+      for (let i = 0; i < N; i++) {
+        const x = (i - N * 0.5) / 50.0;
+        V[i] = Math.max(0.0, 0.08 * (x * x - 2.5) * (x * x - 2.5));
+      }
+      spawnWavePacket(N * 0.35, 18.0, 0.0);
+    } else if (name === 'harmonic') {
+      btnHarmonic.classList.add('active');
+      valSystem.textContent = 'HARMONIC OSCILLATOR';
+      // 조화 진동자 포물선 우물 V(x) = 0.5 * k * x^2
+      for (let i = 0; i < N; i++) {
+        const x = (i - N * 0.5);
+        V[i] = 0.000035 * x * x;
+      }
+      spawnWavePacket(N * 0.35, 20.0, 0.0);
+    } else if (name === 'free') {
+      btnFree.classList.add('active');
+      valSystem.textContent = 'FREE PARTICLE';
+      spawnWavePacket(N * 0.15, 24.0, k0);
+    }
+  }
+
+  // --- 크랭크-니콜슨 유니터리 음함수 적분기 (Crank-Nicolson) ---
+  // (I - i*dt/2 * H) ψ(t+dt) = (I + i*dt/2 * H) ψ(t)
+  // 확률 노름이 수치 오차로 소멸하거나 발산하지 않고 영원히 정확히 1.0 보존됨
+  function stepSchrodinger() {
+    const r = (hbar_over_2m * dt) / (4.0 * dx * dx);
+
+    // 복소 삼대각 행렬 우변(RHS) 벡터 계산: B = (I + i*dt/2 * H) * psi
+    const rhsRe = new Float64Array(N);
+    const rhsIm = new Float64Array(N);
+
+    for (let i = 1; i < N - 1; i++) {
+      const vTerm = (V[i] * dt) / 2.0;
+      const diagRe = 1.0;
+      const diagIm = (2.0 * r + vTerm);
+
+      const offIm = -r;
+
+      // RHS = (Diag) * psi[i] + (Off) * (psi[i-1] + psi[i+1])
+      rhsRe[i] = (diagRe * psiRe[i] - diagIm * psiIm[i]) - offIm * (psiIm[i-1] + psiIm[i+1]);
+      rhsIm[i] = (diagRe * psiIm[i] + diagIm * psiRe[i]) + offIm * (psiRe[i-1] + psiRe[i+1]);
+    }
+
+    // 복소 토마스 알고리즘 (Tridiagonal Elimination) 순방향 소거
+    // 좌변 A = (I - i*dt/2 * H)
+    const cPrimeRe = new Float64Array(N);
+    const cPrimeIm = new Float64Array(N);
+    const dPrimeRe = new Float64Array(N);
+    const dPrimeIm = new Float64Array(N);
+
+    for (let i = 1; i < N - 1; i++) {
+      const vTerm = (V[i] * dt) / 2.0;
+      const aDiagRe = 1.0;
+      const aDiagIm = -(2.0 * r + vTerm);
+      const aOffIm = r; // 상/하대각 원소: +i*r
+
+      // denom = aDiag - aSub * cPrime[i-1]
+      // aSub = (0, r), aSup = (0, r)
+      const subMultRe = -aOffIm * cPrimeIm[i-1];
+      const subMultIm = aOffIm * cPrimeRe[i-1];
+
+      const denomRe = aDiagRe - subMultRe;
+      const denomIm = aDiagIm - subMultIm;
+      const denomMagSq = denomRe * denomRe + denomIm * denomIm;
+
+      // cPrime[i] = aSup / denom = (0 + i*r) / denom
+      cPrimeRe[i] = (-aOffIm * denomIm) / denomMagSq;
+      cPrimeIm[i] = (aOffIm * denomRe) / denomMagSq;
+
+      // dPrime[i] = (rhs[i] - aSub * dPrime[i-1]) / denom
+      const subD_Re = -aOffIm * dPrimeIm[i-1];
+      const subD_Im = aOffIm * dPrimeRe[i-1];
+
+      const numRe = rhsRe[i] - subD_Re;
+      const numIm = rhsIm[i] - subD_Im;
+
+      dPrimeRe[i] = (numRe * denomRe + numIm * denomIm) / denomMagSq;
+      dPrimeIm[i] = (numIm * denomRe - numRe * denomIm) / denomMagSq;
+    }
+
+    // 역방향 대입 (Back substitution)
+    psiRe[N - 1] = 0.0;
+    psiIm[N - 1] = 0.0;
+    for (let i = N - 2; i >= 1; i--) {
+      // psi[i] = dPrime[i] - cPrime[i] * psi[i+1]
+      const prodRe = cPrimeRe[i] * psiRe[i+1] - cPrimeIm[i] * psiIm[i+1];
+      const prodIm = cPrimeRe[i] * psiIm[i+1] + cPrimeIm[i] * psiRe[i+1];
+
+      psiRe[i] = dPrimeRe[i] - prodRe;
+      psiIm[i] = dPrimeIm[i] - prodIm;
+    }
+  }
+
+  // --- 화면 렌더링 ---
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    const midY = height * 0.58;
+    const ampScale = height * 0.38;
+    const potScale = height * 2.8;
+
+    // 1. 잠재 에너지 장벽 V(x) 황금색 영역 채우기
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.08)';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+
+    for (let i = 0; i < N; i++) {
+      const sx = (i / N) * width;
+      const sy = midY - V[i] * potScale;
+      ctx.lineTo(sx, sy);
+    }
+    ctx.lineTo(width, midY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. 파동함수 실수부(Re) - 붉은 장미빛 & 허수부(Im) - 보랏빛
+    // 실수부 Re(ψ)
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const sx = (i / N) * width;
+      const sy = midY - psiRe[i] * ampScale * 0.9;
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+
+    // 허수부 Im(ψ)
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const sx = (i / N) * width;
+      const sy = midY - psiIm[i] * ampScale * 0.9;
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+
+    // 3. 입자 발견 확률 밀도 P(x) = |ψ(x)|² 시안 네온 발광
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+
+    let totalProb = 0.0;
+    let rightProb = 0.0; // 장벽 우측 투과 확률
+
+    const barrierIdx = Math.floor(N * 0.55);
+
+    for (let i = 0; i < N; i++) {
+      const sx = (i / N) * width;
+      const prob = (psiRe[i] * psiRe[i] + psiIm[i] * psiIm[i]);
+      totalProb += prob * dx;
+      if (i > barrierIdx) rightProb += prob * dx;
+
+      const sy = midY - prob * ampScale * 2.8;
+      ctx.lineTo(sx, sy);
+    }
+    ctx.lineTo(width, midY);
+    ctx.closePath();
+
+    // 확률 밀도 그라디언트 채우기
+    const probGrad = ctx.createLinearGradient(0, midY - height * 0.35, 0, midY);
+    probGrad.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+    probGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.12)');
+    probGrad.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = probGrad;
+    ctx.fill();
+
+    // 상단 아웃라인
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.0;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 수평 기저선 (y = 0)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(width, midY);
+    ctx.stroke();
+
+    // 텔레메트리 갱신
+    valNorm.textContent = totalProb.toFixed(5);
+    valTunnel.textContent = (rightProb * 100).toFixed(2) + '%';
+  }
+
+  // 메인 애니메이션 루프
+  function loop() {
+    if (isRunning) {
+      // 부드러운 시간 전파를 위해 프레임당 8회 서브스텝 적분
+      for (let s = 0; s < 8; s++) {
+        stepSchrodinger();
+      }
+    }
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // 마우스/터치로 장벽 높이 직접 드래그 조작
+  let isDragging = false;
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    adjustBarrierFromPointer(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) adjustBarrierFromPointer(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  function adjustBarrierFromPointer(clientX, clientY) {
+    const idx = Math.floor((clientX / width) * N);
+    const midY = height * 0.58;
+    const potVal = Math.max(0.0, (midY - clientY) / (height * 2.8));
+
+    // 터치한 위치 근방에 전위 브러시 주입
+    const r = 8;
+    for (let d = -r; d <= r; d++) {
+      const ti = idx + d;
+      if (ti >= 0 && ti < N) {
+        V[ti] = potVal;
+      }
+    }
+  }
+
+  // 리사이즈
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  // UI 버튼 바인딩
+  btnBarrier.addEventListener('click', () => buildPotential('barrier'));
+  btnDoubleWell.addEventListener('click', () => buildPotential('doublewell'));
+  btnHarmonic.addEventListener('click', () => buildPotential('harmonic'));
+  btnFree.addEventListener('click', () => buildPotential('free'));
+
+  btnFire.addEventListener('click', () => {
+    buildPotential(currentSystem);
+  });
+
+  btnPause.addEventListener('click', () => {
+    isRunning = !isRunning;
+    btnPause.textContent = isRunning ? '일시정지' : '재개';
+    btnPause.classList.toggle('active', isRunning);
+  });
+
+  v0Range.addEventListener('input', (e) => {
+    V0 = parseFloat(e.target.value) / 100.0;
+    if (currentSystem === 'barrier') {
+      const mid = Math.floor(N * 0.55);
+      const thickness = 18;
+      for (let i = mid - thickness/2; i <= mid + thickness/2; i++) {
+        V[Math.floor(i)] = V0 * 0.35;
+      }
+    }
+  });
+
+  k0Range.addEventListener('input', (e) => {
+    k0 = parseFloat(e.target.value) / 100.0;
+    valK0.textContent = k0.toFixed(2);
+  });
+
+  // 초기화 및 가동
+  buildPotential('barrier');
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
