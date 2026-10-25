@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Reaction-Diffusion Lab // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 60px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>GRAY-SCOTT REACTION-DIFFUSION</h1>
+  <div class="hud-meta">TURING PATTERNS · GPU PDE SOLVER</div>
+</header>
+
+<div class="telemetry-card">
+  <div>PATTERN: <strong id="valPattern">CORAL</strong></div>
+  <div>FEED (F): <strong id="valFeed">0.0545</strong></div>
+  <div>KILL (K): <strong id="valKill">0.0620</strong></div>
+  <div>FPS: <strong id="valFps">60</strong></div>
+</div>
+
+<canvas id="simCanvas"></canvas>
+
+<div class="control-dock">
+  <!-- 프리셋 패턴 모드 -->
+  <button type="button" class="dock-btn active" id="btnCoral">산호초 (Coral)</button>
+  <button type="button" class="dock-btn" id="btnMitosis">세포 분열 (Mitosis)</button>
+  <button type="button" class="dock-btn" id="btnSpirals">나선 파동 (Spirals)</button>
+  <button type="button" class="dock-btn" id="btnSolitons">펄스 알갱이 (Solitons)</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnColorMap">팔레트 전환</button>
+  <button type="button" class="dock-btn" id="btnClear">초기화</button>
+  <button type="button" class="dock-btn" id="btnSeed">중앙 씨앗 주입</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>주입 반경</span>
+    <input type="range" id="brushRange" min="5" max="50" value="20">
+  </div>
+</div>
+
+<!-- 공통 버텍스 셰이더 -->
+<script id="vs" type="x-shader/x-vertex">
+  attribute vec2 position;
+  varying vec2 vUv;
+  void main() {
+    vUv = position * 0.5 + 0.5;
+    gl_Position = vec4(position, 0.0, 1.0);
+  }
+</script>
+
+<!-- 편미분 계산 셰이더 (핑퐁 시뮬레이션 패스) -->
+<script id="fs-sim" type="x-shader/x-fragment">
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D u_state;
+  uniform vec2 u_texel;
+  uniform float u_feed;
+  uniform float u_kill;
+  uniform vec2 u_mouse;
+  uniform float u_brush;
+  uniform float u_inject;
+
+  #define DA 1.0
+  #define DB 0.5
+  #define DT 1.0
+
+  void main() {
+    vec2 uv = vUv;
+    vec2 c = texture2D(u_state, uv).rg;
+    float a = c.r;
+    float b = c.g;
+
+    // 5포인트 라플라시안 확산 연산자 (Laplacian Δ)
+    vec2 n = texture2D(u_state, uv + vec2(0.0, u_texel.y)).rg;
+    vec2 s = texture2D(u_state, uv - vec2(0.0, u_texel.y)).rg;
+    vec2 e = texture2D(u_state, uv + vec2(u_texel.x, 0.0)).rg;
+    vec2 w = texture2D(u_state, uv - vec2(u_texel.x, 0.0)).rg;
+
+    vec2 lap = (n + s + e + w) - 4.0 * c;
+
+    // 그레이-스콧 반응-확산 미분 방정식:
+    // ∂A/∂t = DA*ΔA - A*B^2 + feed*(1 - A)
+    // ∂B/∂t = DB*ΔB + A*B^2 - (feed + kill)*B
+    float abb = a * b * b;
+    float newA = a + (DA * lap.r - abb + u_feed * (1.0 - a)) * DT;
+    float newB = b + (DB * lap.g + abb - (u_feed + u_kill) * b) * DT;
+
+    // 마우스/터치 인터랙티브 화학물질 B 주입
+    if (u_inject > 0.5) {
+      float d = distance(uv, u_mouse);
+      if (d < u_brush) {
+        newB = mix(newB, 0.9, smoothstep(u_brush, 0.0, d));
+        newA = mix(newA, 0.1, smoothstep(u_brush, 0.0, d));
+      }
+    }
+
+    gl_FragColor = vec4(clamp(newA, 0.0, 1.0), clamp(newB, 0.0, 1.0), 0.0, 1.0);
+  }
+</script>
+
+<!-- 디스플레이 컬러 렌더링 셰이더 -->
+<script id="fs-render" type="x-shader/x-fragment">
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D u_state;
+  uniform int u_palette;
+
+  void main() {
+    float b = texture2D(u_state, vUv).g;
+
+    vec3 col = vec3(0.015, 0.02, 0.03); // 바탕 심해 암흑
+
+    if (u_palette == 0) {
+      // 1. 네온 사이언-화이트 (marsko 시그니처)
+      vec3 c1 = vec3(0.02, 0.12, 0.22);
+      vec3 c2 = vec3(0.22, 0.74, 0.97); // #38bdf8
+      vec3 c3 = vec3(0.95, 0.98, 1.00);
+
+      if (b < 0.2) col = mix(col, c1, b / 0.2);
+      else if (b < 0.5) col = mix(c1, c2, (b - 0.2) / 0.3);
+      else col = mix(c2, c3, (b - 0.5) / 0.5);
+    } else if (u_palette == 1) {
+      // 2. 바이오 루미네선스 앰버-마젠타
+      vec3 c1 = vec3(0.25, 0.05, 0.15);
+      vec3 c2 = vec3(0.95, 0.25, 0.37);
+      vec3 c3 = vec3(0.98, 0.80, 0.15);
+
+      if (b < 0.2) col = mix(col, c1, b / 0.2);
+      else if (b < 0.5) col = mix(c1, c2, (b - 0.2) / 0.3);
+      else col = mix(c2, c3, (b - 0.5) / 0.5);
+    } else {
+      // 3. 미니멀 흑백 단색 (X선 형광판)
+      col = vec3(smoothstep(0.1, 0.6, b) * 0.9);
+    }
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+</script>
+
+<script>
+  const canvas = document.getElementById('simCanvas');
+  const gl = canvas.getContext('webgl');
+  if (!gl) alert('WebGL 미지원 브라우저입니다.');
+
+  // 부동소수점 텍스처 확장 활성화
+  const extFloat = gl.getExtension('OES_texture_float');
+  const extHalf = gl.getExtension('OES_texture_half_float');
+
+  const valPattern = document.getElementById('valPattern');
+  const valFeed = document.getElementById('valFeed');
+  const valKill = document.getElementById('valKill');
+  const valFps = document.getElementById('valFps');
+
+  const btnCoral = document.getElementById('btnCoral');
+  const btnMitosis = document.getElementById('btnMitosis');
+  const btnSpirals = document.getElementById('btnSpirals');
+  const btnSolitons = document.getElementById('btnSolitons');
+  const btnColorMap = document.getElementById('btnColorMap');
+  const btnClear = document.getElementById('btnClear');
+  const btnSeed = document.getElementById('btnSeed');
+  const brushRange = document.getElementById('brushRange');
+
+  // 내부 시뮬레이션 그리드 해상도 (연산 효율과 선명도의 균형)
+  const SIM_WIDTH = 512;
+  const SIM_HEIGHT = 512;
+
+  // 셰이더 컴파일러
+  function compileShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(s));
+      gl.deleteShader(s);
+      return null;
+    }
+    return s;
+  }
+
+  function createProgram(vsSrc, fsSrc) {
+    const p = gl.createProgram();
+    gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(p);
+    return p;
+  }
+
+  const vsSource = document.getElementById('vs').text;
+  const simProgram = createProgram(vsSource, document.getElementById('fs-sim').text);
+  const renderProgram = createProgram(vsSource, document.getElementById('fs-render').text);
+
+  // 사각형 버텍스 버퍼
+  const quadBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,  1, -1, -1,  1,
+    -1,  1,  1, -1,  1,  1
+  ]), gl.STATIC_DRAW);
+
+  // 핑퐁 텍스처 및 프레임버퍼 2벌 생성
+  let currentTex = 0;
+  const textures = [gl.createTexture(), gl.createTexture()];
+  const framebuffers = [gl.createFramebuffer(), gl.createFramebuffer()];
+
+  function initTextures() {
+    const initData = new Float32Array(SIM_WIDTH * SIM_HEIGHT * 4);
+    for (let i = 0; i < SIM_WIDTH * SIM_HEIGHT; i++) {
+      initData[i * 4 + 0] = 1.0; // A = 1.0
+      initData[i * 4 + 1] = 0.0; // B = 0.0
+      initData[i * 4 + 2] = 0.0;
+      initData[i * 4 + 3] = 1.0;
+    }
+
+    // 중앙 초기 사각 씨앗 주입
+    const cx = SIM_WIDTH / 2;
+    const cy = SIM_HEIGHT / 2;
+    const r = 16;
+    for (let y = cy - r; y <= cy + r; y++) {
+      for (let x = cx - r; x <= cx + r; x++) {
+        const idx = (y * SIM_WIDTH + x) * 4;
+        initData[idx + 0] = 0.5 + (Math.random() - 0.5) * 0.1;
+        initData[idx + 1] = 0.25 + (Math.random() - 0.5) * 0.1;
+      }
+    }
+
+    for (let i = 0; i < 2; i++) {
+      gl.bindTexture(gl.TEXTURE_2D, textures[i]);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SIM_WIDTH, SIM_HEIGHT, 0, gl.RGBA, gl.FLOAT, initData);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i]);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textures[i], 0);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  initTextures();
+
+  // 튜링 반응-확산 파라미터 (F: Feed Rate, K: Kill Rate)
+  let feed = 0.0545;
+  let kill = 0.0620;
+  let paletteMode = 0;
+
+  // 인터랙션 상태
+  let mouseUv = { x: 0.5, y: 0.5 };
+  let isMouseDown = false;
+
+  // FPS
+  let frameCount = 0;
+  let lastTime = performance.now();
+
+  function setPreset(f, k, name, btn) {
+    feed = f;
+    kill = k;
+    valFeed.textContent = f.toFixed(4);
+    valKill.textContent = k.toFixed(4);
+    valPattern.textContent = name;
+    [btnCoral, btnMitosis, btnSpirals, btnSolitons].forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  btnCoral.addEventListener('click', () => setPreset(0.0545, 0.0620, 'CORAL', btnCoral));
+  btnMitosis.addEventListener('click', () => setPreset(0.0367, 0.0649, 'MITOSIS', btnMitosis));
+  btnSpirals.addEventListener('click', () => setPreset(0.0180, 0.0510, 'SPIRALS', btnSpirals));
+  btnSolitons.addEventListener('click', () => setPreset(0.0300, 0.0620, 'SOLITONS', btnSolitons));
+
+  btnColorMap.addEventListener('click', () => {
+    paletteMode = (paletteMode + 1) % 3;
+  });
+
+  btnClear.addEventListener('click', () => {
+    const emptyData = new Float32Array(SIM_WIDTH * SIM_HEIGHT * 4);
+    for (let i = 0; i < SIM_WIDTH * SIM_HEIGHT; i++) {
+      emptyData[i * 4 + 0] = 1.0;
+      emptyData[i * 4 + 1] = 0.0;
+    }
+    for (let i = 0; i < 2; i++) {
+      gl.bindTexture(gl.TEXTURE_2D, textures[i]);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, SIM_WIDTH, SIM_HEIGHT, gl.RGBA, gl.FLOAT, emptyData);
+    }
+  });
+
+  btnSeed.addEventListener('click', () => {
+    initTextures();
+  });
+
+  // 포인터 인터랙션
+  function updatePointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = 1.0 - (e.clientY - rect.top) / rect.height;
+    mouseUv.x = Math.max(0.0, Math.min(1.0, x));
+    mouseUv.y = Math.max(0.0, Math.min(1.0, y));
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    isMouseDown = true;
+    updatePointer(e);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isMouseDown) updatePointer(e);
+  });
+  window.addEventListener('mouseup', () => { isMouseDown = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isMouseDown = true;
+      updatePointer(e.touches[0]);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (isMouseDown && e.touches.length === 1) {
+      updatePointer(e.touches[0]);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { isMouseDown = false; });
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // 메인 연산 및 렌더 루프
+  function render(time) {
+    // 1프레임당 편미분 방정식을 8번 반복 수치적분(Sub-stepping)하여 유기체 전파 가속
+    gl.useProgram(simProgram);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    const posLocSim = gl.getAttribLocation(simProgram, 'position');
+    gl.enableVertexAttribArray(posLocSim);
+    gl.vertexAttribPointer(posLocSim, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform2f(gl.getUniformLocation(simProgram, 'u_texel'), 1.0 / SIM_WIDTH, 1.0 / SIM_HEIGHT);
+    gl.uniform1f(gl.getUniformLocation(simProgram, 'u_feed'), feed);
+    gl.uniform1f(gl.getUniformLocation(simProgram, 'u_kill'), kill);
+    gl.uniform2f(gl.getUniformLocation(simProgram, 'u_mouse'), mouseUv.x, mouseUv.y);
+    gl.uniform1f(gl.getUniformLocation(simProgram, 'u_brush'), parseInt(brushRange.value, 10) / 512.0);
+
+    const SUB_STEPS = 8;
+    for (let s = 0; s < SUB_STEPS; s++) {
+      const readIdx = currentTex;
+      const writeIdx = 1 - currentTex;
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[writeIdx]);
+      gl.viewport(0, 0, SIM_WIDTH, SIM_HEIGHT);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, textures[readIdx]);
+      gl.uniform1i(gl.getUniformLocation(simProgram, 'u_state'), 0);
+
+      // 마지막 서브스텝에서만 마우스 주입 적용
+      gl.uniform1f(gl.getUniformLocation(simProgram, 'u_inject'), (s === SUB_STEPS - 1 && isMouseDown) ? 1.0 : 0.0);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      currentTex = writeIdx;
+    }
+
+    // 최종 화면 디스플레이 렌더링
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.useProgram(renderProgram);
+
+    const posLocRender = gl.getAttribLocation(renderProgram, 'position');
+    gl.enableVertexAttribArray(posLocRender);
+    gl.vertexAttribPointer(posLocRender, 2, gl.FLOAT, false, 0, 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
+    gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_state'), 0);
+    gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_palette'), paletteMode);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // FPS 카운터
+    frameCount++;
+    if (time - lastTime >= 500) {
+      valFps.textContent = Math.round((frameCount * 1000) / (time - lastTime));
+      frameCount = 0;
+      lastTime = time;
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
