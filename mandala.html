@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Mandala Generator // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #mandalaCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 95%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+    .dock-btn.save-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .dock-btn.save-btn:hover {
+      background: #38bdf8;
+      color: #020306;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 55px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+    .slider-group select {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 0.7rem;
+      outline: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>SACRED MANDALA GENERATOR</h1>
+  <div class="hud-meta">POLAR HARMONICS · KALEIDOSCOPIC SYMMETRY</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SYMMETRY: <strong id="valSym">12</strong> FOLDS</div>
+  <div>LAYERS: <strong id="valLayers">6</strong> RINGS</div>
+  <div>SEED: <strong id="valSeed">#A83F1C</strong></div>
+  <div>ROTATION: <strong id="valSpin">OFF</strong></div>
+</div>
+
+<canvas id="mandalaCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnRandom">랜덤 생성 🎲</button>
+  <button type="button" class="dock-btn save-btn" id="btnSave">PNG 저장 (2K) ⬇</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>대칭수</span>
+    <input type="range" id="symRange" min="6" max="32" step="2" value="12">
+  </div>
+  <div class="slider-group">
+    <span>레이어</span>
+    <input type="range" id="layerRange" min="3" max="10" value="6">
+  </div>
+  <div class="slider-group">
+    <span>색상</span>
+    <select id="paletteSelect">
+      <option value="cyan">네온 시안</option>
+      <option value="gold">미스틱 골드</option>
+      <option value="mono">실버 모노</option>
+      <option value="spectrum">스펙트럼</option>
+    </select>
+  </div>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnSpin">미세 회전</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('mandalaCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valSym = document.getElementById('valSym');
+  const valLayers = document.getElementById('valLayers');
+  const valSeed = document.getElementById('valSeed');
+  const valSpin = document.getElementById('valSpin');
+
+  const btnRandom = document.getElementById('btnRandom');
+  const btnSave = document.getElementById('btnSave');
+  const btnSpin = document.getElementById('btnSpin');
+
+  const symRange = document.getElementById('symRange');
+  const layerRange = document.getElementById('layerRange');
+  const paletteSelect = document.getElementById('paletteSelect');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  let symmetry = 12;
+  let numLayers = 6;
+  let palette = 'cyan';
+  let isSpinning = false;
+  let currentAngle = 0;
+  let seedHex = 'A83F1C';
+
+  // 만다라 레이어 구조 정의
+  let layers = [];
+
+  const PALETTES = {
+    cyan: ['#38bdf8', '#0284c7', '#7dd3fc', '#bae6fd', '#f0f9ff'],
+    gold: ['#fbbf24', '#f59e0b', '#d97706', '#fef08a', '#fffbeb'],
+    mono: ['#ffffff', '#cbd5e1', '#94a3b8', '#64748b', '#e2e8f0'],
+    spectrum: ['#38bdf8', '#a855f7', '#f43f5e', '#fbbf24', '#34d399']
+  };
+
+  function randomColor(palName) {
+    const pal = PALETTES[palName] || PALETTES.cyan;
+    return pal[Math.floor(Math.random() * pal.length)];
+  }
+
+  // 절차적 만다라 레이어 생성 엔진
+  function generateMandala(newSeed = true) {
+    if (newSeed) {
+      seedHex = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0');
+      valSeed.textContent = `#${seedHex}`;
+    }
+
+    layers = [];
+    const maxR = Math.min(width, height) * 0.42;
+    const rStep = maxR / (numLayers + 0.5);
+
+    // 내부에서부터 바깥쪽으로 레이어 순차 적층
+    for (let i = 1; i <= numLayers; i++) {
+      const baseR = i * rStep;
+      const type = Math.floor(Math.random() * 5); // 0: 꽃잎, 1: 기하학 루프, 2: 펄/원형, 3: 별망, 4: 방사선
+
+      layers.push({
+        baseR,
+        type,
+        color: randomColor(palette),
+        lineWidth: Math.random() * 1.5 + 0.8,
+        freq: [1, 2, 3][Math.floor(Math.random() * 3)],
+        amp: (Math.random() * 0.35 + 0.15) * rStep,
+        dots: Math.random() > 0.4,
+        innerRings: Math.random() > 0.5
+      });
+    }
+
+    valSym.textContent = symmetry;
+    valLayers.textContent = numLayers;
+  }
+
+  // 단일 만다라 렌더링 함수 (주어진 context와 해상도에 맞춰 그림)
+  function drawMandalaOnContext(targetCtx, cx, cy, scale, rotAngle = 0) {
+    targetCtx.save();
+    targetCtx.translate(cx, cy);
+    targetCtx.rotate(rotAngle);
+
+    const stepTheta = (Math.PI * 2) / symmetry;
+
+    // 중심 코어 신성 원형
+    targetCtx.strokeStyle = layers[0] ? layers[0].color : '#38bdf8';
+    targetCtx.lineWidth = 1.8 * scale;
+    targetCtx.beginPath();
+    targetCtx.arc(0, 0, 8 * scale, 0, Math.PI * 2);
+    targetCtx.stroke();
+
+    for (let l = 0; l < layers.length; l++) {
+      const layer = layers[l];
+      const r = layer.baseR * scale;
+      const amp = layer.amp * scale;
+
+      targetCtx.strokeStyle = layer.color;
+      targetCtx.fillStyle = layer.color;
+      targetCtx.lineWidth = layer.lineWidth * scale;
+
+      // 동심 가이드 링 (일부 레이어)
+      if (layer.innerRings) {
+        targetCtx.globalAlpha = 0.25;
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, r, 0, Math.PI * 2);
+        targetCtx.stroke();
+        targetCtx.globalAlpha = 1.0;
+      }
+
+      // $N$-Fold 회전 대칭 전개
+      for (let s = 0; s < symmetry; s++) {
+        targetCtx.save();
+        targetCtx.rotate(s * stepTheta);
+
+        if (layer.type === 0) {
+          // 1. 하모닉 조화 꽃잎 곡선 (Fourier Petals)
+          targetCtx.beginPath();
+          const segments = 24;
+          for (let j = 0; j <= segments; j++) {
+            const th = (j / segments) * stepTheta;
+            const curR = r + Math.sin(th * layer.freq * (symmetry / 2)) * amp;
+            const x = Math.cos(th) * curR;
+            const y = Math.sin(th) * curR;
+            if (j === 0) targetCtx.moveTo(x, y);
+            else targetCtx.lineTo(x, y);
+          }
+          targetCtx.stroke();
+        } else if (layer.type === 1) {
+          // 2. 교차 기하학 렌즈/다이아몬드 루프
+          targetCtx.beginPath();
+          targetCtx.moveTo(r - amp, 0);
+          targetCtx.quadraticCurveTo(r, amp * 0.8, r + amp, 0);
+          targetCtx.quadraticCurveTo(r, -amp * 0.8, r - amp, 0);
+          targetCtx.stroke();
+        } else if (layer.type === 2) {
+          // 3. 생명의 꽃 스타일 상호 호(Arc) 및 펄(Pearl)
+          targetCtx.beginPath();
+          targetCtx.arc(r, 0, amp * 0.6, 0, Math.PI * 2);
+          targetCtx.stroke();
+
+          if (layer.dots) {
+            targetCtx.beginPath();
+            targetCtx.arc(r, 0, 2.4 * scale, 0, Math.PI * 2);
+            targetCtx.fill();
+          }
+        } else if (layer.type === 3) {
+          // 4. 별형 쐐기 지그재그 링크
+          const nextR = r + amp;
+          const halfTh = stepTheta * 0.5;
+          targetCtx.beginPath();
+          targetCtx.moveTo(r, 0);
+          targetCtx.lineTo(Math.cos(halfTh) * nextR, Math.sin(halfTh) * nextR);
+          targetCtx.lineTo(Math.cos(stepTheta) * r, Math.sin(stepTheta) * r);
+          targetCtx.stroke();
+        } else if (layer.type === 4) {
+          // 5. 방사상 태양 침 (Ray Spokes & Rings)
+          targetCtx.beginPath();
+          targetCtx.moveTo(r - amp * 0.5, 0);
+          targetCtx.lineTo(r + amp, 0);
+          targetCtx.stroke();
+
+          targetCtx.beginPath();
+          targetCtx.arc(r + amp, 0, 1.8 * scale, 0, Math.PI * 2);
+          targetCtx.fill();
+        }
+
+        targetCtx.restore();
+      }
+    }
+
+    targetCtx.restore();
+  }
+
+  // 메인 화면 렌더 루프
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    if (isSpinning) {
+      currentAngle += 0.002;
+    }
+
+    drawMandalaOnContext(ctx, width * 0.5, height * 0.5, 1.0, currentAngle);
+
+    requestAnimationFrame(render);
+  }
+
+  // --- 고해상도 2K PNG 내보내기 & marsko.art 워터마크 각인 ---
+  function exportHighResImage() {
+    const EXPORT_SIZE = 2048;
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = EXPORT_SIZE;
+    exportCanvas.height = EXPORT_SIZE;
+    const eCtx = exportCanvas.getContext('2d');
+
+    // 1. 깊은 다크 배경
+    eCtx.fillStyle = '#020306';
+    eCtx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE);
+
+    // 2. 화면 중앙에 비례 스케일링하여 만다라 렌더링
+    const scaleFactor = (EXPORT_SIZE / Math.min(width, height)) * 0.92;
+    drawMandalaOnContext(eCtx, EXPORT_SIZE * 0.5, EXPORT_SIZE * 0.5, scaleFactor, currentAngle);
+
+    // 3. 하단 marsko.art 서명 워터마크 각인
+    eCtx.font = '600 24px "IBM Plex Mono", monospace';
+    eCtx.fillStyle = 'rgba(248, 250, 252, 0.45)';
+    eCtx.textAlign = 'center';
+    eCtx.letterSpacing = '2px';
+    eCtx.fillText('MARSKO.ART', EXPORT_SIZE * 0.5, EXPORT_SIZE - 54);
+
+    // 워터마크 밑 작은 메타 라인
+    eCtx.font = '400 13px "IBM Plex Mono", monospace';
+    eCtx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+    eCtx.fillText(`MANDALA #${seedHex} · ${symmetry}-FOLD SYMMETRY`, EXPORT_SIZE * 0.5, EXPORT_SIZE - 32);
+
+    // 4. 파일 자동 다운로드 트리거
+    const link = document.createElement('a');
+    link.download = `mandala-${seedHex}-${Date.now()}.png`;
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+  }
+
+  // 이벤트 바인딩
+  btnRandom.addEventListener('click', () => generateMandala(true));
+  btnSave.addEventListener('click', exportHighResImage);
+
+  btnSpin.addEventListener('click', () => {
+    isSpinning = !isSpinning;
+    btnSpin.classList.toggle('active', isSpinning);
+    valSpin.textContent = isSpinning ? 'ON' : 'OFF';
+  });
+
+  symRange.addEventListener('input', (e) => {
+    symmetry = parseInt(e.target.value, 10);
+    generateMandala(false);
+  });
+
+  layerRange.addEventListener('input', (e) => {
+    numLayers = parseInt(e.target.value, 10);
+    generateMandala(false);
+  });
+
+  paletteSelect.addEventListener('change', (e) => {
+    palette = e.target.value;
+    layers.forEach(l => l.color = randomColor(palette));
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    generateMandala(false);
+  });
+
+  // 초기화 및 실행
+  generateMandala(true);
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
