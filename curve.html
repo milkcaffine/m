@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#030407">
   <title>Tone Curve Darkroom // marsko</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,11 +11,14 @@
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
+    /* 모바일 브라우저 주소창 고려한 100dvh 전면 고정 */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #020306;
       color: #cbd5e1;
       height: 100vh;
+      height: 100dvh;
       width: 100vw;
       overflow: hidden;
       display: flex;
@@ -25,12 +28,12 @@
 
     /* 상단 헤더 HUD */
     header {
-      padding: 12px 18px;
+      padding: 10px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(8, 12, 20, 0.7);
+      background: rgba(8, 12, 20, 0.85);
       backdrop-filter: blur(8px);
       z-index: 10;
       flex-shrink: 0;
@@ -38,7 +41,7 @@
     .header-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     .home-link {
       color: #64748b;
@@ -53,22 +56,22 @@
     .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
     h1 {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       color: #f8fafc;
     }
     .header-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
     .btn-h {
       background: #1e293b;
       border: 1px solid #334155;
       color: #e2e8f0;
       border-radius: 6px;
-      padding: 5px 10px;
-      font-size: 0.75rem;
+      padding: 5px 9px;
+      font-size: 0.72rem;
       font-family: 'IBM Plex Mono', monospace;
       cursor: pointer;
       transition: all 0.15s ease;
@@ -81,35 +84,39 @@
       font-weight: 600;
     }
 
-    /* 메인 워크스페이스 레이아웃 (사진 뷰어 + 하단/측면 커브 패널) */
+    /* 메인 워크스페이스 레이아웃 */
     .workspace {
       flex: 1;
       display: flex;
       flex-direction: column;
       position: relative;
       overflow: hidden;
+      min-height: 0; /* 내부 축소 허용 필수 */
     }
     @media (min-width: 860px) {
       .workspace { flex-direction: row; }
     }
 
-    /* 이미지 프리뷰 영역 */
+    /* 이미지 프리뷰 영역 (남은 공간에 딱 맞게 자동 리사이즈) */
     .preview-container {
       flex: 1;
+      min-height: 0; /* 모바일에서 사진이 과하게 커지지 않도록 제어 */
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 10px 14px;
       background: #020306;
-      background-image: 
-        radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.4) 0%, transparent 80%);
+      background-image: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.4) 0%, transparent 80%);
+      overflow: hidden;
     }
     #photoCanvas {
       max-width: 100%;
       max-height: 100%;
+      width: auto;
+      height: auto;
       object-fit: contain;
-      box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.85);
       border-radius: 2px;
       display: none;
     }
@@ -117,52 +124,55 @@
     .drop-guide {
       text-align: center;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: #64748b;
-      line-height: 1.8;
+      line-height: 1.7;
       border: 1px dashed rgba(255, 255, 255, 0.15);
       border-radius: 12px;
-      padding: 30px 40px;
+      padding: 24px 30px;
       cursor: pointer;
     }
     .drop-guide:hover { border-color: #38bdf8; color: #94a3b8; }
     .drop-guide strong { color: #38bdf8; }
 
-    /* 커브 제어 패널 (첨부 이미지 UI) */
+    /* 커브 제어 패널 (하단 고정 도크) */
     .curve-panel {
       width: 100%;
       background: #080c14;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 16px 20px 20px;
+      padding: 10px 16px 14px;
       display: flex;
       flex-direction: column;
       align-items: center;
       flex-shrink: 0;
-      gap: 12px;
+      gap: 8px;
+      z-index: 5;
     }
     @media (min-width: 860px) {
       .curve-panel {
-        width: 380px;
+        width: 360px;
         border-top: none;
         border-left: 1px solid rgba(255, 255, 255, 0.08);
         justify-content: center;
+        gap: 14px;
+        padding: 20px;
       }
     }
 
     /* 채널 선택기 (휘도, R, G, B) */
     .channel-tabs {
       display: flex;
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
-      padding: 3px;
-      gap: 3px;
+      padding: 2px;
+      gap: 2px;
       width: 100%;
-      max-width: 320px;
+      max-width: 300px;
     }
     .tab-btn {
       flex: 1;
-      padding: 6px 0;
+      padding: 5px 0;
       background: transparent;
       border: none;
       color: #94a3b8;
@@ -184,32 +194,39 @@
     .tab-btn[data-channel="g"].active { color: #4ade80; }
     .tab-btn[data-channel="b"].active { color: #38bdf8; }
 
-    /* 커브 에디터 캔버스 컨테이너 */
+    /* 커브 에디터 캔버스 컨테이너 (정방형 반응형) */
     .curve-box {
       position: relative;
-      width: 280px;
-      height: 280px;
+      width: min(210px, 46vw);
+      height: min(210px, 46vw);
       background: #020306;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 6px;
+      border-radius: 8px;
       overflow: hidden;
+      touch-action: none; /* 모바일 브라우저 기본 제스처 차단 */
+    }
+    @media (min-width: 860px) {
+      .curve-box {
+        width: 270px;
+        height: 270px;
+      }
     }
     #curveCanvas {
       width: 100%;
       height: 100%;
       display: block;
       cursor: crosshair;
+      touch-action: none;
     }
 
     /* 안내 각주 캡션 */
     .curve-caption {
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       color: #64748b;
       font-family: 'IBM Plex Mono', monospace;
       text-align: center;
-      line-height: 1.5;
       width: 100%;
-      max-width: 320px;
+      max-width: 300px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -221,21 +238,22 @@
       border: none;
       font-family: inherit;
       font-size: inherit;
+      padding: 2px 4px;
     }
     .reset-channel:hover { text-decoration: underline; }
 
     /* 원본/보정 비교 버튼 */
     .compare-toggle {
       position: absolute;
-      bottom: 24px;
-      right: 24px;
+      top: 14px;
+      right: 14px;
       background: rgba(15, 23, 42, 0.75);
       border: 1px solid rgba(255, 255, 255, 0.15);
       color: #cbd5e1;
-      padding: 6px 12px;
+      padding: 5px 10px;
       border-radius: 6px;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       cursor: pointer;
       backdrop-filter: blur(6px);
       z-index: 5;
@@ -248,27 +266,27 @@
 <header>
   <div class="header-left">
     <a href="index.html" class="home-link">← marsko</a>
-    <h1>TONE CURVE DARKROOM</h1>
+    <h1>TONE CURVE</h1>
   </div>
   <div class="header-actions">
     <button type="button" class="btn-h" id="btnUpload">사진 열기</button>
-    <button type="button" class="btn-h btn-save" id="btnDownload">JPG 저장 ⬇</button>
+    <button type="button" class="btn-h btn-save" id="btnDownload">저장 ⬇</button>
     <input type="file" id="fileInput" accept="image/*" style="display: none;">
   </div>
 </header>
 
 <div class="workspace">
-  <!-- 사진 프리뷰 캔버스 -->
+  <!-- 사진 프리뷰 캔버스 (상단 남은 영역에 맞게 자동 배치) -->
   <div class="preview-container" id="dropArea">
     <div class="drop-guide" id="dropGuide">
-      <div>사진을 이곳에 드래그하거나<br><strong>[사진 열기]</strong>를 눌러주세요</div>
-      <div style="font-size: 0.65rem; color: #475569; margin-top: 6px;">서버 전송 없음 · 100% 로컬 다크룸</div>
+      <div>사진을 이곳에 올리거나<br><strong>[사진 열기]</strong>를 탭하세요</div>
+      <div style="font-size: 0.65rem; color: #475569; margin-top: 4px;">100% 로컬 다크룸</div>
     </div>
     <canvas id="photoCanvas"></canvas>
-    <button type="button" class="compare-toggle" id="btnCompare" style="display: none;">원본 보기</button>
+    <button type="button" class="compare-toggle" id="btnCompare" style="display: none;">원본 누르기</button>
   </div>
 
-  <!-- 하단 톤 커브 및 히스토그램 편집 패널 -->
+  <!-- 하단 톤 커브 패널 (한 화면에 항상 노출) -->
   <div class="curve-panel">
     <!-- 채널 탭 -->
     <div class="channel-tabs">
@@ -278,21 +296,20 @@
       <button type="button" class="tab-btn" data-channel="b">B</button>
     </div>
 
-    <!-- 커브 캔버스 (히스토그램 배경 + 스플라인 곡선) -->
+    <!-- 커브 캔버스 -->
     <div class="curve-box">
       <canvas id="curveCanvas" width="280" height="280"></canvas>
     </div>
 
     <!-- 하단 설명 및 리셋 -->
     <div class="curve-caption">
-      <span>점을 추가해 조절 (밖으로 던지면 삭제)</span>
-      <button type="button" class="reset-channel" id="btnResetChannel">채널 리셋</button>
+      <span>터치로 점 추가 (밖으로 밀면 삭제)</span>
+      <button type="button" class="reset-channel" id="btnResetChannel">초기화</button>
     </div>
   </div>
 </div>
 
 <script>
-  // DOM 요소
   const photoCanvas = document.getElementById('photoCanvas');
   const pCtx = photoCanvas.getContext('2d', { willReadFrequently: true });
   const curveCanvas = document.getElementById('curveCanvas');
@@ -307,13 +324,11 @@
   const btnResetChannel = document.getElementById('btnResetChannel');
   const tabBtns = document.querySelectorAll('.tab-btn');
 
-  // 작업 이미지 데이터
-  let originalImage = null; // HTMLImageElement
-  let origImageData = null; // ImageData (오프스크린 원본)
+  let originalImage = null;
+  let origImageData = null;
   let workingImageData = null;
   let isComparing = false;
 
-  // 히스토그램 데이터 (256 bins)
   const histogram = {
     luma: new Uint32Array(256),
     r: new Uint32Array(256),
@@ -322,7 +337,6 @@
     max: 1
   };
 
-  // 4개 채널별 커브 제어점 목록 [{x, y}] (0.0 ~ 1.0 정규화 좌표)
   let activeChannel = 'luma';
   const curves = {
     luma: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
@@ -331,7 +345,6 @@
     b:    [{ x: 0, y: 0 }, { x: 1, y: 1 }]
   };
 
-  // 256 Look-Up Table
   const lut = {
     luma: new Uint8Array(256),
     r: new Uint8Array(256),
@@ -339,8 +352,7 @@
     b: new Uint8Array(256)
   };
 
-  // --- 모노톤 큐빅 스플라인 (Monotone Cubic Spline) 보간 ---
-  // 제어점들 사이를 오버슈트(물결 꺾임) 없이 매끄럽게 연결해 256단 LUT 생성
+  // 모노톤 큐빅 스플라인 보간 LUT
   function computeLUT(points) {
     const table = new Uint8Array(256);
     const pts = [...points].sort((a, b) => a.x - b.x);
@@ -401,7 +413,6 @@
     lut.b = computeLUT(curves.b);
   }
 
-  // --- 이미지 히스토그램 연산 (256 bins) ---
   function computeHistogram(imgData) {
     histogram.luma.fill(0);
     histogram.r.fill(0);
@@ -412,7 +423,6 @@
     const len = d.length;
     let maxCount = 0;
 
-    // 속도를 위해 2픽셀마다 서브샘플링
     for (let i = 0; i < len; i += 8) {
       const r = d[i];
       const g = d[i + 1];
@@ -425,7 +435,6 @@
       histogram.luma[lum]++;
     }
 
-    // 최대 빈도 정규화
     const curHist = histogram[activeChannel];
     for (let i = 2; i < 254; i++) {
       if (curHist[i] > maxCount) maxCount = curHist[i];
@@ -433,7 +442,6 @@
     histogram.max = maxCount || 1;
   }
 
-  // --- 메인 사진 픽셀 커브 적용 ---
   function applyCurvesToPhoto() {
     if (!originalImage || !origImageData) return;
 
@@ -452,12 +460,10 @@
     const lutB = lut.b;
 
     for (let i = 0; i < len; i += 4) {
-      // 1. RGB 채널별 커브 매핑
       let r = lutR[src[i]];
       let g = lutG[src[i + 1]];
       let b = lutB[src[i + 2]];
 
-      // 2. 휘도(Luma) 커브 통합 매핑
       dst[i]     = lutL[r];
       dst[i + 1] = lutL[g];
       dst[i + 2] = lutL[b];
@@ -467,7 +473,6 @@
     pCtx.putImageData(workingImageData, 0, 0);
   }
 
-  // --- 커브 캔버스 드로잉 (히스토그램 + 3x3 그리드 + 스플라인 커브) ---
   function drawCurveEditor() {
     const w = curveCanvas.width;
     const h = curveCanvas.height;
@@ -475,7 +480,7 @@
     cCtx.fillStyle = '#020306';
     cCtx.fillRect(0, 0, w, h);
 
-    // 1. 3x3 안내 그리드
+    // 그리드
     cCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     cCtx.lineWidth = 1;
     for (let i = 1; i <= 3; i++) {
@@ -486,7 +491,7 @@
       cCtx.stroke();
     }
 
-    // 2. 배경 히스토그램 음영 렌더링
+    // 히스토그램
     if (originalImage) {
       const curHist = histogram[activeChannel];
       const max = histogram.max;
@@ -508,7 +513,7 @@
       cCtx.fill();
     }
 
-    // 3. 기본 대각선 점선 (1:1 기준선)
+    // 대각선 기준선
     cCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     cCtx.setLineDash([3, 3]);
     cCtx.beginPath();
@@ -517,14 +522,14 @@
     cCtx.stroke();
     cCtx.setLineDash([]);
 
-    // 4. 스플라인 커브 곡선 드로잉
+    // 커브선
     const curLUT = lut[activeChannel];
     const curveColor = activeChannel === 'r' ? '#f43f5e' :
                        activeChannel === 'g' ? '#4ade80' :
                        activeChannel === 'b' ? '#38bdf8' : '#f8fafc';
 
     cCtx.strokeStyle = curveColor;
-    cCtx.lineWidth = 2.2;
+    cCtx.lineWidth = 2.4;
     cCtx.shadowColor = curveColor;
     cCtx.shadowBlur = 6;
 
@@ -538,46 +543,45 @@
     cCtx.stroke();
     cCtx.shadowBlur = 0;
 
-    // 5. 제어점 렌더링 (원형 핸들)
+    // 제어점
     const pts = curves[activeChannel];
-    pts.forEach((pt, idx) => {
+    pts.forEach(pt => {
       const px = pt.x * w;
       const py = h - pt.y * h;
 
-      // 외곽 발광 링
       cCtx.fillStyle = '#ffffff';
       cCtx.beginPath();
-      cCtx.arc(px, py, 4.5, 0, Math.PI * 2);
+      cCtx.arc(px, py, 5.5, 0, Math.PI * 2);
       cCtx.fill();
 
       cCtx.strokeStyle = '#020306';
-      cCtx.lineWidth = 1.5;
+      cCtx.lineWidth = 1.8;
       cCtx.stroke();
     });
   }
 
-  // --- 커브 제어 인터랙션 (포인트 추가, 드래그, 바깥으로 던져 삭제) ---
+  // 모바일 터치 최적화 포인터 연산
   let draggedPointIdx = -1;
-  const DRAG_RADIUS = 16;
+  const DRAG_RADIUS = 26; // 터치 반경 넉넉하게 확장
 
   function getCanvasPos(e) {
     const rect = curveCanvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const touch = e.touches ? e.touches[0] : e;
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+
     return {
       x: (clientX - rect.left) / rect.width,
       y: 1.0 - (clientY - rect.top) / rect.height,
-      rawX: clientX - rect.left,
-      rawY: clientY - rect.top,
-      isOutside: (clientX < rect.left - 25 || clientX > rect.right + 25 || clientY < rect.top - 25 || clientY > rect.bottom + 25)
+      isOutside: (clientX < rect.left - 30 || clientX > rect.right + 30 || clientY < rect.top - 30 || clientY > rect.bottom + 30)
     };
   }
 
   function onPointerDown(e) {
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
     const pos = getCanvasPos(e);
     const pts = curves[activeChannel];
 
-    // 기존 포인트 클릭 검사
     draggedPointIdx = -1;
     pts.forEach((pt, idx) => {
       const dx = (pt.x - pos.x) * curveCanvas.width;
@@ -587,7 +591,6 @@
       }
     });
 
-    // 빈 곳 클릭 시 새로운 점 추가 (스크린샷 기능)
     if (draggedPointIdx === -1) {
       if (pos.x >= 0 && pos.x <= 1 && pos.y >= 0 && pos.y <= 1) {
         pts.push({ x: pos.x, y: pos.y });
@@ -600,16 +603,16 @@
 
   function onPointerMove(e) {
     if (draggedPointIdx === -1) return;
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
+
     const pos = getCanvasPos(e);
     const pts = curves[activeChannel];
 
-    // 양 끝점(Black/White)은 X축 0과 1 고정, Y축만 조절
     if (draggedPointIdx === 0) {
       pts[0].y = Math.max(0, Math.min(1, pos.y));
     } else if (draggedPointIdx === pts.length - 1) {
       pts[pts.length - 1].y = Math.max(0, Math.min(1, pos.y));
     } else {
-      // 중간 점: 화면 밖으로 멀리 던지면 삭제 (스크린샷 가이드 기능)
       if (pos.isOutside) {
         pts.splice(draggedPointIdx, 1);
         draggedPointIdx = -1;
@@ -632,15 +635,15 @@
     applyCurvesToPhoto();
   }
 
+  // 마우스 및 터치 이벤트 리스너
   curveCanvas.addEventListener('mousedown', onPointerDown);
   window.addEventListener('mousemove', onPointerMove);
   window.addEventListener('mouseup', onPointerUp);
 
-  curveCanvas.addEventListener('touchstart', onPointerDown, { passive: true });
-  window.addEventListener('touchmove', onPointerMove, { passive: true });
-  window.addEventListener('touchend', onPointerUp, { passive: true });
+  curveCanvas.addEventListener('touchstart', onPointerDown, { passive: false });
+  window.addEventListener('touchmove', onPointerMove, { passive: false });
+  window.addEventListener('touchend', onPointerUp, { passive: false });
 
-  // --- 이미지 로드 처리 ---
   function loadImageFile(file) {
     if (!file || !file.type.startsWith('image/')) return;
     const reader = new FileReader();
@@ -649,16 +652,13 @@
       img.onload = () => {
         originalImage = img;
 
-        // 원본 해상도 유지 캔버스 초기화
         photoCanvas.width = img.naturalWidth;
         photoCanvas.height = img.naturalHeight;
 
-        // 원본 ImageData 백업
         pCtx.drawImage(img, 0, 0);
         origImageData = pCtx.getImageData(0, 0, photoCanvas.width, photoCanvas.height);
         workingImageData = pCtx.createImageData(origImageData);
 
-        // UI 갱신
         dropGuide.style.display = 'none';
         photoCanvas.style.display = 'block';
         btnCompare.style.display = 'block';
@@ -671,19 +671,15 @@
     reader.readAsDataURL(file);
   }
 
-  // 파일 업로드 바인딩
   btnUpload.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => loadImageFile(e.target.files[0]));
 
-  dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.style.borderColor = '#38bdf8'; });
-  dropArea.addEventListener('dragleave', () => { dropArea.style.borderColor = ''; });
+  dropArea.addEventListener('dragover', (e) => { e.preventDefault(); });
   dropArea.addEventListener('drop', (e) => {
     e.preventDefault();
-    dropArea.style.borderColor = '';
     if (e.dataTransfer.files.length > 0) loadImageFile(e.dataTransfer.files[0]);
   });
 
-  // 채널 탭 전환
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
@@ -694,31 +690,24 @@
     });
   });
 
-  // 채널 초기화
   btnResetChannel.addEventListener('click', () => {
     curves[activeChannel] = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
     onCurveChanged();
   });
 
-  // 원본 비교 (누르고 있는 동안 원본 노출)
   btnCompare.addEventListener('mousedown', () => { isComparing = true; applyCurvesToPhoto(); });
   window.addEventListener('mouseup', () => { if (isComparing) { isComparing = false; applyCurvesToPhoto(); } });
-  btnCompare.addEventListener('touchstart', () => { isComparing = true; applyCurvesToPhoto(); }, { passive: true });
-  window.addEventListener('touchend', () => { if (isComparing) { isComparing = false; applyCurvesToPhoto(); } });
+  btnCompare.addEventListener('touchstart', (e) => { e.preventDefault(); isComparing = true; applyCurvesToPhoto(); }, { passive: false });
+  btnCompare.addEventListener('touchend', (e) => { e.preventDefault(); if (isComparing) { isComparing = false; applyCurvesToPhoto(); } });
 
-  // JPG 다운로드
   btnDownload.addEventListener('click', () => {
-    if (!originalImage) {
-      alert('먼저 사진을 불러와주세요.');
-      return;
-    }
+    if (!originalImage) return;
     const link = document.createElement('a');
-    link.download = `marsko-grade-${Date.now()}.jpg`;
+    link.download = `curve-${Date.now()}.jpg`;
     link.href = photoCanvas.toDataURL('image/jpeg', 0.94);
     link.click();
   });
 
-  // 초기화
   updateAllLUTs();
   drawCurveEditor();
 </script>
