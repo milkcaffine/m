@@ -700,12 +700,41 @@
   btnCompare.addEventListener('touchstart', (e) => { e.preventDefault(); isComparing = true; applyCurvesToPhoto(); }, { passive: false });
   btnCompare.addEventListener('touchend', (e) => { e.preventDefault(); if (isComparing) { isComparing = false; applyCurvesToPhoto(); } });
 
+  function isAppleMobile() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 2 && /Macintosh/.test(navigator.userAgent));
+  }
+
   btnDownload.addEventListener('click', () => {
     if (!originalImage) return;
-    const link = document.createElement('a');
-    link.download = `curve-${Date.now()}.jpg`;
-    link.href = photoCanvas.toDataURL('image/jpeg', 0.94);
-    link.click();
+
+    const filename = `curve-${Date.now()}.jpg`;
+    // data: URL 다운로드는 모바일(특히 고해상도 사진)에서 확인 후에도 실패하는 경우가 많음
+    photoCanvas.toBlob(async (blob) => {
+      if (!blob) return;
+
+      // iOS는 a[download]가 동작하지 않아 공유 시트로 저장
+      if (isAppleMobile() && navigator.canShare) {
+        const file = new File([blob], filename, { type: 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: filename });
+            return;
+          } catch (err) {
+            if (err.name === 'AbortError') return;
+          }
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }, 'image/jpeg', 0.94);
   });
 
   updateAllLUTs();
