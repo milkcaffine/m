@@ -1,0 +1,152 @@
+/* Shared lab HUD chrome for Marsko demos */
+.home-link {
+  color: #64748b;
+  font-size: 0.75rem;
+  text-decoration: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  pointer-events: auto;
+  width: fit-content;
+  padding: 2px 6px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
+}
+.home-link:hover {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.hud-meta {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.telemetry-card {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: rgba(10, 15, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  line-height: 1.6;
+  text-align: right;
+  z-index: 10;
+}
+.telemetry-card strong { color: #67e8f9; }
+
+.control-dock {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 15, 26, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  backdrop-filter: blur(10px);
+  z-index: 10;
+  max-width: min(960px, 96%);
+}
+
+.dock-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.dock-btn:hover { background: #334155; color: #67e8f9; }
+.dock-btn.active {
+  background: rgba(103, 232, 249, 0.15);
+  border-color: #67e8f9;
+  color: #67e8f9;
+  box-shadow: 0 0 10px rgba(103, 232, 249, 0.2);
+}
+.dock-btn:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.dock-sep {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+.slider-group .val {
+  color: #67e8f9;
+  min-width: 2.2em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.slider-group input[type="range"] {
+  width: 72px;
+  height: 4px;
+  accent-color: #67e8f9;
+  background: #334155;
+  cursor: pointer;
+}
+
+.dock-primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.dock-params,
+.dock-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  width: 100%;
+}
+.dock-params[hidden],
+.dock-more[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .telemetry-card { display: none; }
+  .slider-group input[type="range"] { width: 56px; }
+  .control-dock {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 96%;
+    padding: 10px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-btn { transition: none; }
+}

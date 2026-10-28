@@ -3,12 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Marsko — Tokyo suburb walker writing tanka and dark novels. Browser tools for poetry, film, generative art, and physics.">
+    <meta name="theme-color" content="#09090b">
+    <meta property="og:title" content="Marsko">
+    <meta property="og:description" content="unclean vision / projected souls leak through / I wipe my glasses">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://marsko.art/">
+    <meta property="og:image" content="https://marsko.art/images/cone.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Marsko">
+    <meta name="twitter:description" content="Tokyo walker · poems, horror, SF · night workshop tools">
+    <meta name="twitter:image" content="https://marsko.art/images/cone.jpg">
+    <link rel="canonical" href="https://marsko.art/">
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
     <title>Marsko</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
         .hero-img { filter: saturate(0.7) contrast(1.05) brightness(0.45); opacity: 0.55; }
+        .social-icon { width: 1.15rem; height: 1.15rem; fill: currentColor; display: block; }
 
         /* 도구 아이템 인라인 정렬 */
         .tool-item {
@@ -29,7 +43,7 @@
             text-underline-offset: 3px;
         }
 
-        /* 별표 버튼: 평소엔 완전 투명 */
+        /* 별표: 터치에서도 살짝 보이도록 */
         .star-btn {
             background: none;
             border: none;
@@ -38,15 +52,14 @@
             padding: 0 1px 0 2px;
             cursor: pointer;
             line-height: 1;
-            opacity: 0;
+            opacity: 0.35;
             transition: opacity 0.15s ease, color 0.15s ease;
             vertical-align: middle;
         }
 
-        /* 호버 시 살짝 등장 */
         .tool-item:hover .star-btn,
         .tool-item:focus-within .star-btn {
-            opacity: 0.7;
+            opacity: 0.85;
         }
 
         .tool-item:hover .star-btn:hover {
@@ -59,6 +72,13 @@
         .fav-row .star-btn {
             opacity: 0.9 !important;
             color: #e4e4e7 !important;
+        }
+
+        @media (hover: none) {
+            .star-btn { opacity: 0.55; }
+            .tool-desc-caption {
+                min-height: 2.4em;
+            }
         }
 
         /* 상단 즐겨찾기 줄: 기존 '글 ·', '사진 ·' 과 똑같은 차분한 텍스트 톤 */
@@ -117,8 +137,7 @@
                 <a href="archive.html" class="hover:text-sky-300">archive</a>
                 <a href="walks.html" class="hover:text-sky-300">walks</a>
                 <span class="text-zinc-600">|</span>
-                <a href="https://x.com/marsko" class="hover:text-sky-300">@marsko</a>
-                <span class="text-zinc-600">|</span>
+                <a href="https://x.com/marsko" target="_blank" rel="noopener noreferrer" class="hover:text-sky-300">@marsko</a>
             </div>
         </nav>
 
@@ -130,9 +149,13 @@
                 projected souls leak through<br>
                 I wipe my glasses
             </p>
-            <div class="mt-6 flex gap-5 text-xl">
-                <a href="https://x.com/marsko" target="_blank" class="hover:text-sky-300" aria-label="X"><i class="fab fa-x-twitter"></i></a>
-                <a href="https://note.com/marsko" target="_blank" class="hover:text-sky-300" aria-label="Note"><i class="fas fa-sticky-note"></i></a>
+            <div class="mt-6 flex gap-5 items-center">
+                <a href="https://x.com/marsko" target="_blank" rel="noopener noreferrer" class="hover:text-sky-300" aria-label="X (Twitter)">
+                    <svg class="social-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.727-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+                </a>
+                <a href="https://note.com/marsko" target="_blank" rel="noopener noreferrer" class="hover:text-sky-300" aria-label="note">
+                    <svg class="social-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm8 1.5V9h4.5L14 4.5zM8 12h8v1.5H8V12zm0 3.5h8V17H8v-1.5z"/></svg>
+                </a>
             </div>
         </div>
     </header>
@@ -151,15 +174,16 @@
         </p>
     </section>
 
-     <!-- Tools 섹션 (총 37종 도구 완결본) -->
+     <!-- Tools 섹션 (41종) -->
     <section class="max-w-2xl mx-auto px-6 pb-16">
         <!-- Tools 타이틀 및 우측 미니멀 필터 인풋 -->
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500">Tools</h2>
             <div class="flex items-center gap-1.5">
+                <label for="toolSearch" class="sr-only">도구 검색</label>
                 <input type="text" id="toolSearch" placeholder="filter..." autocomplete="off" spellcheck="false"
                        class="bg-transparent text-xs text-zinc-300 placeholder-zinc-700 border-b border-zinc-800/80 focus:border-zinc-500 focus:outline-none px-1 py-0.5 w-24 focus:w-36 transition-all duration-200 font-mono">
-                <button type="button" id="clearSearch" class="hidden text-zinc-600 hover:text-zinc-400 text-xs font-mono leading-none" title="검색 지우기">✕</button>
+                <button type="button" id="clearSearch" class="hidden text-zinc-600 hover:text-zinc-400 text-xs font-mono leading-none" title="검색 지우기" aria-label="검색 지우기">✕</button>
             </div>
         </div>
 
@@ -179,76 +203,77 @@
                 <!-- [글] 기록, 음수율, 마크다운 (5종) -->
                 <p>
                     <span class="text-zinc-500 font-medium">글</span> · 
-                    <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수율 실시간 글자 수 계산기">syllable</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="poem-card"><a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="long-card"><a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="speccard"><a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="notepad"><a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수 계산기 (한국어·일본어·영어 모드)">syllable</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="poem-card"><a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem-card</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="long-card"><a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">long-card</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="speccard"><a href="speccard.html" data-desc="수집품(렌즈·기기·인형) 도록 스타일 스펙 카드">spec-card</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="notepad"><a href="notepad.html" data-desc="로컬 브라우저 영구 저장 미니멀 마크다운 메모장">notepad</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
                 <!-- [사진] 아날로그 필름, 톤, 규격 최적화 (7종) -->
                 <p>
                     <span class="text-zinc-500 font-medium">사진</span> · 
-                    <span class="tool-item" data-id="curve"><a href="curve.html" data-desc="실시간 히스토그램 기반 RGB·휘도 톤 커브 정밀 보정 다크룸">curve</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="filmscan"><a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="watermark"><a href="watermark.html" data-desc="SNS 아이디·닉네임 커스텀 워터마크 삽입기">watermark</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="x-optimize"><a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-optimize</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="film-frame"><a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">film-frame</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="color-palette"><a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="curve"><a href="curve.html" data-desc="실시간 히스토그램 기반 RGB·휘도 톤 커브 정밀 보정 다크룸">curve</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="filmscan"><a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="watermark"><a href="watermark.html" data-desc="SNS 아이디·닉네임 커스텀 워터마크 삽입기">watermark</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="x-optimize"><a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-optimize</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="film-frame"><a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">film-frame</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic-to-jpg</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="color-palette"><a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 팬톤 칩 카드 생성">color-palette</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
-                <!-- [이미지] 픽셀, 글리치, 기하학 그래픽 가공 (5종) -->
+                <!-- [이미지] 픽셀, 글리치, 기하학 그래픽 가공 (6종) -->
                 <p>
                     <span class="text-zinc-500 font-medium">이미지</span> · 
-                    <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="collage"><a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="mandala"><a href="mandala.html" data-desc="신성기하학 조화 진동 곡선 기반 프로시저럴 만다라 생성 & 2K 워터마크 저장기">mandala</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="dither"><a href="dither.html" data-desc="1-Bit 매킨토시 & 게임보이 카메라 도트 픽셀 변환">dither</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="glitch"><a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-split</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="collage"><a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="mandala"><a href="mandala.html" data-desc="신성기하학 조화 진동 곡선 기반 프로시저럴 만다라 생성 & 2K 워터마크 저장기">mandala</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="dither"><a href="dither.html" data-desc="1-Bit 매킨토시 & 게임보이 카메라 도트 픽셀 변환">dither</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="glitch"><a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="ascii"><a href="ascii.html" data-desc="사진을 모노스페이스 ASCII·유니코드 아트로 변환">ascii</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
                 <!-- [공감각] 소리, 타건감, 전신기, 계측기, 3D 촉각 (5종) -->
                 <p>
                     <span class="text-zinc-500 font-medium">공감각</span> · 
-                    <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·솔페지오 사운드 믹서">ambient</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="keystroke"><a href="keystroke.html" data-desc="타자기 & 윤활 기계식 키보드 프로시저럴 타건음 합성 패드">keystroke</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="morse"><a href="morse.html" data-desc="Web Audio 기반 CW 모스 부호 오디오 합성 & 실시간 페이퍼 테이프 전신기">morse</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="oscilloscope"><a href="oscilloscope.html" data-desc="CRT 브라운관 형광체 잔상 리사주 X-Y 벡터 오실로스코프">oscilloscope</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·솔페지오 사운드 믹서">ambient</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="keystroke"><a href="keystroke.html" data-desc="타자기 & 윤활 기계식 키보드 프로시저럴 타건음 합성 패드">keystroke</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="morse"><a href="morse.html" data-desc="Web Audio 기반 CW 모스 부호 오디오 합성 & 실시간 페이퍼 테이프 전신기">morse</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="oscilloscope"><a href="oscilloscope.html" data-desc="CRT 브라운관 형광체 잔상 리사주 X-Y 벡터 오실로스코프">oscilloscope</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stlview</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
                 <!-- [우주] 천체역학, 양자물리, 카오스 (6종) -->
                 <p>
                     <span class="text-zinc-500 font-medium">우주</span> · 
-                    <span class="tool-item" data-id="galaxy"><a href="galaxy.html" data-desc="만유인력 N-Body 실시간 나선 은하 형성 & 충돌 시뮬레이터">galaxy</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="orrery"><a href="orrery.html" data-desc="케플러 궤도 방정식 기반 8대 행성 실시간 태양계 천문대">orrery</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="lagrange"><a href="lagrange.html" data-desc="실시간 날짜 연동 지구·화성·달 케플러 궤도 및 L1~L5 라그랑주 점 천문대">lagrange</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="blackhole"><a href="blackhole.html" data-desc="WebGL 셰이더 기반 슈바르츠실트 블랙홀 중력 렌징 & 강착원반">blackhole</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="threebody"><a href="threebody.html" data-desc="RK4 정밀 적분기 기반 세 천체의 만유인력 카오스 궤적 시뮬레이터">threebody</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="lorenz"><a href="lorenz.html" data-desc="카오스 이론 로렌츠 어트랙터 3D 궤적 & 실시간 사운드스코프">lorenz</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="galaxy"><a href="galaxy.html" data-desc="만유인력 N-Body 실시간 나선 은하 형성 & 충돌 시뮬레이터">galaxy</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="orrery"><a href="orrery.html" data-desc="케플러 궤도 방정식 기반 8대 행성 실시간 태양계 천문대">orrery</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="lagrange"><a href="lagrange.html" data-desc="실시간 날짜 연동 지구·화성·달 케플러 궤도 및 L1~L5 라그랑주 점 천문대">lagrange</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="blackhole"><a href="blackhole.html" data-desc="WebGL 셰이더 기반 슈바르츠실트 블랙홀 중력 렌징 & 강착원반">blackhole</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="threebody"><a href="threebody.html" data-desc="RK4 정밀 적분기 기반 세 천체의 만유인력 카오스 궤적 시뮬레이터">threebody</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="lorenz"><a href="lorenz.html" data-desc="카오스 이론 로렌츠 어트랙터 3D 궤적 & 실시간 사운드스코프">lorenz</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
-                <!-- [생명] 파동, 오토마타, 생체 반응, 유기 곡선 (6종) -->
+                <!-- [생명] 파동, 오토마타, 생체 반응, 유기 곡선 (8종) -->
                 <p>
                     <span class="text-zinc-500 font-medium">생명</span> · 
-                    <span class="tool-item" data-id="quantum"><a href="quantum.html" data-desc="1차원 슈뢰딩거 파동 방정식 & 양자 터널링 확률 밀도 시뮬레이터">quantum</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="wave"><a href="wave.html" data-desc="FDTD 파동 방정식 2D 수조 & 이중 슬릿 양자 간섭 시뮬레이터">wave</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="life"><a href="life.html" data-desc="콘웨이의 2차원 세포 오토마타 실시간 생명 게임">life</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="lenia"><a href="lenia.html" data-desc="환형 가우시안 커널 기반 연속 세포 오토마타 인공 생명체 배양기">lenia</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="particle-life"><a href="particle-life.html" data-desc="인력·척력 매트릭스 기반 1,200개 입자의 자가조직화 생명 군무 시뮬레이터">particle-life</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="reaction"><a href="reaction.html" data-desc="튜링 패턴 그레이-스콧 반응-확산 생체 무늬 시뮬레이터">reaction</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="fractal"><a href="fractal.html" data-desc="WebGL 셰이더 기반 복소평면 만델브로 & 줄리아 무한 프랙탈 탐험기">fractal</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="jellyfish"><a href="jellyfish.html" data-desc="다축 사인·코사인 파라미터 합성으로 춤추는 해파리형 유기 곡선 생성기">jellyfish</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="quantum"><a href="quantum.html" data-desc="1차원 슈뢰딩거 파동 방정식 & 양자 터널링 확률 밀도 시뮬레이터">quantum</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="wave"><a href="wave.html" data-desc="FDTD 파동 방정식 2D 수조 & 이중 슬릿 양자 간섭 시뮬레이터">wave</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="life"><a href="life.html" data-desc="콘웨이의 2차원 세포 오토마타 실시간 생명 게임">life</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="lenia"><a href="lenia.html" data-desc="환형 가우시안 커널 기반 연속 세포 오토마타 인공 생명체 배양기">lenia</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="particle-life"><a href="particle-life.html" data-desc="인력·척력 매트릭스 기반 1,200개 입자의 자가조직화 생명 군무 시뮬레이터">particle-life</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="reaction"><a href="reaction.html" data-desc="튜링 패턴 그레이-스콧 반응-확산 생체 무늬 시뮬레이터">reaction</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="fractal"><a href="fractal.html" data-desc="WebGL 셰이더 기반 복소평면 만델브로 & 줄리아 무한 프랙탈 탐험기">fractal</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="jellyfish"><a href="jellyfish.html" data-desc="다축 사인·코사인 파라미터 합성으로 춤추는 해파리형 유기 곡선 생성기">jellyfish</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
                 <!-- [놀이] 벡터 아케이드, 물리 엔진, 하이퍼스피드 (4종) -->
                 <p>
                     <span class="text-zinc-500 font-medium">놀이</span> · 
-                    <span class="tool-item" data-id="lander"><a href="lander.html" data-desc="1979 아타리 벡터 그래픽 기반 아폴로 달 착륙선 관성 조종 게임">lander</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="missile"><a href="missile.html" data-desc="CRT 녹색 레이더 화면과 동심원 연쇄 폭발 방공 요격 시뮬레이션">missile</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="slingshot"><a href="slingshot.html" data-desc="만유인력과 행성 중력 우물을 이용한 RK4 궤적 우주선 슬링샷 퍼즐">slingshot</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="tunnel"><a href="tunnel.html" data-desc="의사 3D 원근법 와이어프레임 터널 속 360도 롤링 회피 하이퍼스피드 레이서">tunnel</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="lander"><a href="lander.html" data-desc="1979 아타리 벡터 그래픽 기반 아폴로 달 착륙선 관성 조종 게임">lander</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="missile"><a href="missile.html" data-desc="CRT 녹색 레이더 화면과 동심원 연쇄 폭발 방공 요격 시뮬레이션">missile</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="slingshot"><a href="slingshot.html" data-desc="만유인력과 행성 중력 우물을 이용한 RK4 궤적 우주선 슬링샷 퍼즐">slingshot</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="tunnel"><a href="tunnel.html" data-desc="의사 3D 원근법 와이어프레임 터널 속 360도 롤링 회피 하이퍼스피드 레이서">tunnel</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
             </div>
         </div>
@@ -264,15 +289,15 @@
     <section class="max-w-2xl mx-auto px-6 pb-16">
         <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-6">Work</h2>
         <div class="divide-y divide-zinc-800 border-y border-zinc-800">
-            <a href="https://x.com/marsko" target="_blank" class="block py-5 hover:bg-zinc-900/60 px-1">
+            <a href="https://x.com/marsko" target="_blank" rel="noopener noreferrer" class="block py-5 hover:bg-zinc-900/60 px-1">
                 <h3 class="text-xl font-medium">Dark novels & poetry</h3>
                 <p class="text-zinc-400 mt-1">Cyberpunk and horror, serialized on X.</p>
             </a>
-            <a href="https://note.com/marsko" target="_blank" class="block py-5 hover:bg-zinc-900/60 px-1">
+            <a href="https://note.com/marsko" target="_blank" rel="noopener noreferrer" class="block py-5 hover:bg-zinc-900/60 px-1">
                 <h3 class="text-xl font-medium">Prose & tanka</h3>
                 <p class="text-zinc-400 mt-1">Short essays and tanka, in Japanese.</p>
             </a>
-            <a href="https://x.com/marsko/media?filter=photo" target="_blank" class="block py-5 hover:bg-zinc-900/60 px-1">
+            <a href="https://x.com/marsko/media?filter=photo" target="_blank" rel="noopener noreferrer" class="block py-5 hover:bg-zinc-900/60 px-1">
                 <h3 class="text-xl font-medium">Film & drawings</h3>
                 <p class="text-zinc-400 mt-1">Caffenol black-and-white, pencil, the walk itself.</p>
             </a>
@@ -320,12 +345,21 @@
             document.querySelectorAll('.tool-item').forEach(item => {
                 const id = item.getAttribute('data-id');
                 const star = item.querySelector('.star-btn');
-                if (favs.includes(id)) {
+                const on = favs.includes(id);
+                if (on) {
                     item.classList.add('favorited');
-                    if (star) star.textContent = '★';
+                    if (star) {
+                        star.textContent = '★';
+                        star.setAttribute('aria-pressed', 'true');
+                        star.setAttribute('aria-label', '즐겨찾기 해제');
+                    }
                 } else {
                     item.classList.remove('favorited');
-                    if (star) star.textContent = '☆';
+                    if (star) {
+                        star.textContent = '☆';
+                        star.setAttribute('aria-pressed', 'false');
+                        star.setAttribute('aria-label', '즐겨찾기');
+                    }
                 }
             });
 
@@ -520,14 +554,22 @@
   const canvas = document.getElementById('bioCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   let width, height;
+  let visible = true;
+  let rafId = 0;
   function resize() {
     width = canvas.width = canvas.offsetWidth;
     height = canvas.height = canvas.offsetHeight;
   }
   window.addEventListener('resize', resize);
   resize();
+
+  if (reduceMotion) {
+    ctx.clearRect(0, 0, width, height);
+    return;
+  }
 
   // 마우스 위치 추적 (상단 영역 인터랙션)
   const mouse = { x: -1000, y: -1000, active: false, radius: 90 };
@@ -569,7 +611,21 @@
     });
   }
 
+  function kick() {
+    if (!rafId && visible && !document.hidden) rafId = requestAnimationFrame(loop);
+  }
+
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      visible = entries.some((e) => e.isIntersecting);
+      if (visible) kick();
+    }, { threshold: 0.05 });
+    io.observe(canvas);
+  }
+
   function loop(time) {
+    rafId = 0;
+    if (!visible || document.hidden) return;
     ctx.clearRect(0, 0, width, height);
 
     const t = time * 0.001;
@@ -644,10 +700,11 @@
       }
     }
 
-    requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
   }
 
-  requestAnimationFrame(loop);
+  document.addEventListener('visibilitychange', kick);
+  kick();
 })();
 </script>
 

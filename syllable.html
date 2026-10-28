@@ -3,85 +3,143 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="하이쿠·단가 음수 계산기 — 한국어 음절, 일본어 모라, 영어 음절 모드.">
   <title>하이쿠 / 단가 음수 계산기 — Marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
     .ok { color: #16a34a; }
     .over { color: #dc2626; }
     .under { color: #ca8a04; }
+    .mode-btn.active {
+      background: #27272a;
+      color: #f4f4f5;
+      border-color: #52525b;
+    }
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200 min-h-screen">
   <div class="max-w-xl mx-auto px-6 py-12">
-    <div class="text-sm mb-6"><a href="/" class="text-zinc-500 hover:text-sky-300">← marsko</a></div>
+    <div class="text-sm mb-6"><a href="index.html" class="text-zinc-500 hover:text-sky-300">← marsko</a></div>
     <h1 class="text-2xl font-bold mb-1">하이쿠 / 단가 음수 계산기</h1>
-    <p class="text-zinc-400 text-sm mb-8">5-7-5 또는 5-7-5-7-7 음수 맞추기 (영어 기준)</p>
+    <p class="text-zinc-400 text-sm mb-6">5-7-5 또는 5-7-5-7-7 · 언어 모드를 선택한 뒤 줄을 맞춰 보세요</p>
 
-    <textarea id="input" class="w-full h-40 p-4 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:border-sky-500" placeholder="시를 입력하세요...&#10;예) hands painted in black&#10;planted on the wall of death&#10;fingers beckoning"></textarea>
-
-    <div class="flex gap-3 mt-4">
-      <button onclick="count('haiku')" class="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 font-medium">하이쿠 5-7-5</button>
-      <button onclick="count('tanka')" class="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 font-medium">단가 5-7-5-7-7</button>
+    <div class="flex flex-wrap gap-2 mb-4" role="group" aria-label="언어 모드">
+      <button type="button" class="mode-btn active px-3 py-1.5 rounded-lg border border-zinc-700 text-sm text-zinc-400" data-mode="ko">한국어 음절</button>
+      <button type="button" class="mode-btn px-3 py-1.5 rounded-lg border border-zinc-700 text-sm text-zinc-400" data-mode="ja">일본어 모라</button>
+      <button type="button" class="mode-btn px-3 py-1.5 rounded-lg border border-zinc-700 text-sm text-zinc-400" data-mode="en">영어 음절</button>
     </div>
 
+    <textarea id="input" class="w-full h-40 p-4 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:border-sky-500" placeholder="시를 입력하세요...&#10;예) 비 내린 골목&#10;안경에 남은 불빛&#10;닦아 보니 밤"></textarea>
+
+    <div class="flex gap-3 mt-4">
+      <button type="button" id="btnHaiku" class="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 font-medium">하이쿠 5-7-5</button>
+      <button type="button" id="btnTanka" class="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 font-medium">단가 5-7-5-7-7</button>
+    </div>
+
+    <p id="modeHint" class="mt-3 text-xs text-zinc-500">한국어: 한글 음절(가·나·다…) 1개 = 1음</p>
     <div id="result" class="mt-8 space-y-3 text-sm"></div>
   </div>
 
 <script>
-function countSyllables(word) {
-  word = word.toLowerCase().replace(/[^a-z]/g, '');
-  if (!word) return 0;
-  if (word.length <= 3) return 1;
-  word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
-  word = word.replace(/^y/, '');
-  const matches = word.match(/[aeiouy]{1,2}/g);
-  return matches ? matches.length : 1;
-}
+(function () {
+  let mode = 'ko';
+  const hints = {
+    ko: '한국어: 한글 음절(가·나·다…) 1개 = 1음',
+    ja: '일본어: 히라가나·가타카나·한자 1글자 ≈ 1모라 (간이)',
+    en: '영어: 모음군 기반 음절 추정 (근사치)'
+  };
+  const placeholders = {
+    ko: '시를 입력하세요...\n예) 비 내린 골목\n안경에 남은 불빛\n닦아 보니 밤',
+    ja: '詩を入力...\n例) 雨上がり\n眼鏡に残る光\n拭けば夜',
+    en: 'Write a poem...\ne.g.) hands painted in black\nplanted on the wall of death\nfingers beckoning'
+  };
 
-function countLine(line) {
-  const words = line.trim().split(/\s+/).filter(Boolean);
-  return words.reduce((sum, w) => sum + countSyllables(w), 0);
-}
-
-function count(type) {
-  const text = document.getElementById('input').value.trim();
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const input = document.getElementById('input');
   const result = document.getElementById('result');
-  result.innerHTML = '';
+  const modeHint = document.getElementById('modeHint');
 
-  const targets = type === 'haiku' ? [5,7,5] : [5,7,5,7,7];
-  const label = type === 'haiku' ? '하이쿠' : '단가';
-
-  if (lines.length === 0) {
-    result.innerHTML = '<p class="text-zinc-500">시를 입력해 주세요.</p>';
-    return;
-  }
-
-  let html = `<p class="text-zinc-400 mb-2">${label} 목표: ${targets.join('-')}</p>`;
-
-  targets.forEach((target, i) => {
-    const line = lines[i] || '';
-    const count = line ? countLine(line) : 0;
-    let cls = 'under';
-    let mark = '○';
-    if (count === target) { cls = 'ok'; mark = '✓'; }
-    else if (count > target) { cls = 'over'; mark = '↑'; }
-    else if (count < target && count > 0) { cls = 'under'; mark = '↓'; }
-
-    html += `
-      <div class="flex justify-between items-center py-2 border-b border-zinc-800">
-        <span class="text-zinc-300">${i+1}. ${line || '<span class="text-zinc-600">(비어있음)</span>'}</span>
-        <span class="${cls} font-medium">${count} / ${target} ${mark}</span>
-      </div>`;
+  document.querySelectorAll('.mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      mode = btn.dataset.mode;
+      document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      modeHint.textContent = hints[mode];
+      input.placeholder = placeholders[mode];
+    });
   });
 
-  if (lines.length > targets.length) {
-    html += `<p class="text-amber-400 mt-3 text-xs">※ ${lines.length - targets.length}줄 더 있습니다.</p>`;
+  function countEnglishSyllables(word) {
+    word = word.toLowerCase().replace(/[^a-z]/g, '');
+    if (!word) return 0;
+    if (word.length <= 3) return 1;
+    word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
+    word = word.replace(/^y/, '');
+    const matches = word.match(/[aeiouy]{1,2}/g);
+    return matches ? matches.length : 1;
   }
 
-  result.innerHTML = html;
-}
+  function countLine(line) {
+    if (mode === 'ko') {
+      const m = line.match(/[\uAC00-\uD7A3]/g);
+      return m ? m.length : 0;
+    }
+    if (mode === 'ja') {
+      // Kana + kanji + prolonged sound as mora units (simplified)
+      const m = line.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFFー]/g);
+      return m ? m.length : 0;
+    }
+    const words = line.trim().split(/\s+/).filter(Boolean);
+    return words.reduce((sum, w) => sum + countEnglishSyllables(w), 0);
+  }
+
+  function count(type) {
+    const text = input.value.trim();
+    const lines = text.split('\n').map((l) => l.trim()).filter((l) => l);
+    result.innerHTML = '';
+
+    const targets = type === 'haiku' ? [5, 7, 5] : [5, 7, 5, 7, 7];
+    const label = type === 'haiku' ? '하이쿠' : '단가';
+
+    if (lines.length === 0) {
+      result.innerHTML = '<p class="text-zinc-500">시를 입력해 주세요.</p>';
+      return;
+    }
+
+    let html = `<p class="text-zinc-400 mb-2">${label} 목표: ${targets.join('-')} · ${hints[mode].split(':')[0]}</p>`;
+
+    targets.forEach((target, i) => {
+      const line = lines[i] || '';
+      const n = line ? countLine(line) : 0;
+      let cls = 'under';
+      let mark = '○';
+      if (n === target) { cls = 'ok'; mark = '✓'; }
+      else if (n > target) { cls = 'over'; mark = '↑'; }
+      else if (n < target && n > 0) { cls = 'under'; mark = '↓'; }
+
+      const safeLine = line
+        ? line.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        : '<span class="text-zinc-600">(비어있음)</span>';
+
+      html += `
+        <div class="flex justify-between items-center gap-3 py-2 border-b border-zinc-800">
+          <span class="text-zinc-300 min-w-0 break-words">${i + 1}. ${safeLine}</span>
+          <span class="${cls} font-medium shrink-0">${n} / ${target} ${mark}</span>
+        </div>`;
+    });
+
+    if (lines.length > targets.length) {
+      html += `<p class="text-amber-400 mt-3 text-xs">※ ${lines.length - targets.length}줄 더 있습니다.</p>`;
+    }
+
+    result.innerHTML = html;
+  }
+
+  document.getElementById('btnHaiku').addEventListener('click', () => count('haiku'));
+  document.getElementById('btnTanka').addEventListener('click', () => count('tanka'));
+})();
 </script>
 </body>
 </html>

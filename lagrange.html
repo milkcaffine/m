@@ -2,9 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#030407">
+  <meta name="description" content="Kepler & Lagrange observatory: heliocentric Earth–Mars Hohmann transfers, Lagrange points, and live probe missions.">
   <title>Kepler & Lagrange Observatory // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -141,12 +144,62 @@
       border-radius: 14px;
       padding: 8px 14px;
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: stretch;
       gap: 8px;
       backdrop-filter: blur(10px);
       z-index: 10;
       max-width: 96%;
-      overflow-x: auto;
+    }
+    .dock-primary,
+    .dock-more {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .dock-more {
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .dock-more[hidden] {
+      display: none;
+    }
+    @media (min-width: 641px) {
+      .control-dock {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        overflow-x: auto;
+      }
+      .dock-primary,
+      .dock-more {
+        flex-wrap: nowrap;
+      }
+      .dock-more {
+        padding-top: 0;
+        border-top: none;
+      }
+      .dock-more[hidden] {
+        display: flex !important;
+      }
+      #btnMoreToggle {
+        display: none;
+      }
+    }
+    @media (max-width: 640px) {
+      .legend-card {
+        bottom: 88px;
+        max-width: calc(100% - 32px);
+      }
+      .telemetry-card {
+        font-size: 0.6rem;
+        padding: 6px 8px;
+        max-width: min(46vw, 180px);
+      }
+      h1 { font-size: 0.82rem; }
     }
     .dock-btn {
       background: #1e293b;
@@ -228,6 +281,10 @@
       color: #94a3b8;
       white-space: nowrap;
     }
+    .slider-group label {
+      color: inherit;
+      cursor: pointer;
+    }
     .slider-group input[type="range"] {
       width: 70px;
       height: 4px;
@@ -273,35 +330,41 @@
 
 <canvas id="astroCanvas"></canvas>
 
-<div class="control-dock">
-  <input type="date" id="datePicker" class="date-input">
-  <button type="button" class="dock-btn" id="btnToday">오늘</button>
+<div class="control-dock" id="controlDock">
+  <div class="dock-primary">
+    <input type="date" id="datePicker" class="date-input" aria-label="관측 날짜">
+    <button type="button" class="dock-btn" id="btnToday" aria-label="오늘 날짜로 이동">오늘</button>
 
-  <div class="dock-sep"></div>
+    <div class="dock-sep" aria-hidden="true"></div>
 
-  <div class="slider-group">
-    <span>스크럽</span>
-    <input type="range" id="dayOffsetRange" min="-365" max="365" value="0">
+    <div class="slider-group">
+      <label for="dayOffsetRange">스크럽</label>
+      <input type="range" id="dayOffsetRange" min="-365" max="365" value="0" aria-label="기준일 대비 날짜 스크럽">
+    </div>
+    <button type="button" class="dock-btn" id="btnPlay" aria-label="자동 공전 재생 또는 정지">▶ 자동 공전</button>
+
+    <div class="dock-sep" aria-hidden="true"></div>
+
+    <button type="button" class="dock-btn launch-btn" id="btnLaunchProbe" title="현재 지구 위치에서 화성으로 호만 전이 탐사선 발사" aria-label="화성 탐사선 발사 또는 미션 종료">탐사선 발사 🛰️</button>
+    <button type="button" class="dock-btn" id="btnMoreToggle" aria-controls="dockMore" aria-expanded="false">더보기</button>
   </div>
-  <button type="button" class="dock-btn" id="btnPlay">▶ 자동 공전</button>
 
-  <div class="dock-sep"></div>
+  <div class="dock-more" id="dockMore" hidden>
+    <button type="button" class="dock-btn warp-btn" id="btnNextWindow" title="다음 최적 발사 창 날짜로 자동 이동" aria-label="다음 최적 발사 창 탐색">발사 창 탐색 🚀</button>
+    <button type="button" class="dock-btn hohmann-btn active" id="btnToggleHohmann" aria-label="호만 전이선 표시 전환" aria-pressed="true">전이선</button>
 
-  <button type="button" class="dock-btn warp-btn" id="btnNextWindow" title="다음 최적 발사 창 날짜로 자동 이동">발사 창 탐색 🚀</button>
-  <button type="button" class="dock-btn launch-btn" id="btnLaunchProbe" title="현재 지구 위치에서 화성으로 호만 전이 탐사선 발사">탐사선 발사 🛰️</button>
-  <button type="button" class="dock-btn hohmann-btn active" id="btnToggleHohmann">전이선</button>
+    <div class="dock-sep" aria-hidden="true"></div>
 
-  <div class="dock-sep"></div>
+    <button type="button" class="dock-btn active" id="btnViewSolar" aria-label="태양계 전체 뷰" aria-pressed="true">태양계 뷰</button>
+    <button type="button" class="dock-btn" id="btnViewEM" aria-label="지구-달 확대 뷰" aria-pressed="false">지구-달 확대</button>
 
-  <button type="button" class="dock-btn active" id="btnViewSolar">태양계 뷰</button>
-  <button type="button" class="dock-btn" id="btnViewEM">지구-달 확대</button>
+    <div class="dock-sep" aria-hidden="true"></div>
 
-  <div class="dock-sep"></div>
-
-  <button type="button" class="dock-btn active" id="btnToggleSEL">SE-L</button>
-  <button type="button" class="dock-btn active" id="btnToggleSML">SM-L</button>
-  <button type="button" class="dock-btn active" id="btnToggleEML">EM-L</button>
-  <button type="button" class="dock-btn active" id="btnToggleGrid">삼각망</button>
+    <button type="button" class="dock-btn active" id="btnToggleSEL" aria-label="태양-지구 라그랑주 점 표시" aria-pressed="true">SE-L</button>
+    <button type="button" class="dock-btn active" id="btnToggleSML" aria-label="태양-화성 라그랑주 점 표시" aria-pressed="true">SM-L</button>
+    <button type="button" class="dock-btn active" id="btnToggleEML" aria-label="지구-달 라그랑주 점 표시" aria-pressed="true">EM-L</button>
+    <button type="button" class="dock-btn active" id="btnToggleGrid" aria-label="삼각망 표시" aria-pressed="true">삼각망</button>
+  </div>
 </div>
 
 <script>
@@ -335,6 +398,29 @@
   const btnToggleSML = document.getElementById('btnToggleSML');
   const btnToggleEML = document.getElementById('btnToggleEML');
   const btnToggleGrid = document.getElementById('btnToggleGrid');
+  const btnMoreToggle = document.getElementById('btnMoreToggle');
+  const dockMore = document.getElementById('dockMore');
+
+  const narrowMq = window.matchMedia('(max-width: 640px)');
+  function setMoreOpen(open) {
+    // Desktop CSS forces the more row visible; still keep aria in sync for AT.
+    dockMore.hidden = narrowMq.matches ? !open : false;
+    btnMoreToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btnMoreToggle.textContent = open ? '닫기' : '더보기';
+  }
+  function syncMoreDefault() {
+    setMoreOpen(!narrowMq.matches);
+  }
+  syncMoreDefault();
+  if (typeof narrowMq.addEventListener === 'function') {
+    narrowMq.addEventListener('change', syncMoreDefault);
+  } else if (typeof narrowMq.addListener === 'function') {
+    narrowMq.addListener(syncMoreDefault);
+  }
+  btnMoreToggle.addEventListener('click', () => {
+    const open = btnMoreToggle.getAttribute('aria-expanded') !== 'true';
+    setMoreOpen(open);
+  });
 
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
@@ -530,6 +616,8 @@
     viewMode = 'SOLAR';
     btnViewSolar.classList.add('active');
     btnViewEM.classList.remove('active');
+    btnViewSolar.setAttribute('aria-pressed', 'true');
+    btnViewEM.setAttribute('aria-pressed', 'false');
 
     const jd = getJulianDay(currentDate);
     const d = jd - 2451545.0;
@@ -1178,6 +1266,7 @@
   btnToggleHohmann.addEventListener('click', () => {
     showHohmann = !showHohmann;
     btnToggleHohmann.classList.toggle('active', showHohmann);
+    btnToggleHohmann.setAttribute('aria-pressed', showHohmann ? 'true' : 'false');
   });
 
   btnNextWindow.addEventListener('click', warpToNextLaunchWindow);
@@ -1188,6 +1277,8 @@
     camZoom = 1.0; camPanX = 0; camPanY = 0;
     btnViewSolar.classList.add('active');
     btnViewEM.classList.remove('active');
+    btnViewSolar.setAttribute('aria-pressed', 'true');
+    btnViewEM.setAttribute('aria-pressed', 'false');
   });
 
   btnViewEM.addEventListener('click', () => {
@@ -1195,26 +1286,32 @@
     camZoom = 1.0; camPanX = 0; camPanY = 0;
     btnViewEM.classList.add('active');
     btnViewSolar.classList.remove('active');
+    btnViewEM.setAttribute('aria-pressed', 'true');
+    btnViewSolar.setAttribute('aria-pressed', 'false');
   });
 
   btnToggleSEL.addEventListener('click', () => {
     showSEL = !showSEL;
     btnToggleSEL.classList.toggle('active', showSEL);
+    btnToggleSEL.setAttribute('aria-pressed', showSEL ? 'true' : 'false');
   });
 
   btnToggleSML.addEventListener('click', () => {
     showSML = !showSML;
     btnToggleSML.classList.toggle('active', showSML);
+    btnToggleSML.setAttribute('aria-pressed', showSML ? 'true' : 'false');
   });
 
   btnToggleEML.addEventListener('click', () => {
     showEML = !showEML;
     btnToggleEML.classList.toggle('active', showEML);
+    btnToggleEML.setAttribute('aria-pressed', showEML ? 'true' : 'false');
   });
 
   btnToggleGrid.addEventListener('click', () => {
     showTriangleGrid = !showTriangleGrid;
     btnToggleGrid.classList.toggle('active', showTriangleGrid);
+    btnToggleGrid.setAttribute('aria-pressed', showTriangleGrid ? 'true' : 'false');
   });
 
   let isDragging = false;

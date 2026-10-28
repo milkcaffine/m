@@ -2,13 +2,15 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#030407">
+  <meta name="description" content="Parametric jellyfish: multi-axis harmonic curves you can tune, pause, and export as a seamless GIF loop.">
   <title>Parametric Jellyfish // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -98,13 +100,31 @@
       border-radius: 14px;
       padding: 10px 14px;
       display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: min(960px, 96%);
+    }
+    .dock-primary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .dock-params {
+      display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
       gap: 8px 12px;
-      backdrop-filter: blur(10px);
-      z-index: 10;
-      max-width: min(960px, 96%);
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .dock-params[hidden] {
+      display: none;
     }
     .dock-btn {
       background: #1e293b;
@@ -155,6 +175,10 @@
       color: #94a3b8;
       white-space: nowrap;
     }
+    .slider-group label {
+      color: inherit;
+      cursor: pointer;
+    }
     .slider-group .val {
       color: #67e8f9;
       min-width: 2.2em;
@@ -194,52 +218,55 @@
 
 <canvas id="jellyCanvas"></canvas>
 
-<div class="control-dock">
-  <button type="button" class="dock-btn active" id="btnPlay">⏸ 정지</button>
-  <button type="button" class="dock-btn" id="btnRandom">무작위</button>
-  <button type="button" class="dock-btn gif-btn" id="btnGif">GIF 루프 저장</button>
+<div class="control-dock" id="controlDock">
+  <div class="dock-primary">
+    <button type="button" class="dock-btn active" id="btnPlay" aria-label="애니메이션 재생 또는 정지">⏸ 정지</button>
+    <button type="button" class="dock-btn" id="btnRandom" aria-label="무작위 파라미터">무작위</button>
+    <button type="button" class="dock-btn gif-btn" id="btnGif" aria-label="심리스 GIF 루프 저장">GIF 루프 저장</button>
+    <button type="button" class="dock-btn" id="btnParamsToggle" aria-controls="paramsPanel" aria-expanded="false">파라미터</button>
+  </div>
 
-  <div class="dock-sep"></div>
-
-  <div class="slider-group">
-    <span>주파수</span>
-    <input type="range" id="freqRange" min="50" max="600" value="240">
-    <span class="val" id="freqLabel">2.4</span>
-  </div>
-  <div class="slider-group">
-    <span>진폭</span>
-    <input type="range" id="ampRange" min="30" max="180" value="100">
-    <span class="val" id="ampLabel">1.0</span>
-  </div>
-  <div class="slider-group">
-    <span>위상</span>
-    <input type="range" id="phaseRange" min="0" max="628" value="0">
-    <span class="val" id="phaseLabel">0.00</span>
-  </div>
-  <div class="slider-group">
-    <span>축</span>
-    <input type="range" id="axesRange" min="3" max="24" value="8">
-    <span class="val" id="axesLabel">8</span>
-  </div>
-  <div class="slider-group">
-    <span>굵기</span>
-    <input type="range" id="thickRange" min="5" max="60" value="18">
-    <span class="val" id="thickLabel">1.8</span>
-  </div>
-  <div class="slider-group">
-    <span>속도</span>
-    <input type="range" id="speedRange" min="5" max="80" value="28">
-    <span class="val" id="speedLabel">0.28</span>
-  </div>
-  <div class="slider-group">
-    <span>잔상</span>
-    <input type="range" id="trailRange" min="5" max="45" value="18">
-    <span class="val" id="trailLabel">0.18</span>
-  </div>
-  <div class="slider-group">
-    <span>배음</span>
-    <input type="range" id="harmRange" min="1" max="6" value="3">
-    <span class="val" id="harmLabel">3</span>
+  <div class="dock-params" id="paramsPanel" hidden>
+    <div class="slider-group">
+      <label for="freqRange">주파수</label>
+      <input type="range" id="freqRange" min="50" max="600" value="240" aria-label="주파수">
+      <span class="val" id="freqLabel" aria-hidden="true">2.4</span>
+    </div>
+    <div class="slider-group">
+      <label for="ampRange">진폭</label>
+      <input type="range" id="ampRange" min="30" max="180" value="100" aria-label="진폭">
+      <span class="val" id="ampLabel" aria-hidden="true">1.0</span>
+    </div>
+    <div class="slider-group">
+      <label for="phaseRange">위상</label>
+      <input type="range" id="phaseRange" min="0" max="628" value="0" aria-label="위상">
+      <span class="val" id="phaseLabel" aria-hidden="true">0.00</span>
+    </div>
+    <div class="slider-group">
+      <label for="axesRange">축</label>
+      <input type="range" id="axesRange" min="3" max="24" value="8" aria-label="축 개수">
+      <span class="val" id="axesLabel" aria-hidden="true">8</span>
+    </div>
+    <div class="slider-group">
+      <label for="thickRange">굵기</label>
+      <input type="range" id="thickRange" min="5" max="60" value="18" aria-label="선 굵기">
+      <span class="val" id="thickLabel" aria-hidden="true">1.8</span>
+    </div>
+    <div class="slider-group">
+      <label for="speedRange">속도</label>
+      <input type="range" id="speedRange" min="5" max="80" value="28" aria-label="애니메이션 속도">
+      <span class="val" id="speedLabel" aria-hidden="true">0.28</span>
+    </div>
+    <div class="slider-group">
+      <label for="trailRange">잔상</label>
+      <input type="range" id="trailRange" min="5" max="45" value="18" aria-label="잔상">
+      <span class="val" id="trailLabel" aria-hidden="true">0.18</span>
+    </div>
+    <div class="slider-group">
+      <label for="harmRange">배음</label>
+      <input type="range" id="harmRange" min="1" max="6" value="3" aria-label="배음">
+      <span class="val" id="harmLabel" aria-hidden="true">3</span>
+    </div>
   </div>
 </div>
 
@@ -256,6 +283,8 @@
     btnPlay: document.getElementById('btnPlay'),
     btnRandom: document.getElementById('btnRandom'),
     btnGif: document.getElementById('btnGif'),
+    btnParamsToggle: document.getElementById('btnParamsToggle'),
+    paramsPanel: document.getElementById('paramsPanel'),
     freqRange: document.getElementById('freqRange'),
     ampRange: document.getElementById('ampRange'),
     phaseRange: document.getElementById('phaseRange'),
@@ -277,12 +306,41 @@
   let width = 0;
   let height = 0;
   let dpr = 1;
-  let running = true;
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let running = !prefersReducedMotion;
   let time = 0;
   let lastTs = 0;
   let hueShift = 0;
   let gifBusy = false;
   let gifWorkerUrl = null;
+  let gifJsPromise = null;
+
+  function setParamsOpen(open) {
+    els.paramsPanel.hidden = !open;
+    els.btnParamsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    els.btnParamsToggle.textContent = open ? '닫기' : '파라미터';
+  }
+
+  const narrowMq = window.matchMedia('(max-width: 640px)');
+  function syncParamsDefault() {
+    setParamsOpen(!narrowMq.matches);
+  }
+  syncParamsDefault();
+  if (typeof narrowMq.addEventListener === 'function') {
+    narrowMq.addEventListener('change', syncParamsDefault);
+  } else if (typeof narrowMq.addListener === 'function') {
+    narrowMq.addListener(syncParamsDefault);
+  }
+
+  els.btnParamsToggle.addEventListener('click', () => {
+    setParamsOpen(els.paramsPanel.hidden);
+  });
+
+  if (!running) {
+    els.btnPlay.classList.remove('active');
+    els.btnPlay.textContent = '▶ 시작';
+    els.state.textContent = 'PAUSED';
+  }
 
   const params = {
     frequency: 2.4,
@@ -564,6 +622,23 @@
     ctx.fillRect(0, 0, width, height);
   });
 
+  function ensureGifJs() {
+    if (typeof GIF !== 'undefined') return Promise.resolve();
+    if (gifJsPromise) return gifJsPromise;
+    gifJsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        gifJsPromise = null;
+        reject(new Error('gif.js load failed'));
+      };
+      document.head.appendChild(script);
+    });
+    return gifJsPromise;
+  }
+
   async function ensureGifWorker() {
     if (gifWorkerUrl) return gifWorkerUrl;
     const res = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
@@ -660,10 +735,7 @@
   }
 
   els.btnGif.addEventListener('click', async () => {
-    if (gifBusy || typeof GIF === 'undefined') {
-      if (typeof GIF === 'undefined') alert('gif.js 로드에 실패했습니다. 네트워크를 확인해주세요.');
-      return;
-    }
+    if (gifBusy) return;
 
     gifBusy = true;
     els.btnGif.disabled = true;
@@ -680,6 +752,8 @@
     const hueSnap = hueShift;
 
     try {
+      await ensureGifJs();
+      if (typeof GIF === 'undefined') throw new Error('gif.js unavailable');
       const workerScript = await ensureGifWorker();
       const gif = new GIF({
         workers: 2,
