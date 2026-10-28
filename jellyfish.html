@@ -643,10 +643,20 @@
     gctx.fill();
 
     gctx.globalCompositeOperation = 'source-over';
-    gctx.font = '10px "IBM Plex Mono", monospace';
-    gctx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+
+    // 하단 고정 MARSKO.ART 워터마크 (mandala와 동일 톤)
+    gctx.font = '600 12px "IBM Plex Mono", monospace';
+    gctx.fillStyle = 'rgba(248, 250, 252, 0.55)';
     gctx.textAlign = 'center';
-    gctx.fillText('MARSKO.ART · JELLYFISH', width * 0.5, height - 14);
+    gctx.fillText('MARSKO.ART', width * 0.5, height - 24);
+
+    gctx.font = '400 9px "IBM Plex Mono", monospace';
+    gctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+    gctx.fillText(
+      `JELLYFISH · ${params.axes}-AXIS · F${params.frequency.toFixed(1)}`,
+      width * 0.5,
+      height - 11
+    );
   }
 
   els.btnGif.addEventListener('click', async () => {

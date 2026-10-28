@@ -406,88 +406,85 @@
         });
 
         // 4. 실시간 검색 필터링 엔진
+        // ID · 툴 이름 · 설명문 · 카테고리명 중 하나라도 포함하면 매칭
         function filterTools(query) {
-            const kw = query.toLowerCase();
-            const favs = getFavorites();
+            const kw = query.trim().toLowerCase();
+
+            if (clearSearch) {
+                clearSearch.classList.toggle('hidden', kw.length === 0);
+            }
 
             if (!kw) {
-                // 검색어 없음: 원래 카테고리 복원
                 searchRow.style.display = 'none';
                 searchList.innerHTML = '';
                 categoryRows.style.display = 'block';
-                clearSearch.classList.add('hidden');
                 renderFavorites();
                 return;
             }
 
-            clearSearch.classList.remove('hidden');
             categoryRows.style.display = 'none';
-            favRow.style.display = 'none';
+            if (favRow) favRow.style.display = 'none';
             searchRow.style.display = 'block';
             searchList.innerHTML = '';
 
-            const allItems = Array.from(document.querySelectorAll('#categoryRows .tool-item'));
-            const matched = allItems.filter(item => {
-                const link = item.querySelector('a');
-                if (!link) return false;
-                const name = link.textContent.toLowerCase();
-                const desc = (link.getAttribute('data-desc') || '').toLowerCase();
-                return name.includes(kw) || desc.includes(kw);
+            const toolItems = categoryRows.querySelectorAll('.tool-item');
+            const matchedItems = [];
+
+            toolItems.forEach(item => {
+                const anchor = item.querySelector('a');
+                const toolId = (item.dataset.id || '').toLowerCase();
+                const toolText = (anchor ? anchor.textContent : '').toLowerCase();
+                const toolDesc = (anchor ? anchor.getAttribute('data-desc') || '' : '').toLowerCase();
+
+                const parentP = item.closest('p');
+                const categorySpan = parentP ? parentP.querySelector('span.text-zinc-500') : null;
+                const categoryName = (categorySpan ? categorySpan.textContent : '').toLowerCase();
+
+                if (
+                    toolId.includes(kw) ||
+                    toolText.includes(kw) ||
+                    toolDesc.includes(kw) ||
+                    categoryName.includes(kw)
+                ) {
+                    matchedItems.push(item.cloneNode(true));
+                }
             });
 
-            if (matched.length === 0) {
-                searchList.innerHTML = '<span class="text-zinc-600 text-xs">일치하는 도구가 없습니다.</span>';
+            if (matchedItems.length === 0) {
+                searchList.innerHTML = '<span class="text-zinc-600 font-mono text-xs">일치하는 도구가 없습니다.</span>';
                 return;
             }
 
-            matched.forEach((origItem, idx) => {
-                const id = origItem.getAttribute('data-id');
-                const origLink = origItem.querySelector('a');
-                const isFav = favs.includes(id);
-
+            matchedItems.forEach((clone, idx) => {
                 if (idx > 0) {
                     searchList.appendChild(document.createTextNode(' · '));
                 }
-
-                const itemSpan = document.createElement('span');
-                itemSpan.className = `tool-item ${isFav ? 'favorited' : ''}`;
-                itemSpan.setAttribute('data-id', id);
-
-                const newLink = document.createElement('a');
-                newLink.href = origLink.getAttribute('href');
-                newLink.textContent = origLink.textContent;
-                newLink.setAttribute('data-desc', origLink.getAttribute('data-desc') || '');
-
-                const starBtn = document.createElement('button');
-                starBtn.className = 'star-btn';
-                starBtn.textContent = isFav ? '★' : '☆';
-                starBtn.title = '즐겨찾기';
-
-                itemSpan.appendChild(newLink);
-                itemSpan.appendChild(starBtn);
-                searchList.appendChild(itemSpan);
-
-                bindDescEvents(newLink);
+                searchList.appendChild(clone);
+                const link = clone.querySelector('a');
+                if (link) bindDescEvents(link);
             });
         }
 
-        // 인풋 이벤트
-        toolSearch.addEventListener('input', (e) => filterTools(e.target.value.trim()));
+        if (toolSearch) {
+            toolSearch.addEventListener('input', (e) => filterTools(e.target.value));
 
-        // ESC 키 및 지우기 버튼 대응
-        toolSearch.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
+            toolSearch.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    toolSearch.value = '';
+                    filterTools('');
+                    toolSearch.blur();
+                }
+            });
+        }
+
+        if (clearSearch) {
+            clearSearch.addEventListener('click', () => {
+                if (!toolSearch) return;
                 toolSearch.value = '';
-                filterTools('');
-                toolSearch.blur();
-            }
-        });
-
-        clearSearch.addEventListener('click', () => {
-            toolSearch.value = '';
-            filterTools('');
-            toolSearch.focus();
-        });
+                toolSearch.dispatchEvent(new Event('input'));
+                toolSearch.focus();
+            });
+        }
 
         // 5. 각주 설명창 이벤트 바인딩
         function bindDescEvents(link) {
