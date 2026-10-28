@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#030407">
+  <meta name="description" content="Earth LEO/GEO stations, Moon position, and Sun–Earth / Earth–Moon Lagrange points — approximate Kepler observatory.">
+  <title>Earth Orbit & Lagrange Observatory // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+    #orbitCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #orbitCanvas:active { cursor: grabbing; }
+
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.84);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.58;
+      text-align: right;
+      z-index: 10;
+      max-width: min(46vw, 220px);
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .moon-txt { color: #e2e8f0; }
+    .telemetry-card .leo-txt { color: #34d399; }
+    .telemetry-card .geo-txt { color: #fbbf24; }
+    .hud-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 5px 0;
+    }
+
+    .legend-card {
+      position: absolute;
+      bottom: 88px;
+      left: 16px;
+      background: rgba(10, 15, 26, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.64rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      z-index: 10;
+      line-height: 1.65;
+    }
+    .dot-icon {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+    }
+    .date-input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      outline: none;
+      cursor: pointer;
+      color-scheme: dark;
+    }
+    .date-input:focus { border-color: #38bdf8; }
+    .dock-btn.warp-btn {
+      background: rgba(251, 191, 36, 0.15);
+      border-color: rgba(251, 191, 36, 0.4);
+      color: #fde047;
+    }
+    .dock-btn.warp-btn:hover { background: #fbbf24; color: #020306; }
+    .slider-group label { color: inherit; cursor: pointer; }
+    .slider-group input[type="range"] {
+      width: 78px;
+      height: 4px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 0.82rem; }
+      .telemetry-card {
+        font-size: 0.6rem;
+        padding: 6px 8px;
+        max-width: min(48vw, 170px);
+      }
+      .legend-card {
+        bottom: 96px;
+        max-width: calc(100% - 32px);
+        font-size: 0.58rem;
+      }
+      .slider-group input[type="range"] { width: 56px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>EARTH ORBIT &amp; LAGRANGE</h1>
+  <div class="hud-meta">LEO · GEO · MOON · SE/EM L-POINTS · APPROX KEPLER</div>
+</header>
+
+<div class="telemetry-card">
+  <div>EPOCH: <strong id="hudDate">—</strong></div>
+  <div>EARTH r / θ: <strong id="hudEarth">—</strong></div>
+  <div>MOON DIST: <strong id="hudMoonDist" class="moon-txt">—</strong></div>
+  <div>MOON PHASE: <strong id="hudPhase" class="moon-txt">—</strong></div>
+  <div class="hud-divider"></div>
+  <div>LEO (×2): <strong id="hudLeo" class="leo-txt">400 km · slow anim</strong></div>
+  <div>GEO: <strong id="hudGeo" class="geo-txt">35,786 km</strong></div>
+  <div>VIEW: <strong id="hudView">SOLAR</strong></div>
+</div>
+
+<div class="legend-card">
+  <div><span class="dot-icon" style="background:#fbbf24;"></span>Sun</div>
+  <div><span class="dot-icon" style="background:#38bdf8;"></span>Earth · LEO · GEO</div>
+  <div><span class="dot-icon" style="background:#e2e8f0;"></span>Moon</div>
+  <div><span class="dot-icon" style="background:#67e8f9;"></span>Sun–Earth L1~L5</div>
+  <div><span class="dot-icon" style="background:#fde047;"></span>Earth–Moon L1~L5</div>
+</div>
+
+<canvas id="orbitCanvas" aria-label="Earth orbit and Lagrange visualization"></canvas>
+
+<div class="control-dock">
+  <input type="date" id="datePicker" class="date-input" aria-label="관측 날짜">
+  <button type="button" class="dock-btn" id="btnToday">오늘</button>
+
+  <div class="dock-sep" aria-hidden="true"></div>
+
+  <div class="slider-group">
+    <label for="dayScrub">±일</label>
+    <input type="range" id="dayScrub" min="-180" max="180" value="0" aria-label="기준일 대비 스크럽">
+  </div>
+
+  <button type="button" class="dock-btn" id="btnPlay" aria-pressed="false">▶ 재생</button>
+  <button type="button" class="dock-btn warp-btn" id="btnWarp" title="시간 배속">×10</button>
+
+  <div class="dock-sep" aria-hidden="true"></div>
+
+  <button type="button" class="dock-btn active" id="btnViewSolar" aria-pressed="true">태양계</button>
+  <button type="button" class="dock-btn" id="btnViewEM" aria-pressed="false">지구–달</button>
+
+  <div class="dock-sep" aria-hidden="true"></div>
+
+  <button type="button" class="dock-btn active" id="btnSEL" aria-pressed="true">SE-L</button>
+  <button type="button" class="dock-btn active" id="btnEML" aria-pressed="true">EM-L</button>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('orbitCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const hudDate = document.getElementById('hudDate');
+  const hudEarth = document.getElementById('hudEarth');
+  const hudMoonDist = document.getElementById('hudMoonDist');
+  const hudPhase = document.getElementById('hudPhase');
+  const hudView = document.getElementById('hudView');
+  const datePicker = document.getElementById('datePicker');
+  const dayScrub = document.getElementById('dayScrub');
+  const btnToday = document.getElementById('btnToday');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnWarp = document.getElementById('btnWarp');
+  const btnViewSolar = document.getElementById('btnViewSolar');
+  const btnViewEM = document.getElementById('btnViewEM');
+  const btnSEL = document.getElementById('btnSEL');
+  const btnEML = document.getElementById('btnEML');
+
+  const DEG = Math.PI / 180;
+  const RAD = 180 / Math.PI;
+  const AU_KM = 149597870.7;
+  const R_EARTH_KM = 6371;
+  const LEO_ALT_KM = 400;
+  const GEO_ALT_KM = 35786;
+  const LEO_R_KM = R_EARTH_KM + LEO_ALT_KM;
+  const GEO_R_KM = R_EARTH_KM + GEO_ALT_KM;
+  const MOON_A_KM = 384400;
+  const J2000 = Date.UTC(2000, 0, 1, 12, 0, 0);
+
+  // Approximate Kepler elements (J2000 mean)
+  const EARTH = {
+    a: 1.000001018, // AU
+    e: 0.0167086,
+    L0: 100.46457166, // mean longitude deg
+    n: 0.98560912,    // deg/day
+    wBar: 102.93768193,
+    color: '#38bdf8'
+  };
+  // Moon mean elements relative to Earth (simplified circular + mean anomaly)
+  const MOON = {
+    aKm: MOON_A_KM,
+    e: 0.0549,
+    L0: 218.3164477,
+    n: 13.17639646, // deg/day
+    wBar: 83.353,
+    color: '#e2e8f0'
+  };
+
+  const WARP_STEPS = [1, 10, 60, 365];
+  let warpIdx = 1;
+  let playing = false;
+  let showSEL = true;
+  let showEML = true;
+  let viewMode = 'solar'; // solar | em
+  let baseDate = new Date();
+  baseDate.setHours(12, 0, 0, 0);
+  let scrubDays = 0;
+  let width = 0, height = 0, dpr = 1;
+  let panX = 0, panY = 0;
+  let dragging = false, lastX = 0, lastY = 0;
+  let stars = [];
+
+  // Station mean anomalies at t0 (rad)
+  // LEO true period ~93 min → labels would blur; animate at readable wall-clock rate
+  const LEO_VISUAL_PERIOD_SEC = 20;
+  const stations = [
+    { id: 'LEO-A', kind: 'leo', phase0: 0.4, color: '#34d399', label: 'A' },
+    { id: 'LEO-B', kind: 'leo', phase0: 2.8, color: '#6ee7b7', label: 'B' },
+    { id: 'GEO-1', kind: 'geo', phase0: 1.1, color: '#fbbf24', label: 'GEO' }
+  ];
+
+  function daysSinceJ2000(date) {
+    return (date.getTime() - J2000) / 86400000;
+  }
+
+  function currentDate() {
+    const d = new Date(baseDate.getTime());
+    d.setTime(d.getTime() + scrubDays * 86400000);
+    return d;
+  }
+
+  function solveKepler(M, e) {
+    let E = M;
+    for (let i = 0; i < 8; i++) {
+      E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    }
+    return E;
+  }
+
+  function heliocentricEarth(d) {
+    const t = daysSinceJ2000(d);
+    const M = ((EARTH.L0 - EARTH.wBar + EARTH.n * t) % 360 + 360) % 360 * DEG;
+    const E = solveKepler(M, EARTH.e);
+    const nu = 2 * Math.atan2(
+      Math.sqrt(1 + EARTH.e) * Math.sin(E / 2),
+      Math.sqrt(1 - EARTH.e) * Math.cos(E / 2)
+    );
+    const r = EARTH.a * (1 - EARTH.e * Math.cos(E));
+    const lon = nu + EARTH.wBar * DEG;
+    return {
+      x: r * Math.cos(lon),
+      y: r * Math.sin(lon),
+      r,
+      lon,
+      nu
+    };
+  }
+
+  function moonRelative(d) {
+    const t = daysSinceJ2000(d);
+    const M = ((MOON.L0 - MOON.wBar + MOON.n * t) % 360 + 360) % 360 * DEG;
+    const E = solveKepler(M, MOON.e);
+    const nu = 2 * Math.atan2(
+      Math.sqrt(1 + MOON.e) * Math.sin(E / 2),
+      Math.sqrt(1 - MOON.e) * Math.cos(E / 2)
+    );
+    const rKm = MOON.aKm * (1 - MOON.e * Math.cos(E));
+    const lon = nu + MOON.wBar * DEG;
+    return {
+      xKm: rKm * Math.cos(lon),
+      yKm: rKm * Math.sin(lon),
+      rKm,
+      lon
+    };
+  }
+
+  function moonPhaseIllumination(sunLon, moonLon) {
+    // Elongation of Moon from Sun as seen from Earth (approx)
+    let elong = ((moonLon - sunLon) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    if (elong > Math.PI) elong = Math.PI * 2 - elong;
+    const phaseAngle = Math.PI - elong; // 0 = full-ish when elong~180
+    // illuminated fraction ≈ (1 + cos(phase))/2 with phase = 180° - elong
+    const illum = 0.5 * (1 - Math.cos(elong));
+    let name = '삭';
+    if (illum > 0.98) name = '보름';
+    else if (illum > 0.6) name = elong < Math.PI / 2 ? '하현쪽' : '상현쪽';
+    else if (illum > 0.4) name = '반달';
+    else if (illum > 0.05) name = '초승/그믐';
+    return { illum, name, elong };
+  }
+
+  function sunEarthLagrange(earth) {
+    const mu = 3.003e-6;
+    const rho = Math.pow(mu / 3, 1 / 3); // ~0.01 AU
+    const r = Math.hypot(earth.x, earth.y) || 1;
+    const ux = earth.x / r, uy = earth.y / r;
+    const L1 = { x: earth.x - ux * rho, y: earth.y - uy * rho, label: 'SE-L1' };
+    const L2 = { x: earth.x + ux * rho, y: earth.y + uy * rho, label: 'SE-L2' };
+    const L3 = { x: -earth.x * 0.999, y: -earth.y * 0.999, label: 'SE-L3' };
+    const c60 = 0.5, s60 = Math.sqrt(3) / 2;
+    const L4 = {
+      x: earth.x * c60 - earth.y * s60,
+      y: earth.x * s60 + earth.y * c60,
+      label: 'SE-L4'
+    };
+    const L5 = {
+      x: earth.x * c60 + earth.y * s60,
+      y: -earth.x * s60 + earth.y * c60,
+      label: 'SE-L5'
+    };
+    return [L1, L2, L3, L4, L5];
+  }
+
+  function earthMoonLagrange(moon) {
+    const mu = 0.01215;
+    const rho = Math.pow(mu / 3, 1 / 3);
+    const r = Math.hypot(moon.xKm, moon.yKm) || 1;
+    const ux = moon.xKm / r, uy = moon.yKm / r;
+    // L1 between Earth and Moon, L2 beyond Moon, L3 opposite
+    const L1 = { xKm: moon.xKm * (1 - rho), yKm: moon.yKm * (1 - rho), label: 'EM-L1' };
+    const L2 = { xKm: moon.xKm * (1 + rho), yKm: moon.yKm * (1 + rho), label: 'EM-L2' };
+    const L3 = { xKm: -moon.xKm * (1 + 5 * mu / 12), yKm: -moon.yKm * (1 + 5 * mu / 12), label: 'EM-L3' };
+    const c60 = 0.5, s60 = Math.sqrt(3) / 2;
+    const L4 = {
+      xKm: moon.xKm * c60 - moon.yKm * s60,
+      yKm: moon.xKm * s60 + moon.yKm * c60,
+      label: 'EM-L4'
+    };
+    const L5 = {
+      xKm: moon.xKm * c60 + moon.yKm * s60,
+      yKm: -moon.xKm * s60 + moon.yKm * c60,
+      label: 'EM-L5'
+    };
+    return [L1, L2, L3, L4, L5];
+  }
+
+  function stationPos(kind, phase0, date, earthLon) {
+    const tDays = daysSinceJ2000(date);
+    let ang;
+    if (kind === 'leo') {
+      // Readable visual period (true LEO is ~15 orbits/day — unreadable on screen)
+      const wallSec = performance.now() / 1000;
+      const daySeed = (tDays % 1) * Math.PI * 2;
+      ang = phase0 + daySeed + (2 * Math.PI * wallSec) / LEO_VISUAL_PERIOD_SEC;
+    } else {
+      // GEO ≈ 1 sidereal day
+      const periodDays = 86164.09 / 86400;
+      ang = phase0 + (earthLon || 0) + (2 * Math.PI * tDays) / periodDays;
+    }
+    const rKm = kind === 'leo' ? LEO_R_KM : GEO_R_KM;
+    return {
+      xKm: rKm * Math.cos(ang),
+      yKm: rKm * Math.sin(ang),
+      rKm,
+      ang
+    };
+  }
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stars = Array.from({ length: 120 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      a: 0.15 + Math.random() * 0.55,
+      r: Math.random() * 1.2
+    }));
+  }
+
+  function fmtDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function syncDateUI() {
+    const d = currentDate();
+    datePicker.value = fmtDate(d);
+    dayScrub.value = String(Math.round(scrubDays));
+  }
+
+  function setBaseFromPicker() {
+    const v = datePicker.value;
+    if (!v) return;
+    const [y, m, day] = v.split('-').map(Number);
+    baseDate = new Date(y, m - 1, day, 12, 0, 0);
+    scrubDays = 0;
+    dayScrub.value = '0';
+  }
+
+  function worldToScreen(wx, wy, cam) {
+    return {
+      x: cam.cx + (wx - cam.focusX) * cam.scale + panX,
+      y: cam.cy - (wy - cam.focusY) * cam.scale + panY
+    };
+  }
+
+  function drawEarthOrbit(cam) {
+    ctx.beginPath();
+    for (let i = 0; i <= 240; i++) {
+      const M = (i / 240) * Math.PI * 2;
+      const E = solveKepler(M, EARTH.e);
+      const r = EARTH.a * (1 - EARTH.e * Math.cos(E));
+      const nu = 2 * Math.atan2(
+        Math.sqrt(1 + EARTH.e) * Math.sin(E / 2),
+        Math.sqrt(1 - EARTH.e) * Math.cos(E / 2)
+      );
+      const lon = nu + EARTH.wBar * DEG;
+      const p = worldToScreen(r * Math.cos(lon), r * Math.sin(lon), cam);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function drawCircleOrbit(cam, rKm, color, alpha, dash) {
+    ctx.beginPath();
+    const steps = 96;
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 2;
+      const p = worldToScreen(rKm * Math.cos(a), rKm * Math.sin(a), cam);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = 1;
+    if (dash) ctx.setLineDash(dash);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawLabel(x, y, text, color) {
+    ctx.font = '600 10px "IBM Plex Mono", monospace';
+    ctx.fillStyle = color || '#94a3b8';
+    ctx.fillText(text, x + 8, y - 6);
+  }
+
+  function drawBody(p, radius, fill, glow) {
+    if (glow) {
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * 4);
+      g.addColorStop(0, glow);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  function drawStationIcon(p, color, label, opts = {}) {
+    const { withLabel = false, size = 3 } = opts;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-size * 2, 0); ctx.lineTo(size * 2, 0);
+    ctx.moveTo(0, -size * 1.4); ctx.lineTo(0, size * 1.4);
+    ctx.stroke();
+    ctx.restore();
+    // Following labels on fast LEO read as noise — only when asked
+    if (withLabel && label) drawLabel(p.x, p.y, label, color);
+  }
+
+  function drawOrbitTag(cam, rKm, angle, text, color) {
+    const p = worldToScreen(rKm * Math.cos(angle), rKm * Math.sin(angle), cam);
+    ctx.font = '600 11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = color;
+    ctx.fillText(text, p.x + 6, p.y - 4);
+  }
+
+  function drawLPoint(p, label, color) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.x - 5, p.y);
+    ctx.lineTo(p.x + 5, p.y);
+    ctx.moveTo(p.x, p.y - 5);
+    ctx.lineTo(p.x, p.y + 5);
+    ctx.stroke();
+    drawLabel(p.x, p.y, label, color);
+  }
+
+  function makeCam(earth, moon) {
+    const cx = width / 2;
+    const cy = height / 2;
+    if (viewMode === 'solar') {
+      const scale = Math.min(width, height) * 0.38; // 1 AU ≈ this many px
+      return { cx, cy, scale, focusX: 0, focusY: 0, unit: 'au' };
+    }
+    // Earth–Moon: work in km, fit Moon orbit
+    const fit = Math.min(width, height) * 0.42 / (MOON_A_KM * 1.15);
+    return { cx, cy, scale: fit, focusX: 0, focusY: 0, unit: 'km' };
+  }
+
+  function render() {
+    const date = currentDate();
+    const earth = heliocentricEarth(date);
+    const moon = moonRelative(date);
+    const cam = makeCam(earth, moon);
+    const sunLonFromEarth = Math.atan2(-earth.y, -earth.x); // sun direction from Earth
+    const sunGeocentricLon = earth.lon + Math.PI;
+    const phase2 = moonPhaseIllumination(sunGeocentricLon, moon.lon);
+
+    // HUD
+    hudDate.textContent = fmtDate(date);
+    hudEarth.textContent = `${earth.r.toFixed(3)} AU / ${(earth.lon * RAD).toFixed(1)}°`;
+    hudMoonDist.textContent = `${(moon.rKm / 1000).toFixed(1)}×10³ km`;
+    hudPhase.textContent = `${phase2.name} · ${(phase2.illum * 100).toFixed(0)}%`;
+    hudView.textContent = viewMode === 'solar' ? 'SOLAR' : 'EARTH–MOON';
+
+    // background
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+    for (const s of stars) {
+      ctx.fillStyle = `rgba(226,232,240,${s.a})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (viewMode === 'solar') {
+      // Sun
+      const sunP = worldToScreen(0, 0, cam);
+      drawBody(sunP, 7, '#fde047', 'rgba(251,191,36,0.35)');
+      drawLabel(sunP.x, sunP.y, 'Sun', '#fbbf24');
+
+      drawEarthOrbit(cam);
+
+      // SE Lagrange
+      if (showSEL) {
+        for (const L of sunEarthLagrange(earth)) {
+          const p = worldToScreen(L.x, L.y, cam);
+          drawLPoint(p, L.label, '#67e8f9');
+        }
+      }
+
+      // Earth
+      const eP = worldToScreen(earth.x, earth.y, cam);
+      drawBody(eP, 4.5, '#38bdf8', 'rgba(56,189,248,0.35)');
+      drawLabel(eP.x, eP.y, 'Earth', '#7dd3fc');
+
+      // Tiny Moon offset (exaggerated for solar view readability)
+      const moonEx = 0.028; // AU visual offset
+      const mDir = Math.hypot(moon.xKm, moon.yKm) || 1;
+      const mP = worldToScreen(
+        earth.x + (moon.xKm / mDir) * moonEx,
+        earth.y + (moon.yKm / mDir) * moonEx,
+        cam
+      );
+      drawBody(mP, 2.2, '#e2e8f0', 'rgba(226,232,240,0.25)');
+      drawLabel(mP.x, mP.y, 'Moon', '#cbd5e1');
+
+      // EM-L / LEO clutter at AU scale — skip spinning labels; hint only
+      ctx.font = '500 10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = 'rgba(148,163,184,0.7)';
+      ctx.fillText('LEO · GEO · EM-L → 지구–달 뷰', eP.x + 14, eP.y + 18);
+    } else {
+      // Earth-centered km frame
+      // Moon orbit
+      ctx.beginPath();
+      for (let i = 0; i <= 180; i++) {
+        const M = (i / 180) * Math.PI * 2;
+        const E = solveKepler(M, MOON.e);
+        const r = MOON.aKm * (1 - MOON.e * Math.cos(E));
+        const nu = 2 * Math.atan2(
+          Math.sqrt(1 + MOON.e) * Math.sin(E / 2),
+          Math.sqrt(1 - MOON.e) * Math.cos(E / 2)
+        );
+        const lon = nu + MOON.wBar * DEG;
+        const p = worldToScreen(r * Math.cos(lon), r * Math.sin(lon), cam);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      drawCircleOrbit(cam, LEO_R_KM, 'rgba(52, 211, 153, 0.85)', 0.9, null);
+      drawCircleOrbit(cam, GEO_R_KM, 'rgba(251, 191, 36, 0.75)', 0.85, [4, 4]);
+
+      // Earth disc (scaled)
+      const earthPx = Math.max(4, R_EARTH_KM * cam.scale);
+      const eP = worldToScreen(0, 0, cam);
+      drawBody(eP, earthPx, '#1d4ed8', 'rgba(56,189,248,0.3)');
+      ctx.beginPath();
+      ctx.arc(eP.x, eP.y, earthPx, 0, Math.PI * 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fill();
+      drawLabel(eP.x, eP.y - earthPx, 'Earth', '#7dd3fc');
+
+      // Fixed orbit tags (do not chase the stations)
+      drawOrbitTag(cam, LEO_R_KM, -0.55, 'LEO  ≈400 km', '#34d399');
+      drawOrbitTag(cam, GEO_R_KM, 0.85, 'GEO  ≈35,786 km', '#fbbf24');
+
+      // Sun direction (from Earth)
+      const sunDir = worldToScreen(Math.cos(sunLonFromEarth) * MOON_A_KM * 0.55, Math.sin(sunLonFromEarth) * MOON_A_KM * 0.55, cam);
+      ctx.strokeStyle = 'rgba(251,191,36,0.35)';
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      ctx.moveTo(eP.x, eP.y);
+      ctx.lineTo(sunDir.x, sunDir.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawLabel(sunDir.x, sunDir.y, '⊙ Sun', '#fbbf24');
+
+      // Moon
+      const mP = worldToScreen(moon.xKm, moon.yKm, cam);
+      drawBody(mP, Math.max(3, 1737 * cam.scale), '#e2e8f0', 'rgba(226,232,240,0.25)');
+      drawLabel(mP.x, mP.y, 'Moon', '#f1f5f9');
+
+      // Stations: dots only for LEO; GEO keeps a short label (slow enough to read)
+      for (const st of stations) {
+        const sp = stationPos(st.kind, st.phase0, date, 0);
+        const p = worldToScreen(sp.xKm, sp.yKm, cam);
+        if (st.kind === 'leo') {
+          drawStationIcon(p, st.color, null, { withLabel: false, size: 2.6 });
+        } else {
+          drawStationIcon(p, st.color, st.label, { withLabel: true, size: 3.2 });
+        }
+      }
+
+      // EM Lagrange
+      if (showEML) {
+        for (const L of earthMoonLagrange(moon)) {
+          const p = worldToScreen(L.xKm, L.yKm, cam);
+          drawLPoint(p, L.label, '#fde047');
+        }
+      }
+
+      // SE L1/L2 far outside moon orbit — show direction markers at edge of view
+      if (showSEL) {
+        // SE-L1/L2 lie ~0.01 AU away — show direction on the Earth–Sun line at Moon-orbit scale
+        const markerR = MOON_A_KM * 1.05;
+        const ux = Math.cos(sunLonFromEarth), uy = Math.sin(sunLonFromEarth);
+        const p1 = worldToScreen(ux * markerR * 0.92, uy * markerR * 0.92, cam);
+        const p2 = worldToScreen(-ux * markerR * 0.92, -uy * markerR * 0.92, cam);
+        drawLPoint(p1, 'SE-L1 →', '#67e8f9');
+        drawLPoint(p2, 'SE-L2 →', '#67e8f9');
+      }
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  // Controls
+  btnToday.addEventListener('click', () => {
+    baseDate = new Date();
+    baseDate.setHours(12, 0, 0, 0);
+    scrubDays = 0;
+    syncDateUI();
+  });
+
+  datePicker.addEventListener('change', setBaseFromPicker);
+
+  dayScrub.addEventListener('input', () => {
+    scrubDays = Number(dayScrub.value);
+    const d = currentDate();
+    datePicker.value = fmtDate(d);
+  });
+
+  btnPlay.addEventListener('click', () => {
+    playing = !playing;
+    btnPlay.classList.toggle('active', playing);
+    btnPlay.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    btnPlay.textContent = playing ? '⏸ 정지' : '▶ 재생';
+  });
+
+  btnWarp.addEventListener('click', () => {
+    warpIdx = (warpIdx + 1) % WARP_STEPS.length;
+    btnWarp.textContent = `×${WARP_STEPS[warpIdx]}`;
+  });
+  btnWarp.textContent = `×${WARP_STEPS[warpIdx]}`;
+
+  function setView(mode) {
+    viewMode = mode;
+    panX = 0;
+    panY = 0;
+    btnViewSolar.classList.toggle('active', mode === 'solar');
+    btnViewEM.classList.toggle('active', mode === 'em');
+    btnViewSolar.setAttribute('aria-pressed', mode === 'solar' ? 'true' : 'false');
+    btnViewEM.setAttribute('aria-pressed', mode === 'em' ? 'true' : 'false');
+  }
+  btnViewSolar.addEventListener('click', () => setView('solar'));
+  btnViewEM.addEventListener('click', () => setView('em'));
+
+  function toggleBtn(btn, onSet) {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('aria-pressed') !== 'true';
+      btn.classList.toggle('active', next);
+      btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      onSet(next);
+    });
+  }
+  toggleBtn(btnSEL, (v) => { showSEL = v; });
+  toggleBtn(btnEML, (v) => { showEML = v; });
+
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    panX += e.clientX - lastX;
+    panY += e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  canvas.addEventListener('pointerup', () => { dragging = false; });
+  canvas.addEventListener('pointercancel', () => { dragging = false; });
+
+  let lastTs = performance.now();
+  function tick(ts) {
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    if (playing) {
+      // WARP_STEPS = simulated days advanced per real second
+      scrubDays += WARP_STEPS[warpIdx] * dt;
+      if (Math.abs(scrubDays) > 180) {
+        baseDate = currentDate();
+        baseDate.setHours(12, 0, 0, 0);
+        scrubDays = 0;
+      }
+      syncDateUI();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  syncDateUI();
+  // Default to Earth–Moon so LEO/GEO are visible immediately
+  setView('em');
+  requestAnimationFrame(render);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

@@ -27,3 +27,5 @@ Then open `http://localhost:8080`.
 ## Tools (by category on the home page)
 
 글 · 사진 · 이미지 · 공감각 · 우주 · 생명 · 놀이 — open `index.html` for the live list (favorites stored in `localStorage`).
+
+Notable space tools: `orrery.html`, `lagrange.html`, `earth-orbit.html` (LEO/GEO + Moon + Lagrange).
