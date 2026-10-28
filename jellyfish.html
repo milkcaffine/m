@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Parametric Jellyfish // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #jellyCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #67e8f9; }
+
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px 12px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: min(960px, 96%);
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #67e8f9; }
+    .dock-btn.active {
+      background: rgba(103, 232, 249, 0.15);
+      border-color: #67e8f9;
+      color: #67e8f9;
+      box-shadow: 0 0 10px rgba(103, 232, 249, 0.2);
+    }
+    .dock-btn.gif-btn {
+      background: rgba(168, 85, 247, 0.12);
+      border-color: rgba(168, 85, 247, 0.45);
+      color: #c4b5fd;
+    }
+    .dock-btn.gif-btn:hover {
+      background: rgba(168, 85, 247, 0.22);
+      color: #e9d5ff;
+    }
+    .dock-btn:disabled {
+      opacity: 0.45;
+      cursor: wait;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group .val {
+      color: #67e8f9;
+      min-width: 2.2em;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .slider-group input[type="range"] {
+      width: 72px;
+      height: 4px;
+      accent-color: #67e8f9;
+      background: #334155;
+      cursor: pointer;
+    }
+
+    @media (max-width: 640px) {
+      .telemetry-card { display: none; }
+      .slider-group input[type="range"] { width: 56px; }
+      h1 { font-size: 0.82rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>PARAMETRIC JELLYFISH</h1>
+  <div class="hud-meta">MULTI-AXIS HARMONIC · ORGANIC CURVES</div>
+</header>
+
+<div class="telemetry-card">
+  <div>AXES: <strong id="valAxes">8</strong></div>
+  <div>FREQ: <strong id="valFreq">2.40</strong></div>
+  <div>AMP: <strong id="valAmp">1.00</strong></div>
+  <div>PHASE: <strong id="valPhase">0.00π</strong></div>
+  <div>STATE: <strong id="valState">RUNNING</strong></div>
+</div>
+
+<canvas id="jellyCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnPlay">⏸ 정지</button>
+  <button type="button" class="dock-btn" id="btnRandom">무작위</button>
+  <button type="button" class="dock-btn gif-btn" id="btnGif">GIF 루프 저장</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>주파수</span>
+    <input type="range" id="freqRange" min="50" max="600" value="240">
+    <span class="val" id="freqLabel">2.4</span>
+  </div>
+  <div class="slider-group">
+    <span>진폭</span>
+    <input type="range" id="ampRange" min="30" max="180" value="100">
+    <span class="val" id="ampLabel">1.0</span>
+  </div>
+  <div class="slider-group">
+    <span>위상</span>
+    <input type="range" id="phaseRange" min="0" max="628" value="0">
+    <span class="val" id="phaseLabel">0.00</span>
+  </div>
+  <div class="slider-group">
+    <span>축</span>
+    <input type="range" id="axesRange" min="3" max="24" value="8">
+    <span class="val" id="axesLabel">8</span>
+  </div>
+  <div class="slider-group">
+    <span>굵기</span>
+    <input type="range" id="thickRange" min="5" max="60" value="18">
+    <span class="val" id="thickLabel">1.8</span>
+  </div>
+  <div class="slider-group">
+    <span>속도</span>
+    <input type="range" id="speedRange" min="5" max="80" value="28">
+    <span class="val" id="speedLabel">0.28</span>
+  </div>
+  <div class="slider-group">
+    <span>잔상</span>
+    <input type="range" id="trailRange" min="5" max="45" value="18">
+    <span class="val" id="trailLabel">0.18</span>
+  </div>
+  <div class="slider-group">
+    <span>배음</span>
+    <input type="range" id="harmRange" min="1" max="6" value="3">
+    <span class="val" id="harmLabel">3</span>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('jellyCanvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  const els = {
+    axes: document.getElementById('valAxes'),
+    freq: document.getElementById('valFreq'),
+    amp: document.getElementById('valAmp'),
+    phase: document.getElementById('valPhase'),
+    state: document.getElementById('valState'),
+    btnPlay: document.getElementById('btnPlay'),
+    btnRandom: document.getElementById('btnRandom'),
+    btnGif: document.getElementById('btnGif'),
+    freqRange: document.getElementById('freqRange'),
+    ampRange: document.getElementById('ampRange'),
+    phaseRange: document.getElementById('phaseRange'),
+    axesRange: document.getElementById('axesRange'),
+    thickRange: document.getElementById('thickRange'),
+    speedRange: document.getElementById('speedRange'),
+    trailRange: document.getElementById('trailRange'),
+    harmRange: document.getElementById('harmRange'),
+    freqLabel: document.getElementById('freqLabel'),
+    ampLabel: document.getElementById('ampLabel'),
+    phaseLabel: document.getElementById('phaseLabel'),
+    axesLabel: document.getElementById('axesLabel'),
+    thickLabel: document.getElementById('thickLabel'),
+    speedLabel: document.getElementById('speedLabel'),
+    trailLabel: document.getElementById('trailLabel'),
+    harmLabel: document.getElementById('harmLabel'),
+  };
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let running = true;
+  let time = 0;
+  let lastTs = 0;
+  let hueShift = 0;
+  let gifBusy = false;
+  let gifWorkerUrl = null;
+
+  const params = {
+    frequency: 2.4,
+    amplitude: 1.0,
+    phase: 0,
+    axes: 8,
+    thickness: 1.8,
+    speed: 0.28,
+    trail: 0.18,
+    harmonics: 3,
+  };
+
+  // 축별 미세 디튠 — 기계적 대칭을 살짝 깨뜨려 유기적 느낌
+  let axisSeeds = [];
+
+  function rebuildSeeds() {
+    axisSeeds = [];
+    for (let i = 0; i < 32; i++) {
+      axisSeeds.push({
+        fMul: 0.86 + Math.random() * 0.28,
+        aMul: 0.82 + Math.random() * 0.36,
+        drip: 0.55 + Math.random() * 0.9,
+        twist: (Math.random() - 0.5) * 0.7,
+        hueBias: Math.random() * 40 - 20,
+      });
+    }
+  }
+  rebuildSeeds();
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#030407';
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  function syncFromUI() {
+    params.frequency = els.freqRange.value / 100;
+    params.amplitude = els.ampRange.value / 100;
+    params.phase = els.phaseRange.value / 100;
+    params.axes = parseInt(els.axesRange.value, 10);
+    params.thickness = els.thickRange.value / 10;
+    params.speed = els.speedRange.value / 100;
+    params.trail = els.trailRange.value / 100;
+    params.harmonics = parseInt(els.harmRange.value, 10);
+
+    els.freqLabel.textContent = params.frequency.toFixed(1);
+    els.ampLabel.textContent = params.amplitude.toFixed(1);
+    els.phaseLabel.textContent = (params.phase / Math.PI).toFixed(2);
+    els.axesLabel.textContent = String(params.axes);
+    els.thickLabel.textContent = params.thickness.toFixed(1);
+    els.speedLabel.textContent = params.speed.toFixed(2);
+    els.trailLabel.textContent = params.trail.toFixed(2);
+    els.harmLabel.textContent = String(params.harmonics);
+
+    els.axes.textContent = String(params.axes);
+    els.freq.textContent = params.frequency.toFixed(2);
+    els.amp.textContent = params.amplitude.toFixed(2);
+    els.phase.textContent = (params.phase / Math.PI).toFixed(2) + 'π';
+  }
+
+  [
+    els.freqRange, els.ampRange, els.phaseRange, els.axesRange,
+    els.thickRange, els.speedRange, els.trailRange, els.harmRange
+  ].forEach((el) => el.addEventListener('input', syncFromUI));
+
+  /**
+   * 여러 축 위에서 sine / cosine / parametric 배음을 합성.
+   * t ∈ [0,1] 을 따라 tentacle·막 형태의 유기 곡선이 생성됨.
+   */
+  function sampleAxis(t, axisIndex, timeSec, out) {
+    const n = params.axes;
+    const seed = axisSeeds[axisIndex % axisSeeds.length];
+    const base = (axisIndex / n) * Math.PI * 2 + seed.twist;
+    const freq = params.frequency * seed.fMul;
+    const amp = params.amplitude * seed.aMul;
+    const ph = params.phase + timeSec * params.speed * (0.85 + seed.drip * 0.2);
+    const u = t * Math.PI * 2;
+    const H = params.harmonics;
+
+    // 본체: 리사주 + 에피트로코이드형 배음 스택
+    let lx = 0;
+    let ly = 0;
+    for (let h = 1; h <= H; h++) {
+      const w = 1 / (0.55 + h * 0.55);
+      const fh = freq * (h * 0.97 + (h === 2 ? 0.13 : 0));
+      lx += w * Math.sin(fh * u + ph * (1 + h * 0.17) + base * h * 0.31);
+      ly += w * Math.cos(fh * (0.61 + h * 0.19) * u + ph * (1.2 + h * 0.11) - base * 0.4);
+    }
+
+    // 축 방향 방사 + 아래로 늘어지는 drip (해파리 촉수)
+    const breath = 1 + 0.22 * Math.sin(ph * 1.4 + axisIndex * 0.55 + t * 2.2);
+    const radial = (0.35 + 0.65 * Math.sin(u * 0.5 + ph)) * breath;
+    const drip = Math.pow(t, 1.35) * seed.drip * (0.55 + 0.45 * Math.sin(ph * 0.7 + u * 1.8));
+    const scale = Math.min(width, height) * 0.16 * amp;
+
+    const localX = lx * scale * radial;
+    const localY = ly * scale * (0.55 + 0.45 * radial) + drip * scale * 0.85;
+
+    const cosB = Math.cos(base);
+    const sinB = Math.sin(base);
+    out.x = width * 0.5 + cosB * localX - sinB * localY * 0.55;
+    out.y = height * 0.42 + sinB * localX * 0.35 + cosB * localY * 0.25 + localY * 0.55;
+    return out;
+  }
+
+  function axisColor(axisIndex, t, alpha, hueBase) {
+    const seed = axisSeeds[axisIndex % axisSeeds.length];
+    const base = hueBase == null ? hueShift : hueBase;
+    const hue = (base + axisIndex * (360 / Math.max(params.axes, 1)) + t * 70 + seed.hueBias + 200) % 360;
+    return `hsla(${hue}, 90%, ${58 + t * 18}%, ${alpha})`;
+  }
+
+  /**
+   * 심리스 루프용 샘플링.
+   * loopTau ∈ [0, 2π) 가 정확히 한 주기 — 모든 시간항이 정수배 위상이라 τ=0 과 τ=2π 가 동일.
+   * (라이브 애니메이션 수식은 그대로 두고, GIF 캡처에만 사용)
+   */
+  function sampleAxisLoop(t, axisIndex, loopTau, out) {
+    const n = params.axes;
+    const seed = axisSeeds[axisIndex % axisSeeds.length];
+    const base = (axisIndex / n) * Math.PI * 2 + seed.twist;
+    const freq = params.frequency * seed.fMul;
+    const amp = params.amplitude * seed.aMul;
+    // 축별 속도 디튠 대신 고정 위상 오프셋 → 공통 주기 보장
+    const ph = params.phase + loopTau + seed.twist * 0.35;
+    const u = t * Math.PI * 2;
+    const H = params.harmonics;
+
+    let lx = 0;
+    let ly = 0;
+    for (let h = 1; h <= H; h++) {
+      const w = 1 / (0.55 + h * 0.55);
+      const fh = freq * (h * 0.97 + (h === 2 ? 0.13 : 0));
+      // ph 계수를 정수(h, h+1)로 고정 → loopTau += 2π 시 위상 연속
+      lx += w * Math.sin(fh * u + ph * h + base * h * 0.31);
+      ly += w * Math.cos(fh * (0.61 + h * 0.19) * u + ph * (h + 1) - base * 0.4);
+    }
+
+    const breath = 1 + 0.22 * Math.sin(ph * 2 + axisIndex * 0.55 + t * 2.2);
+    const radial = (0.35 + 0.65 * Math.sin(u * 0.5 + ph)) * breath;
+    const drip = Math.pow(t, 1.35) * seed.drip * (0.55 + 0.45 * Math.sin(ph + u * 1.8));
+    const scale = Math.min(width, height) * 0.16 * amp;
+
+    const localX = lx * scale * radial;
+    const localY = ly * scale * (0.55 + 0.45 * radial) + drip * scale * 0.85;
+
+    const cosB = Math.cos(base);
+    const sinB = Math.sin(base);
+    out.x = width * 0.5 + cosB * localX - sinB * localY * 0.55;
+    out.y = height * 0.42 + sinB * localX * 0.35 + cosB * localY * 0.25 + localY * 0.55;
+    return out;
+  }
+
+  const ptA = { x: 0, y: 0 };
+  const ptB = { x: 0, y: 0 };
+  const SEGMENTS = 96;
+
+  function drawCreature(timeSec, clearAlpha) {
+    // 잔상 페이드 — 어두운 심연 위 네온 궤적
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `rgba(3, 4, 7, ${clearAlpha})`;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'lighter';
+
+    const thick = params.thickness;
+    const n = params.axes;
+
+    // 촉수 / 축 곡선
+    for (let a = 0; a < n; a++) {
+      sampleAxis(0, a, timeSec, ptA);
+
+      // 소프트 글로우 패스
+      ctx.beginPath();
+      ctx.moveTo(ptA.x, ptA.y);
+      for (let s = 1; s <= SEGMENTS; s++) {
+        const t = s / SEGMENTS;
+        sampleAxis(t, a, timeSec, ptB);
+        ctx.lineTo(ptB.x, ptB.y);
+      }
+      ctx.strokeStyle = axisColor(a, 0.5, 0.12);
+      ctx.lineWidth = thick * 4.2;
+      ctx.stroke();
+
+      // 코어 네온 선 (구간별 색 그라데이션)
+      sampleAxis(0, a, timeSec, ptA);
+      for (let s = 1; s <= SEGMENTS; s++) {
+        const t = s / SEGMENTS;
+        sampleAxis(t, a, timeSec, ptB);
+        ctx.beginPath();
+        ctx.moveTo(ptA.x, ptA.y);
+        ctx.lineTo(ptB.x, ptB.y);
+        ctx.strokeStyle = axisColor(a, t, 0.55 + 0.35 * (1 - t));
+        ctx.lineWidth = thick * (1.35 - t * 0.85);
+        ctx.stroke();
+        ptA.x = ptB.x;
+        ptA.y = ptB.y;
+      }
+    }
+
+    // 이웃 축을 잇는 막(membrane) — 해파리 우산
+    const membraneSteps = 28;
+    for (let a = 0; a < n; a++) {
+      const next = (a + 1) % n;
+      for (let s = 0; s <= membraneSteps; s++) {
+        const t = s / membraneSteps * 0.55;
+        sampleAxis(t, a, timeSec, ptA);
+        sampleAxis(t, next, timeSec, ptB);
+        ctx.beginPath();
+        ctx.moveTo(ptA.x, ptA.y);
+        ctx.lineTo(ptB.x, ptB.y);
+        ctx.strokeStyle = axisColor(a, t, 0.08 + 0.1 * (1 - t));
+        ctx.lineWidth = thick * 0.55;
+        ctx.stroke();
+      }
+    }
+
+    // 중심 핵 — 맥박
+    const pulse = 1 + 0.18 * Math.sin(timeSec * params.speed * 3.2 + params.phase);
+    const coreR = Math.min(width, height) * 0.018 * params.amplitude * pulse;
+    const grd = ctx.createRadialGradient(width * 0.5, height * 0.42, 0, width * 0.5, height * 0.42, coreR * 4);
+    grd.addColorStop(0, `hsla(${(hueShift + 190) % 360}, 95%, 78%, 0.55)`);
+    grd.addColorStop(0.45, `hsla(${(hueShift + 260) % 360}, 90%, 55%, 0.18)`);
+    grd.addColorStop(1, 'hsla(200, 80%, 40%, 0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(width * 0.5, height * 0.42, coreR * 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function frame(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+
+    if (running && !gifBusy) {
+      time += dt;
+      hueShift = (hueShift + dt * 12 * params.speed) % 360;
+    }
+
+    if (!gifBusy) {
+      drawCreature(time, params.trail);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  els.btnPlay.addEventListener('click', () => {
+    running = !running;
+    els.btnPlay.classList.toggle('active', running);
+    els.btnPlay.textContent = running ? '⏸ 정지' : '▶ 시작';
+    els.state.textContent = running ? 'RUNNING' : 'PAUSED';
+    if (running) lastTs = 0;
+  });
+
+  els.btnRandom.addEventListener('click', () => {
+    els.freqRange.value = 80 + Math.floor(Math.random() * 420);
+    els.ampRange.value = 55 + Math.floor(Math.random() * 100);
+    els.phaseRange.value = Math.floor(Math.random() * 628);
+    els.axesRange.value = 4 + Math.floor(Math.random() * 16);
+    els.thickRange.value = 8 + Math.floor(Math.random() * 40);
+    els.speedRange.value = 12 + Math.floor(Math.random() * 50);
+    els.trailRange.value = 10 + Math.floor(Math.random() * 28);
+    els.harmRange.value = 2 + Math.floor(Math.random() * 4);
+    rebuildSeeds();
+    syncFromUI();
+    ctx.fillStyle = '#030407';
+    ctx.fillRect(0, 0, width, height);
+  });
+
+  async function ensureGifWorker() {
+    if (gifWorkerUrl) return gifWorkerUrl;
+    const res = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
+    const src = await res.text();
+    gifWorkerUrl = URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+    return gifWorkerUrl;
+  }
+
+  /** 심리스 루프 GIF용 렌더 — loopTau=0 과 2π 가 동일 프레임 */
+  function drawCreatureLoop(gctx, loopTau, hueBase) {
+    gctx.globalCompositeOperation = 'source-over';
+    gctx.fillStyle = '#030407';
+    gctx.fillRect(0, 0, width, height);
+
+    gctx.lineCap = 'round';
+    gctx.lineJoin = 'round';
+    gctx.globalCompositeOperation = 'lighter';
+
+    const thick = params.thickness;
+    const n = params.axes;
+    const p0 = { x: 0, y: 0 };
+    const p1 = { x: 0, y: 0 };
+
+    for (let a = 0; a < n; a++) {
+      sampleAxisLoop(0, a, loopTau, p0);
+      gctx.beginPath();
+      gctx.moveTo(p0.x, p0.y);
+      for (let s = 1; s <= SEGMENTS; s++) {
+        sampleAxisLoop(s / SEGMENTS, a, loopTau, p1);
+        gctx.lineTo(p1.x, p1.y);
+      }
+      gctx.strokeStyle = axisColor(a, 0.5, 0.14, hueBase);
+      gctx.lineWidth = thick * 4.2;
+      gctx.stroke();
+
+      sampleAxisLoop(0, a, loopTau, p0);
+      for (let s = 1; s <= SEGMENTS; s++) {
+        const t = s / SEGMENTS;
+        sampleAxisLoop(t, a, loopTau, p1);
+        gctx.beginPath();
+        gctx.moveTo(p0.x, p0.y);
+        gctx.lineTo(p1.x, p1.y);
+        gctx.strokeStyle = axisColor(a, t, 0.6 + 0.3 * (1 - t), hueBase);
+        gctx.lineWidth = thick * (1.35 - t * 0.85);
+        gctx.stroke();
+        p0.x = p1.x;
+        p0.y = p1.y;
+      }
+    }
+
+    const membraneSteps = 28;
+    for (let a = 0; a < n; a++) {
+      const next = (a + 1) % n;
+      for (let s = 0; s <= membraneSteps; s++) {
+        const t = s / membraneSteps * 0.55;
+        sampleAxisLoop(t, a, loopTau, p0);
+        sampleAxisLoop(t, next, loopTau, p1);
+        gctx.beginPath();
+        gctx.moveTo(p0.x, p0.y);
+        gctx.lineTo(p1.x, p1.y);
+        gctx.strokeStyle = axisColor(a, t, 0.1 + 0.1 * (1 - t), hueBase);
+        gctx.lineWidth = thick * 0.55;
+        gctx.stroke();
+      }
+    }
+
+    // 맥박도 정수 배음(×3) → 한 주기에 정확히 맞춤
+    const pulse = 1 + 0.18 * Math.sin(loopTau * 3 + params.phase);
+    const coreR = Math.min(width, height) * 0.018 * params.amplitude * pulse;
+    const grd = gctx.createRadialGradient(width * 0.5, height * 0.42, 0, width * 0.5, height * 0.42, coreR * 4);
+    grd.addColorStop(0, `hsla(${(hueBase + 190) % 360}, 95%, 78%, 0.55)`);
+    grd.addColorStop(0.45, `hsla(${(hueBase + 260) % 360}, 90%, 55%, 0.18)`);
+    grd.addColorStop(1, 'hsla(200, 80%, 40%, 0)');
+    gctx.fillStyle = grd;
+    gctx.beginPath();
+    gctx.arc(width * 0.5, height * 0.42, coreR * 4, 0, Math.PI * 2);
+    gctx.fill();
+
+    gctx.globalCompositeOperation = 'source-over';
+    gctx.font = '10px "IBM Plex Mono", monospace';
+    gctx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+    gctx.textAlign = 'center';
+    gctx.fillText('MARSKO.ART · JELLYFISH', width * 0.5, height - 14);
+  }
+
+  els.btnGif.addEventListener('click', async () => {
+    if (gifBusy || typeof GIF === 'undefined') {
+      if (typeof GIF === 'undefined') alert('gif.js 로드에 실패했습니다. 네트워크를 확인해주세요.');
+      return;
+    }
+
+    gifBusy = true;
+    els.btnGif.disabled = true;
+    els.btnGif.textContent = 'GIF 준비…';
+    els.state.textContent = 'EXPORTING';
+
+    const GIF_SIZE = 480;
+    const TOTAL = 48; // 한 주기를 균등 분할 (마지막 프레임 ≠ 첫 프레임, 루프 시 이어짐)
+    const FRAME_DELAY_MS = 40;
+    const wasRunning = running;
+    running = false;
+
+    // 현재 화면 색상 오프셋을 스냅샷 — 루프 동안 정확히 360° 회전
+    const hueSnap = hueShift;
+
+    try {
+      const workerScript = await ensureGifWorker();
+      const gif = new GIF({
+        workers: 2,
+        quality: 8,
+        width: GIF_SIZE,
+        height: GIF_SIZE,
+        workerScript,
+        background: '#030407',
+        repeat: 0, // 무한 루프
+      });
+
+      const off = document.createElement('canvas');
+      off.width = GIF_SIZE;
+      off.height = GIF_SIZE;
+      const g = off.getContext('2d');
+
+      for (let f = 0; f < TOTAL; f++) {
+        els.btnGif.textContent = `GIF ${Math.round(((f + 1) / TOTAL) * 100)}%`;
+
+        width = GIF_SIZE;
+        height = GIF_SIZE;
+
+        // 한 주기 [0, 2π) 를 TOTAL등분 — f=TOTAL 은 f=0 과 동일하므로 제외
+        const loopTau = (f / TOTAL) * Math.PI * 2;
+        const hueBase = (hueSnap + (f / TOTAL) * 360) % 360;
+
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        drawCreatureLoop(g, loopTau, hueBase);
+        gif.addFrame(off, { copy: true, delay: FRAME_DELAY_MS });
+        await new Promise((r) => setTimeout(r, 0));
+      }
+
+      await new Promise((resolve, reject) => {
+        gif.on('finished', (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `jellyfish-loop-${Date.now()}.gif`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+          resolve();
+        });
+        gif.on('progress', (p) => {
+          els.btnGif.textContent = `인코딩 ${Math.round(p * 100)}%`;
+        });
+        try {
+          gif.render();
+        } catch (err) {
+          reject(err);
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      alert('GIF 생성 중 오류가 발생했습니다.');
+    } finally {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      gifBusy = false;
+      running = wasRunning;
+      els.btnPlay.classList.toggle('active', running);
+      els.btnPlay.textContent = running ? '⏸ 정지' : '▶ 시작';
+      els.state.textContent = running ? 'RUNNING' : 'PAUSED';
+      els.btnGif.disabled = false;
+      els.btnGif.textContent = 'GIF 루프 저장';
+      lastTs = 0;
+      resize();
+    }
+  });
+
+  window.addEventListener('resize', resize);
+  resize();
+  syncFromUI();
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

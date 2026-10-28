@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
-        .hero-img { filter: saturate(0.8) contrast(1.05); }
+        .hero-img { filter: saturate(0.7) contrast(1.05) brightness(0.45); opacity: 0.55; }
 
         /* 도구 아이템 인라인 정렬 */
         .tool-item {
@@ -106,7 +106,7 @@
     <!-- 헤더 -->
     <header class="relative min-h-[88vh] overflow-hidden">
         <img src="images/cone.jpg" alt="Wet plaza, white trellis, one cone" class="hero-img absolute inset-0 h-full w-full object-cover">
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-zinc-950/15"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-zinc-950/55"></div>
         
         <!-- 심해 발광 미생물 캔버스 (사진 위에서 자연스럽게 발광) -->
         <canvas id="bioCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-[5] mix-blend-screen opacity-90"></canvas>
@@ -234,7 +234,8 @@
                     <span class="tool-item" data-id="lenia"><a href="lenia.html" data-desc="환형 가우시안 커널 기반 연속 세포 오토마타 인공 생명체 배양기">lenia</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
                     <span class="tool-item" data-id="particle-life"><a href="particle-life.html" data-desc="인력·척력 매트릭스 기반 1,200개 입자의 자가조직화 생명 군무 시뮬레이터">particle-life</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
                     <span class="tool-item" data-id="reaction"><a href="reaction.html" data-desc="튜링 패턴 그레이-스콧 반응-확산 생체 무늬 시뮬레이터">reaction</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
-                    <span class="tool-item" data-id="fractal"><a href="fractal.html" data-desc="WebGL 셰이더 기반 복소평면 만델브로 & 줄리아 무한 프랙탈 탐험기">fractal</a><button class="star-btn" title="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="fractal"><a href="fractal.html" data-desc="WebGL 셰이더 기반 복소평면 만델브로 & 줄리아 무한 프랙탈 탐험기">fractal</a><button class="star-btn" title="즐겨찾기">☆</button></span> · 
+                    <span class="tool-item" data-id="jellyfish"><a href="jellyfish.html" data-desc="다축 사인·코사인 파라미터 합성으로 춤추는 해파리형 유기 곡선 생성기">jellyfish</a><button class="star-btn" title="즐겨찾기">☆</button></span>
                 </p>
 
                 <!-- [놀이] 벡터 아케이드, 물리 엔진, 하이퍼스피드 (4종) -->
