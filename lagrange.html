@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>Kepler & Lagrange Observatory // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #astroCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #astroCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 천체역학 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.84);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.58;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .mars-txt { color: #f43f5e; }
+    .telemetry-card .win-open {
+      color: #34d399;
+      text-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+    }
+    .telemetry-card .win-wait { color: #fbbf24; }
+    .telemetry-card .probe-txt { color: #e879f9; }
+    .hud-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 5px 0;
+    }
+
+    /* 좌측 하단 범례 (Legend) */
+    .legend-card {
+      position: absolute;
+      bottom: 76px;
+      left: 16px;
+      background: rgba(10, 15, 26, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.64rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      z-index: 10;
+      line-height: 1.6;
+    }
+    .dot-icon {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+    .dock-btn.hohmann-btn.active {
+      background: rgba(52, 211, 153, 0.18);
+      border-color: #34d399;
+      color: #34d399;
+    }
+    .dock-btn.warp-btn {
+      background: rgba(251, 191, 36, 0.15);
+      border-color: rgba(251, 191, 36, 0.4);
+      color: #fde047;
+    }
+    .dock-btn.warp-btn:hover {
+      background: #fbbf24;
+      color: #020306;
+    }
+    .dock-btn.launch-btn {
+      background: rgba(232, 121, 249, 0.16);
+      border-color: rgba(232, 121, 249, 0.45);
+      color: #f0abfc;
+      font-weight: 600;
+    }
+    .dock-btn.launch-btn:hover {
+      background: #e879f9;
+      color: #020306;
+    }
+    .dock-btn.launch-btn.ready-glow {
+      background: rgba(52, 211, 153, 0.22);
+      border-color: #34d399;
+      color: #6ee7b7;
+      box-shadow: 0 0 14px rgba(52, 211, 153, 0.45);
+    }
+
+    .date-input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      outline: none;
+      cursor: pointer;
+      color-scheme: dark;
+    }
+    .date-input:focus { border-color: #38bdf8; }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 70px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>KEPLER & LAGRANGE ASTROMETRY</h1>
+  <div class="hud-meta">HELIOCENTRIC ECLIPTIC J2000 · HOHMANN TRANSFER MISSION</div>
+</header>
+
+<div class="telemetry-card">
+  <div>EPOCH: <strong id="hudDate">2026-10-28</strong></div>
+  <div>EARTH r / θ: <strong id="hudEarth">0.994 AU / 34.8°</strong></div>
+  <div>MARS r / θ: <strong id="hudMars" class="mars-txt">1.583 AU / 118.2°</strong></div>
+  <div>PHASE (M - E): <strong id="hudElong">+83.4°</strong> (OPT: +44.3°)</div>
+  <div class="hud-divider"></div>
+  <div>HOHMANN TOF: <strong id="hudTOF">258.8 DAYS</strong></div>
+  <div>RENDEZVOUS Δθ: <strong id="hudMiss">38.2° OFF</strong></div>
+  <div>LAUNCH WINDOW: <strong id="hudWindow" class="win-wait">STANDBY</strong></div>
+  <!-- 탐사선 비행 중일 때 활성화되는 텔레메트리 블록 -->
+  <div id="probeHudBlock" style="display: none;">
+    <div class="hud-divider"></div>
+    <div>MISSION: <strong id="hudMissionTime" class="probe-txt">T+0.0d (0%)</strong></div>
+    <div>PROBE VEL: <strong id="hudProbeVel" class="probe-txt">32.7 km/s</strong></div>
+    <div>MARS DIST: <strong id="hudMarsDist" class="probe-txt">0.542 AU</strong></div>
+  </div>
+</div>
+
+<div class="legend-card">
+  <div><span class="dot-icon" style="background:#38bdf8;"></span>Sun-Earth L1~L5 (SE-L)</div>
+  <div><span class="dot-icon" style="background:#f43f5e;"></span>Sun-Mars L1~L5 (SM-L)</div>
+  <div><span class="dot-icon" style="background:#fde047;"></span>Earth-Moon L1~L5 (EM-L)</div>
+  <div><span class="dot-icon" style="background:#34d399;"></span>Hohmann Transfer Orbit</div>
+  <div><span class="dot-icon" style="background:#e879f9;"></span>Active Mars Probe</div>
+</div>
+
+<canvas id="astroCanvas"></canvas>
+
+<div class="control-dock">
+  <input type="date" id="datePicker" class="date-input">
+  <button type="button" class="dock-btn" id="btnToday">오늘</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>스크럽</span>
+    <input type="range" id="dayOffsetRange" min="-365" max="365" value="0">
+  </div>
+  <button type="button" class="dock-btn" id="btnPlay">▶ 자동 공전</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn warp-btn" id="btnNextWindow" title="다음 최적 발사 창 날짜로 자동 이동">발사 창 탐색 🚀</button>
+  <button type="button" class="dock-btn launch-btn" id="btnLaunchProbe" title="현재 지구 위치에서 화성으로 호만 전이 탐사선 발사">탐사선 발사 🛰️</button>
+  <button type="button" class="dock-btn hohmann-btn active" id="btnToggleHohmann">전이선</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn active" id="btnViewSolar">태양계 뷰</button>
+  <button type="button" class="dock-btn" id="btnViewEM">지구-달 확대</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn active" id="btnToggleSEL">SE-L</button>
+  <button type="button" class="dock-btn active" id="btnToggleSML">SM-L</button>
+  <button type="button" class="dock-btn active" id="btnToggleEML">EM-L</button>
+  <button type="button" class="dock-btn active" id="btnToggleGrid">삼각망</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('astroCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // HUD 요소
+  const hudDate = document.getElementById('hudDate');
+  const hudEarth = document.getElementById('hudEarth');
+  const hudMars = document.getElementById('hudMars');
+  const hudElong = document.getElementById('hudElong');
+  const hudTOF = document.getElementById('hudTOF');
+  const hudMiss = document.getElementById('hudMiss');
+  const hudWindow = document.getElementById('hudWindow');
+  const probeHudBlock = document.getElementById('probeHudBlock');
+  const hudMissionTime = document.getElementById('hudMissionTime');
+  const hudProbeVel = document.getElementById('hudProbeVel');
+  const hudMarsDist = document.getElementById('hudMarsDist');
+
+  // 컨트롤 요소
+  const datePicker = document.getElementById('datePicker');
+  const btnToday = document.getElementById('btnToday');
+  const dayOffsetRange = document.getElementById('dayOffsetRange');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnToggleHohmann = document.getElementById('btnToggleHohmann');
+  const btnNextWindow = document.getElementById('btnNextWindow');
+  const btnLaunchProbe = document.getElementById('btnLaunchProbe');
+  const btnViewSolar = document.getElementById('btnViewSolar');
+  const btnViewEM = document.getElementById('btnViewEM');
+  const btnToggleSEL = document.getElementById('btnToggleSEL');
+  const btnToggleSML = document.getElementById('btnToggleSML');
+  const btnToggleEML = document.getElementById('btnToggleEML');
+  const btnToggleGrid = document.getElementById('btnToggleGrid');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  const DEG2RAD = Math.PI / 180;
+  const RAD2DEG = 180 / Math.PI;
+
+  const ORBIT_ELEMENTS = {
+    earth: {
+      a: 1.00000011,
+      e: 0.01671022,
+      L0: 100.46435,
+      n: 0.98560911,
+      wBar: 102.94719,
+      color: '#38bdf8'
+    },
+    mars: {
+      a: 1.52366231,
+      e: 0.09341233,
+      L0: 355.45332,
+      n: 0.52403295,
+      wBar: 336.04084,
+      color: '#f43f5e'
+    }
+  };
+
+  const MASS_RATIOS = {
+    sunEarth: 3.0034896e-6,
+    sunMars:  3.2271514e-7,
+    earthMoon: 0.0121505856
+  };
+
+  let currentDate = new Date();
+  let baseReferenceDate = new Date();
+  let isPlaying = false;
+  let viewMode = 'SOLAR';
+
+  let showHohmann = true;
+  let showSEL = true;
+  let showSML = true;
+  let showEML = true;
+  let showTriangleGrid = true;
+
+  let camZoom = 1.0;
+  let camPanX = 0;
+  let camPanY = 0;
+
+  // --- 발사된 화성 탐사선 미션 상태 객체 ---
+  let probeMission = {
+    active: false,
+    status: 'IDLE', // 'IN_FLIGHT' | 'ARRIVED_SUCCESS' | 'ARRIVED_MISSED'
+    launchD: 0,     // 발사 시점 J2000 경과일
+    tofDays: 259,
+    r1: 1.0,
+    r2: 1.524,
+    lon1: 0,
+    lon2: Math.PI,
+    a_trans: 1.262,
+    e_trans: 0.207,
+    targetX: 0,
+    targetY: 0,
+    pulseRadius: 0
+  };
+
+  function getJulianDay(date) {
+    return (date.getTime() / 86400000) + 2440587.5;
+  }
+
+  function solveKepler(M_rad, e) {
+    let E = M_rad;
+    for (let i = 0; i < 8; i++) {
+      const f = E - e * Math.sin(E) - M_rad;
+      const fPrime = 1.0 - e * Math.cos(E);
+      E = E - f / fPrime;
+    }
+    return E;
+  }
+
+  function getPlanetState(planetKey, d) {
+    const el = ORBIT_ELEMENTS[planetKey];
+    const L = (el.L0 + el.n * d) % 360;
+    const M_deg = ((L - el.wBar) % 360 + 360) % 360;
+    const M_rad = M_deg * DEG2RAD;
+
+    const E = solveKepler(M_rad, el.e);
+    const xv = el.a * (Math.cos(E) - el.e);
+    const yv = el.a * (Math.sqrt(1.0 - el.e * el.e) * Math.sin(E));
+
+    const nu = Math.atan2(yv, xv);
+    const r = Math.hypot(xv, yv);
+
+    const lonRad = nu + el.wBar * DEG2RAD;
+    const x = r * Math.cos(lonRad);
+    const y = r * Math.sin(lonRad);
+
+    return {
+      x, y, r,
+      lonRad,
+      lon: ((lonRad * RAD2DEG) % 360 + 360) % 360,
+      nu
+    };
+  }
+
+  function getOrbitRadiusAtLongitude(planetKey, lonRad) {
+    const el = ORBIT_ELEMENTS[planetKey];
+    const nu = lonRad - el.wBar * DEG2RAD;
+    return (el.a * (1.0 - el.e * el.e)) / (1.0 + el.e * Math.cos(nu));
+  }
+
+  function getMoonState(d) {
+    const Lm = ((218.316 + 13.176396 * d) % 360 + 360) % 360;
+    const Mm = ((134.963 + 13.064993 * d) % 360 + 360) % 360;
+    const lonDeg = (Lm + 6.289 * Math.sin(Mm * DEG2RAD) + 360) % 360;
+    const rNorm = 1.0 - 0.0549 * Math.cos(Mm * DEG2RAD);
+    const lonRad = lonDeg * DEG2RAD;
+    return {
+      dx: rNorm * Math.cos(lonRad),
+      dy: rNorm * Math.sin(lonRad),
+      rNorm,
+      lonDeg
+    };
+  }
+
+  function computeLagrangePoints(x1, y1, x2, y2, mu, visualBoost = 1.0) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const R = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+
+    const alpha = Math.cbrt(mu / 3.0);
+    const d1Ratio = (alpha - (alpha * alpha) / 3.0) * visualBoost;
+    const d2Ratio = (alpha + (alpha * alpha) / 3.0) * visualBoost;
+    const d3Ratio = 1.0 - (7.0 / 12.0) * mu;
+
+    const ux = Math.cos(angle);
+    const uy = Math.sin(angle);
+
+    const L1 = { x: x2 - ux * (R * d1Ratio), y: y2 - uy * (R * d1Ratio), label: 'L1' };
+    const L2 = { x: x2 + ux * (R * d2Ratio), y: y2 + uy * (R * d2Ratio), label: 'L2' };
+    const L3 = { x: x1 - ux * (R * d3Ratio), y: y1 - uy * (R * d3Ratio), label: 'L3' };
+
+    const angL4 = angle + 60 * DEG2RAD;
+    const angL5 = angle - 60 * DEG2RAD;
+    const L4 = { x: x1 + Math.cos(angL4) * R, y: y1 + Math.sin(angL4) * R, label: 'L4' };
+    const L5 = { x: x1 + Math.cos(angL5) * R, y: y1 + Math.sin(angL5) * R, label: 'L5' };
+
+    return { L1, L2, L3, L4, L5 };
+  }
+
+  function analyzeHohmannTransfer(d, earthState) {
+    const r1 = earthState.r;
+    const lon1 = earthState.lonRad;
+    const lon2 = lon1 + Math.PI;
+    const r2 = getOrbitRadiusAtLongitude('mars', lon2);
+
+    const a_trans = (r1 + r2) * 0.5;
+    const e_trans = (r2 - r1) / (r2 + r1);
+    const tofDays = 0.5 * Math.pow(a_trans, 1.5) * 365.25636;
+
+    const marsAtArrival = getPlanetState('mars', d + tofDays);
+
+    const targetLonDeg = ((lon2 * RAD2DEG) % 360 + 360) % 360;
+    let angleDiff = ((marsAtArrival.lon - targetLonDeg + 540) % 360) - 180;
+    const absMissDeg = Math.abs(angleDiff);
+
+    return {
+      r1, r2, lon1, lon2,
+      a_trans, e_trans,
+      tofDays,
+      targetX: r2 * Math.cos(lon2),
+      targetY: r2 * Math.sin(lon2),
+      marsArrival: marsAtArrival,
+      angleDiff,
+      absMissDeg,
+      isWindowOpen: absMissDeg <= 6.0,
+      isWindowNear: absMissDeg <= 15.0
+    };
+  }
+
+  // --- 탐사선 발사 실행 함수 ---
+  function launchMarsProbe() {
+    // 만약 이미 비행 중이거나 도착 상태라면 미션 초기화 후 재발사 준비
+    if (probeMission.active) {
+      probeMission.active = false;
+      probeHudBlock.style.display = 'none';
+      btnLaunchProbe.textContent = '탐사선 발사 🛰️';
+      isPlaying = false;
+      btnPlay.textContent = '▶ 자동 공전';
+      btnPlay.classList.remove('active');
+      return;
+    }
+
+    viewMode = 'SOLAR';
+    btnViewSolar.classList.add('active');
+    btnViewEM.classList.remove('active');
+
+    const jd = getJulianDay(currentDate);
+    const d = jd - 2451545.0;
+    const earth = getPlanetState('earth', d);
+    const hInfo = analyzeHohmannTransfer(d, earth);
+
+    probeMission = {
+      active: true,
+      status: 'IN_FLIGHT',
+      launchD: d,
+      tofDays: hInfo.tofDays,
+      r1: hInfo.r1,
+      r2: hInfo.r2,
+      lon1: hInfo.lon1,
+      lon2: hInfo.lon2,
+      a_trans: hInfo.a_trans,
+      e_trans: hInfo.e_trans,
+      targetX: hInfo.targetX,
+      targetY: hInfo.targetY,
+      pulseRadius: 0
+    };
+
+    probeHudBlock.style.display = 'block';
+    btnLaunchProbe.textContent = '미션 종료 ✕';
+
+    // 발사와 동시에 시간 자동 재생 시작
+    isPlaying = true;
+    btnPlay.textContent = '❚❚ 정지';
+    btnPlay.classList.add('active');
+  }
+
+  // --- 경과일(elapsedDays)에 따른 탐사선의 케플러 궤도 상 실제 위치 및 속도 계산 ---
+  function getProbeStateAtElapsed(elapsedDays) {
+    const frac = Math.max(0, Math.min(1.0, elapsedDays / probeMission.tofDays));
+    // 평균근점이각 M: 근일점(0)에서 원일점(PI)까지 진행
+    const M = frac * Math.PI;
+    const E = solveKepler(M, probeMission.e_trans);
+
+    const a = probeMission.a_trans;
+    const e = probeMission.e_trans;
+
+    const xv = a * (Math.cos(E) - e);
+    const yv = a * (Math.sqrt(1.0 - e * e) * Math.sin(E));
+    const nu = Math.atan2(yv, xv);
+    const r = Math.hypot(xv, yv);
+
+    const lon = probeMission.lon1 + nu;
+    const x = r * Math.cos(lon);
+    const y = r * Math.sin(lon);
+
+    // 활력방정식(Vis-Viva Equation)으로 태양 중심 속도(km/s) 계산: v = 29.78 * sqrt(2/r - 1/a)
+    const velKmS = 29.7847 * Math.sqrt(Math.max(0, (2.0 / r) - (1.0 / a)));
+
+    // 진행 방향 접선 각도 계산 (우주선 아이콘 회전용)
+    const dNu = 0.02;
+    const pParam = a * (1.0 - e * e);
+    const rNext = pParam / (1.0 + e * Math.cos(nu + dNu));
+    const xNext = rNext * Math.cos(probeMission.lon1 + nu + dNu);
+    const yNext = rNext * Math.sin(probeMission.lon1 + nu + dNu);
+    const headingRad = Math.atan2(yNext - y, xNext - x);
+
+    return { x, y, r, nu, frac, velKmS, headingRad };
+  }
+
+  function warpToNextLaunchWindow() {
+    // 진행 중인 탐사선이 있으면 리셋
+    if (probeMission.active) {
+      probeMission.active = false;
+      probeHudBlock.style.display = 'none';
+      btnLaunchProbe.textContent = '탐사선 발사 🛰️';
+    }
+
+    isPlaying = false;
+    btnPlay.textContent = '▶ 자동 공전';
+    btnPlay.classList.remove('active');
+
+    const jdStart = getJulianDay(currentDate);
+    let dCur = jdStart - 2451545.0 + 8;
+
+    let bestD = dCur;
+    let minErr = 999;
+
+    for (let step = 0; step < 820; step += 2) {
+      const dTest = dCur + step;
+      const eState = getPlanetState('earth', dTest);
+      const hInfo = analyzeHohmannTransfer(dTest, eState);
+
+      if (hInfo.absMissDeg < minErr) {
+        minErr = hInfo.absMissDeg;
+        bestD = dTest;
+      }
+      if (minErr < 1.5 && hInfo.absMissDeg > minErr + 1.0) {
+        break;
+      }
+    }
+
+    for (let fine = -3; fine <= 3; fine += 0.2) {
+      const dTest = bestD + fine;
+      const eState = getPlanetState('earth', dTest);
+      const hInfo = analyzeHohmannTransfer(dTest, eState);
+      if (hInfo.absMissDeg < minErr) {
+        minErr = hInfo.absMissDeg;
+        bestD = dTest;
+      }
+    }
+
+    const newTimeMs = (bestD + 2451545.0 - 2440587.5) * 86400000;
+    currentDate = new Date(newTimeMs);
+    baseReferenceDate = new Date(currentDate);
+    dayOffsetRange.value = 0;
+    syncDatePickerFromCurrent();
+  }
+
+  function buildOrbitPath(planetKey) {
+    const el = ORBIT_ELEMENTS[planetKey];
+    const wRad = el.wBar * DEG2RAD;
+    const pts = [];
+    for (let deg = 0; deg <= 360; deg += 2) {
+      const E = deg * DEG2RAD;
+      const xv = el.a * (Math.cos(E) - el.e);
+      const yv = el.a * (Math.sqrt(1.0 - el.e * el.e) * Math.sin(E));
+      const nu = Math.atan2(yv, xv);
+      const r = Math.hypot(xv, yv);
+      const lon = nu + wRad;
+      pts.push({ x: r * Math.cos(lon), y: r * Math.sin(lon) });
+    }
+    return pts;
+  }
+
+  const earthOrbitPts = buildOrbitPath('earth');
+  const marsOrbitPts = buildOrbitPath('mars');
+
+  function toScreen(astroX, astroY, scale, centerX, centerY) {
+    return {
+      x: centerX + astroX * scale,
+      y: centerY - astroY * scale
+    };
+  }
+
+  function drawDiamondMarker(sx, sy, size, color, labelText, prefix = '') {
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    ctx.strokeStyle = color;
+    ctx.fillStyle = '#020306';
+    ctx.lineWidth = 1.5;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size, 0);
+    ctx.lineTo(0, size);
+    ctx.lineTo(-size, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    ctx.fillRect(-1, -1, 2, 2);
+
+    if (labelText) {
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = color;
+      ctx.fillText(`${prefix}${labelText}`, size + 4, 3);
+    }
+    ctx.restore();
+  }
+
+  // --- 메인 렌더링 루프 ---
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    const jd = getJulianDay(currentDate);
+    const d = jd - 2451545.0;
+
+    const earth = getPlanetState('earth', d);
+    const mars = getPlanetState('mars', d);
+    const moon = getMoonState(d);
+    const hohmann = analyzeHohmannTransfer(d, earth);
+
+    // HUD 업데이트
+    const yyyy = currentDate.getFullYear();
+    const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(currentDate.getDate()).padStart(2, '0');
+    hudDate.textContent = `${yyyy}-${mm}-${dd}`;
+    hudEarth.textContent = `${earth.r.toFixed(3)} AU / ${earth.lon.toFixed(1)}°`;
+    hudMars.textContent = `${mars.r.toFixed(3)} AU / ${mars.lon.toFixed(1)}°`;
+
+    const elong = ((mars.lon - earth.lon + 540) % 360) - 180;
+    hudElong.textContent = `${elong >= 0 ? '+' : ''}${elong.toFixed(1)}°`;
+
+    hudTOF.textContent = `${hohmann.tofDays.toFixed(1)} DAYS`;
+    hudMiss.textContent = `${hohmann.absMissDeg.toFixed(1)}° OFF`;
+
+    if (hohmann.isWindowOpen) {
+      hudWindow.textContent = '★ WINDOW OPEN (OPTIMAL)';
+      hudWindow.className = 'win-open';
+      if (!probeMission.active) btnLaunchProbe.classList.add('ready-glow');
+    } else if (hohmann.isWindowNear) {
+      hudWindow.textContent = 'APPROACHING WINDOW';
+      hudWindow.className = 'win-wait';
+      btnLaunchProbe.classList.remove('ready-glow');
+    } else {
+      hudWindow.textContent = 'STANDBY (WAIT)';
+      hudWindow.className = '';
+      btnLaunchProbe.classList.remove('ready-glow');
+    }
+
+    const cx = width * 0.5 + camPanX;
+    const cy = height * 0.5 + camPanY;
+
+    // ========================================================================
+    // 모드 1: 태양계 전체 뷰
+    // ========================================================================
+    if (viewMode === 'SOLAR') {
+      const baseScale = Math.min(width, height) * 0.27 * camZoom;
+
+      // 1. 배경 황경 그리드
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let deg = 0; deg < 360; deg += 30) {
+        const rad = deg * DEG2RAD;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(rad) * baseScale * 1.85, cy - Math.sin(rad) * baseScale * 1.85);
+        ctx.stroke();
+
+        const tx = cx + Math.cos(rad) * baseScale * 1.92;
+        const ty = cy - Math.sin(rad) * baseScale * 1.92;
+        ctx.font = '10px "IBM Plex Mono", monospace';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${deg}°`, tx, ty + 3);
+      }
+      ctx.textAlign = 'left';
+
+      // 2. 지구 & 화성 케플러 궤도
+      const drawOrbit = (pts, color) => {
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = 0.28;
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        pts.forEach((p, idx) => {
+          const s = toScreen(p.x, p.y, baseScale, cx, cy);
+          if (idx === 0) ctx.moveTo(s.x, s.y);
+          else ctx.lineTo(s.x, s.y);
+        });
+        ctx.closePath();
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      };
+
+      drawOrbit(earthOrbitPts, '#38bdf8');
+      drawOrbit(marsOrbitPts, '#f43f5e');
+
+      const sunScr = toScreen(0, 0, baseScale, cx, cy);
+      const earthScr = toScreen(earth.x, earth.y, baseScale, cx, cy);
+      const marsScr = toScreen(mars.x, mars.y, baseScale, cx, cy);
+
+      // 3. 실시간 호만 전이 계획선 (탐사선 비활성 상태이거나 보조 표시일 때)
+      if (showHohmann && !probeMission.active) {
+        const transColor = hohmann.isWindowOpen ? '#34d399' : (hohmann.isWindowNear ? '#fbbf24' : 'rgba(148, 163, 184, 0.45)');
+
+        ctx.save();
+        ctx.strokeStyle = transColor;
+        ctx.lineWidth = hohmann.isWindowOpen ? 2.4 : 1.6;
+        ctx.setLineDash([6, 5]);
+        if (hohmann.isWindowOpen) {
+          ctx.shadowColor = '#34d399';
+          ctx.shadowBlur = 10;
+        }
+
+        ctx.beginPath();
+        const pParam = hohmann.a_trans * (1.0 - hohmann.e_trans * hohmann.e_trans);
+        for (let step = 0; step <= 60; step++) {
+          const nu = (step / 60) * Math.PI;
+          const rTrans = pParam / (1.0 + hohmann.e_trans * Math.cos(nu));
+          const lonTrans = hohmann.lon1 + nu;
+          const scr = toScreen(rTrans * Math.cos(lonTrans), rTrans * Math.sin(lonTrans), baseScale, cx, cy);
+          if (step === 0) ctx.moveTo(scr.x, scr.y);
+          else ctx.lineTo(scr.x, scr.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
+
+        const targetScr = toScreen(hohmann.targetX, hohmann.targetY, baseScale, cx, cy);
+        ctx.strokeStyle = transColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(targetScr.x, targetScr.y, 6, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const ghostMarsScr = toScreen(hohmann.marsArrival.x, hohmann.marsArrival.y, baseScale, cx, cy);
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)';
+        ctx.setLineDash([2, 3]);
+        ctx.beginPath();
+        ctx.moveTo(targetScr.x, targetScr.y);
+        ctx.lineTo(ghostMarsScr.x, ghostMarsScr.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = '#f43f5e';
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.25)';
+        ctx.beginPath();
+        ctx.arc(ghostMarsScr.x, ghostMarsScr.y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = '600 9px "IBM Plex Mono", monospace';
+        ctx.fillStyle = transColor;
+        ctx.fillText(
+          hohmann.isWindowOpen ? '★ READY TO LAUNCH!' : `APOAPSIS (+${Math.round(hohmann.tofDays)}d)`,
+          targetScr.x + 9,
+          targetScr.y + 3
+        );
+        ctx.restore();
+      }
+
+      // 4. 발사된 화성 탐사선(Probe) 비행 궤적 및 실시간 애니메이션
+      if (probeMission.active) {
+        const elapsed = Math.max(0, d - probeMission.launchD);
+        const pState = getProbeStateAtElapsed(elapsed);
+        const distToMars = Math.hypot(mars.x - pState.x, mars.y - pState.y);
+
+        // 미션 텔레메트리 갱신
+        const pct = Math.min(100, Math.round(pState.frac * 100));
+        hudMissionTime.textContent = `T+${elapsed.toFixed(1)}d (${pct}%)`;
+        hudProbeVel.textContent = `${pState.velKmS.toFixed(1)} km/s`;
+        hudMarsDist.textContent = `${distToMars.toFixed(3)} AU`;
+
+        const pParam = probeMission.a_trans * (1.0 - probeMission.e_trans * probeMission.e_trans);
+
+        // (a) 전체 예정 전이 궤도 안내 점선
+        ctx.save();
+        ctx.strokeStyle = 'rgba(232, 121, 249, 0.25)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        for (let step = 0; step <= 60; step++) {
+          const nu = (step / 60) * Math.PI;
+          const rT = pParam / (1.0 + probeMission.e_trans * Math.cos(nu));
+          const lonT = probeMission.lon1 + nu;
+          const scr = toScreen(rT * Math.cos(lonT), rT * Math.sin(lonT), baseScale, cx, cy);
+          if (step === 0) ctx.moveTo(scr.x, scr.y);
+          else ctx.lineTo(scr.x, scr.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // (b) 지금까지 날아온 실선 플라즈마 항적 꼬리
+        ctx.strokeStyle = '#e879f9';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#e879f9';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        const maxSteps = 60;
+        for (let step = 0; step <= maxSteps; step++) {
+          const nu = (step / maxSteps) * pState.nu;
+          const rT = pParam / (1.0 + probeMission.e_trans * Math.cos(nu));
+          const lonT = probeMission.lon1 + nu;
+          const scr = toScreen(rT * Math.cos(lonT), rT * Math.sin(lonT), baseScale, cx, cy);
+          if (step === 0) ctx.moveTo(scr.x, scr.y);
+          else ctx.lineTo(scr.x, scr.y);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // (c) 출발 지점(Launch Site) 마커
+        const launchScr = toScreen(
+          probeMission.r1 * Math.cos(probeMission.lon1),
+          probeMission.r1 * Math.sin(probeMission.lon1),
+          baseScale, cx, cy
+        );
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath(); ctx.arc(launchScr.x, launchScr.y, 3, 0, Math.PI * 2); ctx.fill();
+
+        // (d) 탐사선 본체 아이콘 드로잉
+        const probeScr = toScreen(pState.x, pState.y, baseScale, cx, cy);
+
+        ctx.save();
+        ctx.translate(probeScr.x, probeScr.y);
+        // 화면 Y축 반전 고려한 회전각
+        ctx.rotate(-pState.headingRad);
+
+        // 우주선 델타익 실루엣
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#e879f9';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(7, 0);
+        ctx.lineTo(-5, -4.5);
+        ctx.lineTo(-3, 0);
+        ctx.lineTo(-5, 4.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // (e) 원일점 도착(100%) 판정 및 이펙트
+        if (pState.frac >= 1.0) {
+          if (probeMission.status === 'IN_FLIGHT') {
+            isPlaying = false;
+            btnPlay.textContent = '▶ 자동 공전';
+            btnPlay.classList.remove('active');
+            probeMission.status = distToMars <= 0.085 ? 'ARRIVED_SUCCESS' : 'ARRIVED_MISSED';
+          }
+
+          probeMission.pulseRadius = (probeMission.pulseRadius + 0.6) % 28;
+          const isSuccess = probeMission.status === 'ARRIVED_SUCCESS';
+          const effectColor = isSuccess ? '#34d399' : '#f43f5e';
+
+          ctx.strokeStyle = effectColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(probeScr.x, probeScr.y, 6 + probeMission.pulseRadius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.font = '700 11px "IBM Plex Mono", monospace';
+          ctx.fillStyle = effectColor;
+          ctx.fillText(
+            isSuccess ? '★ MARS ORBIT INSERTION SUCCESS!' : `✕ MISSED MARS (DIST: ${distToMars.toFixed(2)} AU)`,
+            probeScr.x + 12,
+            probeScr.y - 10
+          );
+        } else {
+          ctx.font = '600 10px "IBM Plex Mono", monospace';
+          ctx.fillStyle = '#f0abfc';
+          ctx.fillText(`PROBE (${pct}%)`, probeScr.x + 10, probeScr.y - 8);
+        }
+
+        ctx.restore();
+      }
+
+      // 5. 태양-지구 라그랑주 점 (SE-L1~L5)
+      if (showSEL) {
+        const seL = computeLagrangePoints(0, 0, earth.x, earth.y, MASS_RATIOS.sunEarth, 8.0);
+        const sL4 = toScreen(seL.L4.x, seL.L4.y, baseScale, cx, cy);
+        const sL5 = toScreen(seL.L5.x, seL.L5.y, baseScale, cx, cy);
+
+        if (showTriangleGrid) {
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.16)';
+          ctx.setLineDash([3, 4]);
+          ctx.beginPath();
+          ctx.moveTo(sunScr.x, sunScr.y); ctx.lineTo(sL4.x, sL4.y); ctx.lineTo(earthScr.x, earthScr.y);
+          ctx.moveTo(sunScr.x, sunScr.y); ctx.lineTo(sL5.x, sL5.y); ctx.lineTo(earthScr.x, earthScr.y);
+          ctx.moveTo(sunScr.x, sunScr.y); ctx.lineTo(earthScr.x, earthScr.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        ['L1', 'L2', 'L3', 'L4', 'L5'].forEach(k => {
+          const pt = toScreen(seL[k].x, seL[k].y, baseScale, cx, cy);
+          drawDiamondMarker(pt.x, pt.y, 4.5, '#38bdf8', k, 'SE-');
+        });
+      }
+
+      // 6. 태양-화성 라그랑주 점 (SM-L1~L5)
+      if (showSML) {
+        const smL = computeLagrangePoints(0, 0, mars.x, mars.y, MASS_RATIOS.sunMars, 16.0);
+        const mL4 = toScreen(smL.L4.x, smL.L4.y, baseScale, cx, cy);
+        const mL5 = toScreen(smL.L5.x, smL.L5.y, baseScale, cx, cy);
+
+        if (showTriangleGrid) {
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.14)';
+          ctx.setLineDash([3, 4]);
+          ctx.beginPath();
+          ctx.moveTo(sunScr.x, sunScr.y); ctx.lineTo(mL4.x, mL4.y); ctx.lineTo(marsScr.x, marsScr.y);
+          ctx.moveTo(sunScr.x, sunScr.y); ctx.lineTo(mL5.x, mL5.y); ctx.lineTo(marsScr.x, marsScr.y);
+          ctx.moveTo(sunScr.x, sunScr.y); ctx.lineTo(marsScr.x, marsScr.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        ['L1', 'L2', 'L3', 'L4', 'L5'].forEach(k => {
+          const pt = toScreen(smL[k].x, smL[k].y, baseScale, cx, cy);
+          drawDiamondMarker(pt.x, pt.y, 4.5, '#f43f5e', k, 'SM-');
+        });
+      }
+
+      // 7. 지구 주변 달 궤도 & EM 라그랑주 점
+      const moonVisualRadiusAU = 0.12;
+      const moonAstroX = earth.x + moon.dx * moonVisualRadiusAU;
+      const moonAstroY = earth.y + moon.dy * moonVisualRadiusAU;
+      const moonScr = toScreen(moonAstroX, moonAstroY, baseScale, cx, cy);
+
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.25)';
+      ctx.beginPath();
+      ctx.arc(earthScr.x, earthScr.y, moonVisualRadiusAU * baseScale, 0, Math.PI * 2);
+      ctx.stroke();
+
+      if (showEML) {
+        const emL = computeLagrangePoints(earth.x, earth.y, moonAstroX, moonAstroY, MASS_RATIOS.earthMoon, 1.35);
+        ['L1', 'L2', 'L3', 'L4', 'L5'].forEach(k => {
+          const pt = toScreen(emL[k].x, emL[k].y, baseScale, cx, cy);
+          drawDiamondMarker(pt.x, pt.y, 3.2, '#fde047', k === 'L4' || k === 'L5' ? k : '', 'EM-');
+        });
+      }
+
+      // 8. 천체 본체 드로잉
+      const sunGlow = ctx.createRadialGradient(sunScr.x, sunScr.y, 2, sunScr.x, sunScr.y, 24);
+      sunGlow.addColorStop(0, '#fde047');
+      sunGlow.addColorStop(0.4, 'rgba(251, 191, 36, 0.4)');
+      sunGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = sunGlow;
+      ctx.beginPath(); ctx.arc(sunScr.x, sunScr.y, 24, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath(); ctx.arc(sunScr.x, sunScr.y, 6, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(earthScr.x, earthScr.y, 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '700 11px "IBM Plex Mono", monospace';
+      ctx.fillText('EARTH', earthScr.x + 8, earthScr.y - 8);
+
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(moonScr.x, moonScr.y, 2.8, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath(); ctx.arc(marsScr.x, marsScr.y, 4.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillText('MARS', marsScr.x + 8, marsScr.y - 8);
+    }
+
+    // ========================================================================
+    // 모드 2: 지구-달 근접 확대 뷰
+    // ========================================================================
+    else {
+      const emScale = Math.min(width, height) * 0.30 * camZoom;
+
+      const angleToSun = Math.atan2(-earth.y, -earth.x);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angleToSun) * emScale * 1.45, cy - Math.sin(angleToSun) * emScale * 1.45);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText(
+        '☀ TO SUN',
+        cx + Math.cos(angleToSun) * emScale * 1.25,
+        cy - Math.sin(angleToSun) * emScale * 1.25 - 6
+      );
+
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.25)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, moon.rNorm * emScale, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const earthScr = { x: cx, y: cy };
+      const moonScr = toScreen(moon.dx, moon.dy, emScale, cx, cy);
+
+      const emL = computeLagrangePoints(0, 0, moon.dx, moon.dy, MASS_RATIOS.earthMoon, 1.0);
+      const emL4 = toScreen(emL.L4.x, emL.L4.y, emScale, cx, cy);
+      const emL5 = toScreen(emL.L5.x, emL.L5.y, emScale, cx, cy);
+
+      if (showTriangleGrid) {
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.2)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(earthScr.x, earthScr.y); ctx.lineTo(emL4.x, emL4.y); ctx.lineTo(moonScr.x, moonScr.y);
+        ctx.moveTo(earthScr.x, earthScr.y); ctx.lineTo(emL5.x, emL5.y); ctx.lineTo(moonScr.x, moonScr.y);
+        ctx.moveTo(earthScr.x, earthScr.y); ctx.lineTo(moonScr.x, moonScr.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (showEML) {
+        ['L1', 'L2', 'L3', 'L4', 'L5'].forEach(k => {
+          const pt = toScreen(emL[k].x, emL[k].y, emScale, cx, cy);
+          drawDiamondMarker(pt.x, pt.y, 5.5, '#fde047', k, 'EM-');
+        });
+      }
+
+      const earthGlow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 22);
+      earthGlow.addColorStop(0, '#38bdf8');
+      earthGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = earthGlow;
+      ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '700 11px "IBM Plex Mono", monospace';
+      ctx.fillText('EARTH', cx + 13, cy + 4);
+
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(moonScr.x, moonScr.y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillText('MOON (384,400 km)', moonScr.x + 10, moonScr.y - 8);
+    }
+  }
+
+  function loop() {
+    if (isPlaying) {
+      // 탐사선 비행 중일 때는 관측하기 가장 좋은 속도(프레임당 1.1일 = 약 4초 만에 화성 도착)로 진행
+      const stepDays = probeMission.active ? 1.1 : (viewMode === 'SOLAR' ? 0.6 : 0.12);
+      currentDate = new Date(currentDate.getTime() + stepDays * 86400000);
+      syncDatePickerFromCurrent();
+    }
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  function syncDatePickerFromCurrent() {
+    const yyyy = currentDate.getFullYear();
+    const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(currentDate.getDate()).padStart(2, '0');
+    datePicker.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  // 이벤트 바인딩
+  datePicker.addEventListener('change', (e) => {
+    if (e.target.value) {
+      currentDate = new Date(e.target.value + 'T12:00:00');
+      baseReferenceDate = new Date(currentDate);
+      dayOffsetRange.value = 0;
+    }
+  });
+
+  btnToday.addEventListener('click', () => {
+    if (probeMission.active) launchMarsProbe(); // 미션 리셋
+    currentDate = new Date();
+    baseReferenceDate = new Date(currentDate);
+    dayOffsetRange.value = 0;
+    syncDatePickerFromCurrent();
+  });
+
+  dayOffsetRange.addEventListener('input', (e) => {
+    const offsetDays = parseInt(e.target.value, 10);
+    currentDate = new Date(baseReferenceDate.getTime() + offsetDays * 86400000);
+    syncDatePickerFromCurrent();
+  });
+
+  btnPlay.addEventListener('click', () => {
+    isPlaying = !isPlaying;
+    btnPlay.textContent = isPlaying ? '❚❚ 정지' : '▶ 자동 공전';
+    btnPlay.classList.toggle('active', isPlaying);
+    if (!isPlaying) {
+      baseReferenceDate = new Date(currentDate);
+      dayOffsetRange.value = 0;
+    }
+  });
+
+  btnToggleHohmann.addEventListener('click', () => {
+    showHohmann = !showHohmann;
+    btnToggleHohmann.classList.toggle('active', showHohmann);
+  });
+
+  btnNextWindow.addEventListener('click', warpToNextLaunchWindow);
+  btnLaunchProbe.addEventListener('click', launchMarsProbe);
+
+  btnViewSolar.addEventListener('click', () => {
+    viewMode = 'SOLAR';
+    camZoom = 1.0; camPanX = 0; camPanY = 0;
+    btnViewSolar.classList.add('active');
+    btnViewEM.classList.remove('active');
+  });
+
+  btnViewEM.addEventListener('click', () => {
+    viewMode = 'EM_ZOOM';
+    camZoom = 1.0; camPanX = 0; camPanY = 0;
+    btnViewEM.classList.add('active');
+    btnViewSolar.classList.remove('active');
+  });
+
+  btnToggleSEL.addEventListener('click', () => {
+    showSEL = !showSEL;
+    btnToggleSEL.classList.toggle('active', showSEL);
+  });
+
+  btnToggleSML.addEventListener('click', () => {
+    showSML = !showSML;
+    btnToggleSML.classList.toggle('active', showSML);
+  });
+
+  btnToggleEML.addEventListener('click', () => {
+    showEML = !showEML;
+    btnToggleEML.classList.toggle('active', showEML);
+  });
+
+  btnToggleGrid.addEventListener('click', () => {
+    showTriangleGrid = !showTriangleGrid;
+    btnToggleGrid.classList.toggle('active', showTriangleGrid);
+  });
+
+  let isDragging = false;
+  let lastMouse = { x: 0, y: 0 };
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastMouse = { x: e.clientX, y: e.clientY };
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    camPanX += e.clientX - lastMouse.x;
+    camPanY += e.clientY - lastMouse.y;
+    lastMouse = { x: e.clientX, y: e.clientY };
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+    camZoom = Math.max(0.4, Math.min(8.0, camZoom * factor));
+  }, { passive: false });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging && e.touches.length === 1) {
+      camPanX += e.touches[0].clientX - lastMouse.x;
+      camPanY += e.touches[0].clientY - lastMouse.y;
+      lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  syncDatePickerFromCurrent();
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
