@@ -159,7 +159,7 @@
 <div class="container">
   <div class="back"><a href="index.html">← marsko</a></div>
   <h1>이미지 컬러 팔레트 추출기</h1>
-  <p class="sub">지배적인 색상 분석 · 팬톤 칩 스타일 카드 생성</p>
+  <p class="sub">지배적인 색상 분석 · 스와치 칩 카드 생성</p>
   <div class="dropzone" id="dropzone">
     <span>📷 사진 선택 / 불러오기</span>
     <small>풍경, 인물, 스냅 사진을 올려보세요</small>
@@ -171,7 +171,7 @@
       <label>컬러 칩 모양</label>
       <div class="chip-control" id="chipControl">
         <button type="button" data-shape="circle" class="active">원형 (동그라미)</button>
-        <button type="button" data-shape="rect">사각형 (팬톤)</button>
+        <button type="button" data-shape="rect">사각형 (스와치)</button>
       </div>
     </div>
     <!-- 카드 타이틀 -->
@@ -384,7 +384,7 @@
         ctx.arc(centerX, chipsY + (chipSize / 2), chipSize / 2, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // 사각형 (팬톤 스타일 둥근 모서리)
+        // 사각형 (스와치 스타일 둥근 모서리)
         ctx.beginPath();
         ctx.roundRect(topX, chipsY, chipSize, chipSize, 12);
         ctx.fill();

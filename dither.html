@@ -7,7 +7,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/marsko-hud.css">
 <meta name="theme-color" content="#ffffff">
-  <title>1-Bit 디더링 & 게임보이 카메라 변환기</title>
+  <title>1-Bit 디더링 & 4계조 도트 변환기</title>
   <!-- 레트로 모노스페이스 폰트 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -180,8 +180,8 @@
 
 <div class="container">
   <div class="back"><a href="index.html">← marsko</a></div>
-  <h1>1-Bit 디더링 & 게임보이 카메라</h1>
-  <p class="sub">레트로 매킨토시 · CRT 터미널 · 도트 픽셀 변환기</p>
+  <h1>1-Bit 디더링 & 4계조 도트</h1>
+  <p class="sub">클래식 1-bit · CRT 터미널 · 도트 픽셀 변환기</p>
 
   <div class="dropzone" id="dropzone">
     <span>📷 사진 선택 / 불러오기</span>
@@ -204,10 +204,10 @@
     <div class="control-row">
       <label for="algoSelect">디더링 방식</label>
       <select id="algoSelect">
-        <option value="atkinson" selected>Atkinson (클래식 매킨토시)</option>
+        <option value="atkinson" selected>Atkinson (클래식 1-bit)</option>
         <option value="floyd">Floyd-Steinberg (정밀 점묘화)</option>
         <option value="bayer">Bayer Matrix (레트로 게임 크로스해칭)</option>
-        <option value="gameboy">Game Boy Camera (128px + 4계조)</option>
+        <option value="gameboy">Portable 4-tone (160px + 4계조)</option>
       </select>
     </div>
 
@@ -215,10 +215,10 @@
     <label style="font-weight: 600; font-size: 0.88rem; color: #343a40;">모니터 / 기기 컬러 테마</label>
     <div class="palette-grid" id="paletteGrid">
       <button type="button" class="pal-btn active" data-pal="mac">
-        <span class="dot-swatch" style="background: #111;"></span> 매킨토시 흑백
+        <span class="dot-swatch" style="background: #111;"></span> 모노크롬 흑백
       </button>
       <button type="button" class="pal-btn" data-pal="gb">
-        <span class="dot-swatch" style="background: #8bac0f;"></span> 게임보이 그린
+        <span class="dot-swatch" style="background: #8bac0f;"></span> 올리브 4계조
       </button>
       <button type="button" class="pal-btn" data-pal="crtGreen">
         <span class="dot-swatch" style="background: #00ff66;"></span> CRT 그린
@@ -261,7 +261,7 @@
       </div>
     </div>
 
-    <!-- 게임보이 프레임 보더 체크 -->
+    <!-- 레트로 스탬프 바 -->
     <div class="control-row">
       <label for="frameCheck">레트로 스탬프 하단 바 추가</label>
       <input type="checkbox" id="frameCheck" checked style="width: 20px; height: 20px;">
@@ -351,7 +351,7 @@
     fileInput.value = '';
   });
 
-  // 알고리즘 변경 시 게임보이 모드는 자동으로 게임보이 그린 팔레트 추천
+  // 4계조 모드면 올리브 팔레트 추천
   algoSelect.addEventListener('change', () => {
     if (algoSelect.value === 'gameboy') {
       selectPalette('gb');
@@ -394,7 +394,7 @@
     if (!sourceImg) return;
 
     const algo = algoSelect.value;
-    // 게임보이 카메라 모드는 오리지널 감성인 가로 160px 고정
+    // 4계조 portable 모드는 가로 160px 고정
     const dotW = (algo === 'gameboy') ? 160 : parseInt(widthRange.value, 10);
     const aspect = sourceImg.naturalHeight / sourceImg.naturalWidth;
     const dotH = Math.round(dotW * aspect);
@@ -485,7 +485,7 @@
         }
       }
     } else if (algo === 'gameboy') {
-      // 2-Bit (4계조) Game Boy Camera Bayer Dithering
+      // 2-Bit (4계조) Bayer dither
       const c4 = palObj.colors4;
       for (let y = 0; y < dotH; y++) {
         for (let x = 0; x < dotW; x++) {
@@ -529,7 +529,7 @@
       ctx.font = '700 20px "IBM Plex Mono", monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      const modeTitle = algo === 'gameboy' ? 'GAME BOY CAM // 2-BIT' : `${algo.toUpperCase()} // 1-BIT`;
+      const modeTitle = algo === 'gameboy' ? 'PORTABLE CAM // 2-BIT' : `${algo.toUpperCase()} // 1-BIT`;
       ctx.fillText(modeTitle, 24, finalImgH + footerH / 2);
 
       ctx.textAlign = 'right';

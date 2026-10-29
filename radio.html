@@ -101,6 +101,32 @@
       opacity: 0.45;
       cursor: default;
     }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .chip {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #242d40;
+      background: #171c28;
+      color: #8fa3bd;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .chip:hover {
+      border-color: rgba(0, 240, 255, 0.35);
+      color: #d8e2ec;
+    }
+    .chip.active {
+      border-color: rgba(0, 240, 255, 0.55);
+      color: #00f0ff;
+      background: rgba(0, 240, 255, 0.08);
+    }
     .meta-row {
       display: flex;
       justify-content: space-between;
@@ -242,15 +268,17 @@
       <div class="header-left">
         <a class="home-link" href="index.html">← marsko</a>
         <h1>WORLD RADIO</h1>
-        <p class="sub">country dial · radio-browser · personal</p>
+        <p class="sub">world dial · radio-browser · personal</p>
       </div>
     </header>
+
+    <div class="chips" id="chips" aria-label="Quick countries"></div>
 
     <div class="filters">
       <select id="country" aria-label="Country"></select>
       <button type="button" class="btn" id="randomBtn" title="Random station">🎲</button>
     </div>
-    <input type="search" id="q" placeholder="search name / tag / city…" autocomplete="off">
+    <input type="search" id="q" placeholder="search name / city / country…" autocomplete="off">
 
     <div class="meta-row">
       <span id="countLabel">loading countries…</span>
@@ -285,10 +313,34 @@
       'https://at1.api.radio-browser.info',
     ];
     const UA = 'MarskoRadioDial/1.0';
-    const PREFERRED = ['KR', 'JP', 'US', 'GB', 'FR', 'DE', 'BR', 'MX'];
+    const STORAGE_KEY = 'marsko-radio-dial';
+    const QUICK = [
+      { code: 'WORLD', label: 'World' },
+      { code: 'JP', label: 'Japan' },
+      { code: 'US', label: 'USA' },
+      { code: 'GB', label: 'UK' },
+      { code: 'FR', label: 'France' },
+      { code: 'DE', label: 'Germany' },
+      { code: 'BR', label: 'Brazil' },
+      { code: 'MX', label: 'Mexico' },
+      { code: 'IT', label: 'Italy' },
+      { code: 'ES', label: 'Spain' },
+      { code: 'NL', label: 'Netherlands' },
+      { code: 'CA', label: 'Canada' },
+      { code: 'AU', label: 'Australia' },
+      { code: 'TW', label: 'Taiwan' },
+      { code: 'CN', label: 'China' },
+      { code: 'IN', label: 'India' },
+      { code: 'RU', label: 'Russia' },
+      { code: 'TR', label: 'Türkiye' },
+      { code: 'PL', label: 'Poland' },
+      { code: 'SE', label: 'Sweden' },
+      { code: 'KR', label: 'Korea' },
+    ];
 
     const els = {
       country: document.getElementById('country'),
+      chips: document.getElementById('chips'),
       q: document.getElementById('q'),
       list: document.getElementById('list'),
       countLabel: document.getElementById('countLabel'),
@@ -342,6 +394,31 @@
         .trim() || name;
     }
 
+    function syncChips() {
+      const cc = els.country.value;
+      els.chips.querySelectorAll('.chip').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.code === cc);
+      });
+    }
+
+    function renderChips() {
+      els.chips.innerHTML = '';
+      for (const item of QUICK) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chip';
+        btn.dataset.code = item.code;
+        btn.textContent = item.label;
+        btn.addEventListener('click', () => {
+          if (![...els.country.options].some((o) => o.value === item.code)) return;
+          els.country.value = item.code;
+          els.country.dispatchEvent(new Event('change'));
+        });
+        els.chips.appendChild(btn);
+      }
+      syncChips();
+    }
+
     async function loadCountries() {
       const rows = await apiFetch('/json/countries');
       const usable = rows
@@ -349,6 +426,11 @@
         .sort((a, b) => shortCountryName(a.name).localeCompare(shortCountryName(b.name)));
 
       els.country.innerHTML = '';
+      const worldOpt = document.createElement('option');
+      worldOpt.value = 'WORLD';
+      worldOpt.textContent = 'World — popular mix';
+      els.country.appendChild(worldOpt);
+
       for (const c of usable) {
         const opt = document.createElement('option');
         opt.value = c.iso_3166_1.toUpperCase();
@@ -356,24 +438,27 @@
         els.country.appendChild(opt);
       }
 
-      const saved = localStorage.getItem('marsko-radio-cc');
+      const saved = localStorage.getItem(STORAGE_KEY);
       const pick = (saved && [...els.country.options].some((o) => o.value === saved))
         ? saved
-        : (PREFERRED.find((cc) => [...els.country.options].some((o) => o.value === cc)) || usable[0]?.iso_3166_1);
-      if (pick) els.country.value = pick.toUpperCase();
+        : 'WORLD';
+      els.country.value = pick;
+      renderChips();
     }
 
     async function loadStations() {
       const cc = els.country.value;
-      localStorage.setItem('marsko-radio-cc', cc);
+      localStorage.setItem(STORAGE_KEY, cc);
+      syncChips();
       els.list.innerHTML = '<li class="loading">fetching stations…</li>';
       els.countLabel.textContent = 'loading…';
       stations = [];
       filtered = [];
 
-      const data = await apiFetch(
-        `/json/stations/search?countrycode=${encodeURIComponent(cc)}&hidebroken=true&order=clickcount&reverse=true&limit=500`
-      );
+      const qs = cc === 'WORLD'
+        ? '/json/stations/search?hidebroken=true&order=clickcount&reverse=true&limit=400'
+        : `/json/stations/search?countrycode=${encodeURIComponent(cc)}&hidebroken=true&order=clickcount&reverse=true&limit=500`;
+      const data = await apiFetch(qs);
 
       const seen = new Set();
       stations = data.filter((s) => {
@@ -393,14 +478,17 @@
       filtered = !q
         ? stations.slice()
         : stations.filter((s) => {
-            const blob = [s.name, s.state, s.tags, s.language, s.codec].join(' ').toLowerCase();
+            const blob = [s.name, s.state, s.country, s.countrycode, s.tags, s.language, s.codec]
+              .join(' ')
+              .toLowerCase();
             return blob.includes(q);
           });
       renderList();
     }
 
     function renderList() {
-      els.countLabel.textContent = `${filtered.length} / ${stations.length} stations`;
+      const scope = els.country.value === 'WORLD' ? 'world' : els.country.value;
+      els.countLabel.textContent = `${filtered.length} / ${stations.length} · ${scope}`;
       if (!filtered.length) {
         els.list.innerHTML = '<li class="empty">no stations match</li>';
         return;
@@ -414,8 +502,10 @@
         btn.className = 'station' + (current && current.stationuuid === s.stationuuid ? ' active' : '');
         btn.dataset.uuid = s.stationuuid;
 
-        const tags = (s.tags || '').split(',').filter(Boolean).slice(0, 3).join(' · ');
-        const place = [s.state, s.codec, s.bitrate ? s.bitrate + 'k' : ''].filter(Boolean).join(' · ');
+        const tags = (s.tags || '').split(',').filter(Boolean).slice(0, 2).join(' · ');
+        const place = [s.countrycode, s.state, s.codec, s.bitrate ? s.bitrate + 'k' : '']
+          .filter(Boolean)
+          .join(' · ');
 
         btn.innerHTML =
           `<div class="station-name"></div><div class="station-meta"></div>`;
