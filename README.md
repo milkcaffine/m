@@ -1,6 +1,6 @@
 # Marsko (`marsko.art`)
 
-Personal site and night workshop for **Marsko** — Tokyo suburb walker writing tanka, dark novels, and browser-side tools.
+Personal site for **Marsko** — tanka and dark novels from the Tokyo suburbs, plus browser-side tools.
 
 ## Local preview
 
