@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Marsko lab tool — world radio dial by country.">
+  <meta name="theme-color" content="#08090d">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <title>WORLD RADIO DIAL // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #08090d;
+      color: #d8e2ec;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 14px;
+      padding-bottom: 110px;
+    }
+    .container {
+      background: #10121a;
+      border: 1px solid #1c2233;
+      max-width: 560px;
+      width: 100%;
+      border-radius: 24px;
+      padding: 20px 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 240, 255, 0.05);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+    .header-left { display: flex; flex-direction: column; gap: 2px; }
+    .home-link {
+      color: #627d98;
+      font-size: 0.72rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      margin-bottom: 2px;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .home-link:hover { color: #00f0ff; }
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 2px;
+      color: #00f0ff;
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+    }
+    p.sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #556987;
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    select, input[type="search"], button {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      border-radius: 12px;
+      border: 1px solid #242d40;
+      background: #171c28;
+      color: #d8e2ec;
+      padding: 10px 12px;
+      outline: none;
+    }
+    select { width: 100%; cursor: pointer; }
+    select:focus, input[type="search"]:focus {
+      border-color: rgba(0, 240, 255, 0.45);
+    }
+    input[type="search"] {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .btn {
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .btn:hover {
+      border-color: rgba(0, 240, 255, 0.45);
+      color: #00f0ff;
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #556987;
+      margin-bottom: 8px;
+    }
+    .list {
+      list-style: none;
+      max-height: min(58vh, 520px);
+      overflow-y: auto;
+      border: 1px solid #1a2030;
+      border-radius: 14px;
+      background: #06070a;
+    }
+    .list::-webkit-scrollbar { width: 8px; }
+    .list::-webkit-scrollbar-thumb {
+      background: #242d40;
+      border-radius: 8px;
+    }
+    .station {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #141925;
+      border-radius: 0;
+      padding: 11px 12px;
+      cursor: pointer;
+      display: grid;
+      gap: 3px;
+    }
+    .station:last-child { border-bottom: none; }
+    .station:hover { background: rgba(0, 240, 255, 0.04); }
+    .station.active {
+      background: rgba(0, 240, 255, 0.08);
+      box-shadow: inset 3px 0 0 #00f0ff;
+    }
+    .station-name {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      color: #e8eef6;
+      line-height: 1.35;
+    }
+    .station-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #627d98;
+    }
+    .empty, .loading {
+      padding: 28px 16px;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #556987;
+    }
+
+    .player {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      width: min(560px, calc(100% - 28px));
+      background: rgba(16, 18, 26, 0.94);
+      border: 1px solid #242d40;
+      border-radius: 18px;
+      padding: 12px 14px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55);
+      z-index: 20;
+    }
+    .now {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .now-text { min-width: 0; flex: 1; }
+    .now-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      color: #00f0ff;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .now-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      color: #e8eef6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .now-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #627d98;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .player-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .player-actions .btn {
+      padding: 8px 10px;
+      min-width: 42px;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #334155;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .status-dot.on {
+      background: #00f0ff;
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    .status-dot.err { background: #fb7185; box-shadow: none; animation: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    audio { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <a class="home-link" href="index.html">← marsko</a>
+        <h1>WORLD RADIO</h1>
+        <p class="sub">country dial · radio-browser · personal</p>
+      </div>
+    </header>
+
+    <div class="filters">
+      <select id="country" aria-label="Country"></select>
+      <button type="button" class="btn" id="randomBtn" title="Random station">🎲</button>
+    </div>
+    <input type="search" id="q" placeholder="search name / tag / city…" autocomplete="off">
+
+    <div class="meta-row">
+      <span id="countLabel">loading countries…</span>
+      <span id="apiHost"></span>
+    </div>
+
+    <ul class="list" id="list" aria-label="Stations">
+      <li class="loading">tuning in…</li>
+    </ul>
+  </div>
+
+  <div class="player">
+    <div class="now">
+      <div class="now-text">
+        <div class="now-label"><span class="status-dot" id="dot"></span><span id="statusText">idle</span></div>
+        <div class="now-title" id="nowTitle">pick a station</div>
+        <div class="now-sub" id="nowSub">—</div>
+      </div>
+      <div class="player-actions">
+        <button type="button" class="btn" id="stopBtn" disabled>■</button>
+        <button type="button" class="btn" id="playBtn" disabled>▶</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio" crossorigin="anonymous" preload="none"></audio>
+
+  <script>
+    const API_MIRRORS = [
+      'https://de1.api.radio-browser.info',
+      'https://fi1.api.radio-browser.info',
+      'https://at1.api.radio-browser.info',
+    ];
+    const UA = 'MarskoRadioDial/1.0';
+    const PREFERRED = ['KR', 'JP', 'US', 'GB', 'FR', 'DE', 'BR', 'MX'];
+
+    const els = {
+      country: document.getElementById('country'),
+      q: document.getElementById('q'),
+      list: document.getElementById('list'),
+      countLabel: document.getElementById('countLabel'),
+      apiHost: document.getElementById('apiHost'),
+      randomBtn: document.getElementById('randomBtn'),
+      playBtn: document.getElementById('playBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      nowTitle: document.getElementById('nowTitle'),
+      nowSub: document.getElementById('nowSub'),
+      statusText: document.getElementById('statusText'),
+      dot: document.getElementById('dot'),
+      audio: document.getElementById('audio'),
+    };
+
+    let apiBase = API_MIRRORS[0];
+    let stations = [];
+    let filtered = [];
+    let current = null;
+    let hls = null;
+    let searchTimer = null;
+
+    function setStatus(mode, text) {
+      els.dot.className = 'status-dot' + (mode === 'on' ? ' on' : mode === 'err' ? ' err' : '');
+      els.statusText.textContent = text;
+    }
+
+    async function apiFetch(path) {
+      let lastErr;
+      const order = [apiBase, ...API_MIRRORS.filter((m) => m !== apiBase)];
+      for (const base of order) {
+        try {
+          const res = await fetch(base + path, {
+            headers: { 'User-Agent': UA, Accept: 'application/json' },
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          apiBase = base;
+          els.apiHost.textContent = new URL(base).host.replace('.api.radio-browser.info', '');
+          return await res.json();
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error('API unreachable');
+    }
+
+    function shortCountryName(name) {
+      return String(name || '')
+        .replace(/^The\s+/i, '')
+        .replace(/\s+Of\s+.*/i, '')
+        .replace(/,.*$/, '')
+        .trim() || name;
+    }
+
+    async function loadCountries() {
+      const rows = await apiFetch('/json/countries');
+      const usable = rows
+        .filter((c) => c.iso_3166_1 && c.iso_3166_1.length === 2 && c.stationcount > 0)
+        .sort((a, b) => shortCountryName(a.name).localeCompare(shortCountryName(b.name)));
+
+      els.country.innerHTML = '';
+      for (const c of usable) {
+        const opt = document.createElement('option');
+        opt.value = c.iso_3166_1.toUpperCase();
+        opt.textContent = `${shortCountryName(c.name)} (${c.stationcount})`;
+        els.country.appendChild(opt);
+      }
+
+      const saved = localStorage.getItem('marsko-radio-cc');
+      const pick = (saved && [...els.country.options].some((o) => o.value === saved))
+        ? saved
+        : (PREFERRED.find((cc) => [...els.country.options].some((o) => o.value === cc)) || usable[0]?.iso_3166_1);
+      if (pick) els.country.value = pick.toUpperCase();
+    }
+
+    async function loadStations() {
+      const cc = els.country.value;
+      localStorage.setItem('marsko-radio-cc', cc);
+      els.list.innerHTML = '<li class="loading">fetching stations…</li>';
+      els.countLabel.textContent = 'loading…';
+      stations = [];
+      filtered = [];
+
+      const data = await apiFetch(
+        `/json/stations/search?countrycode=${encodeURIComponent(cc)}&hidebroken=true&order=clickcount&reverse=true&limit=500`
+      );
+
+      const seen = new Set();
+      stations = data.filter((s) => {
+        const url = s.url_resolved || s.url;
+        if (!url || !s.name) return false;
+        const key = (s.stationuuid || url).toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      applyFilter();
+    }
+
+    function applyFilter() {
+      const q = els.q.value.trim().toLowerCase();
+      filtered = !q
+        ? stations.slice()
+        : stations.filter((s) => {
+            const blob = [s.name, s.state, s.tags, s.language, s.codec].join(' ').toLowerCase();
+            return blob.includes(q);
+          });
+      renderList();
+    }
+
+    function renderList() {
+      els.countLabel.textContent = `${filtered.length} / ${stations.length} stations`;
+      if (!filtered.length) {
+        els.list.innerHTML = '<li class="empty">no stations match</li>';
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+      for (const s of filtered) {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'station' + (current && current.stationuuid === s.stationuuid ? ' active' : '');
+        btn.dataset.uuid = s.stationuuid;
+
+        const tags = (s.tags || '').split(',').filter(Boolean).slice(0, 3).join(' · ');
+        const place = [s.state, s.codec, s.bitrate ? s.bitrate + 'k' : ''].filter(Boolean).join(' · ');
+
+        btn.innerHTML =
+          `<div class="station-name"></div><div class="station-meta"></div>`;
+        btn.querySelector('.station-name').textContent = s.name.trim();
+        btn.querySelector('.station-meta').textContent = [place, tags].filter(Boolean).join(' · ') || 'stream';
+        btn.addEventListener('click', () => playStation(s));
+        li.appendChild(btn);
+        frag.appendChild(li);
+      }
+      els.list.innerHTML = '';
+      els.list.appendChild(frag);
+    }
+
+    function destroyHls() {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+    }
+
+    function isHlsUrl(url) {
+      return /\.m3u8(\?|$)/i.test(url) || url.includes('application/vnd.apple.mpegurl');
+    }
+
+    async function playStation(station) {
+      current = station;
+      const url = station.url_resolved || station.url;
+      els.nowTitle.textContent = station.name.trim();
+      els.nowSub.textContent = [station.state, station.countrycode, station.codec].filter(Boolean).join(' · ') || url;
+      els.playBtn.disabled = false;
+      els.stopBtn.disabled = false;
+      setStatus('', 'connecting…');
+      renderList();
+
+      destroyHls();
+      els.audio.removeAttribute('src');
+      els.audio.load();
+
+      try {
+        // popularity ping (best-effort)
+        apiFetch(`/json/url/${encodeURIComponent(station.stationuuid)}`).catch(() => {});
+
+        if (isHlsUrl(url) && window.Hls && Hls.isSupported()) {
+          hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+          hls.loadSource(url);
+          hls.attachMedia(els.audio);
+          await new Promise((resolve, reject) => {
+            hls.once(Hls.Events.MANIFEST_PARSED, resolve);
+            hls.once(Hls.Events.ERROR, (_e, data) => {
+              if (data?.fatal) reject(new Error('hls failed'));
+            });
+          });
+        } else if (isHlsUrl(url) && els.audio.canPlayType('application/vnd.apple.mpegurl')) {
+          els.audio.src = url;
+        } else {
+          els.audio.src = url;
+        }
+
+        await els.audio.play();
+        setStatus('on', 'on air');
+      } catch (err) {
+        console.warn(err);
+        setStatus('err', 'stream failed — try another');
+      }
+    }
+
+    function stopPlayback() {
+      destroyHls();
+      els.audio.pause();
+      els.audio.removeAttribute('src');
+      els.audio.load();
+      setStatus('', 'stopped');
+    }
+
+    function togglePlay() {
+      if (!current) return;
+      if (els.audio.paused) {
+        els.audio.play().then(() => setStatus('on', 'on air')).catch(() => setStatus('err', 'play blocked'));
+      } else {
+        els.audio.pause();
+        setStatus('', 'paused');
+      }
+    }
+
+    function playRandom() {
+      const pool = filtered.length ? filtered : stations;
+      if (!pool.length) return;
+      const s = pool[Math.floor(Math.random() * pool.length)];
+      playStation(s);
+      const active = els.list.querySelector('.station.active');
+      if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    els.country.addEventListener('change', () => {
+      loadStations().catch((e) => {
+        els.list.innerHTML = `<li class="empty">failed: ${e.message}</li>`;
+        setStatus('err', 'api error');
+      });
+    });
+
+    els.q.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(applyFilter, 120);
+    });
+
+    els.randomBtn.addEventListener('click', playRandom);
+    els.playBtn.addEventListener('click', togglePlay);
+    els.stopBtn.addEventListener('click', stopPlayback);
+
+    els.audio.addEventListener('playing', () => setStatus('on', 'on air'));
+    els.audio.addEventListener('waiting', () => setStatus('', 'buffering…'));
+    els.audio.addEventListener('pause', () => {
+      if (els.audio.src || hls) setStatus('', 'paused');
+    });
+    els.audio.addEventListener('error', () => {
+      if (current) setStatus('err', 'stream failed — try another');
+    });
+
+    (async function init() {
+      try {
+        await loadCountries();
+        await loadStations();
+      } catch (e) {
+        els.list.innerHTML = `<li class="empty">failed: ${e.message}</li>`;
+        els.countLabel.textContent = 'offline?';
+        setStatus('err', 'api error');
+      }
+    })();
+  </script>
+</body>
+</html>
