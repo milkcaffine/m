@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Photoshop PSD를 브라우저에서 열어 합성본·레이어를 확인 — 서버 업로드 없음.">
+  <meta name="theme-color" content="#09090b">
+  <title>PSD Viewer — Marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <script src="https://cdn.jsdelivr.net/npm/ag-psd@33.0.0/dist/bundle.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #e4e4e7;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .back a {
+      color: #71717a;
+      text-decoration: none;
+      font-family: ui-monospace, monospace;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border: 1px solid #27272a;
+      border-radius: 4px;
+    }
+    .back a:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn {
+      background: #27272a;
+      color: #e4e4e7;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: #38bdf8; color: #7dd3fc; }
+    .btn.primary {
+      background: #e4e4e7;
+      color: #09090b;
+      border-color: #e4e4e7;
+    }
+    .btn.primary:hover { background: #fafafa; color: #09090b; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    input[type="file"] { display: none; }
+
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      min-height: 0;
+    }
+    @media (max-width: 760px) {
+      .main { grid-template-columns: 1fr; grid-template-rows: 1fr 220px; }
+    }
+
+    .stage {
+      position: relative;
+      background: #0c0c0e;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .stage.dragover::after {
+      content: '';
+      position: absolute;
+      inset: 12px;
+      border: 2px dashed #38bdf8;
+      border-radius: 14px;
+      background: rgba(56, 189, 248, 0.06);
+      pointer-events: none;
+      z-index: 4;
+    }
+    .checker {
+      position: absolute;
+      inset: 0;
+      background-color: #18181b;
+      background-image:
+        linear-gradient(45deg, #27272a 25%, transparent 25%),
+        linear-gradient(-45deg, #27272a 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #27272a 75%),
+        linear-gradient(-45deg, transparent 75%, #27272a 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      opacity: 0.55;
+    }
+    #canvasWrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 24px;
+      z-index: 1;
+    }
+    #canvasWrap canvas {
+      max-width: 100%;
+      max-height: 100%;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      image-rendering: auto;
+    }
+    #empty {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .drop-card {
+      text-align: center;
+      border: 1px dashed #3f3f46;
+      background: rgba(9, 9, 11, 0.85);
+      border-radius: 14px;
+      padding: 28px 22px;
+      max-width: 360px;
+      cursor: pointer;
+      color: #a1a1aa;
+    }
+    .drop-card:hover { border-color: #38bdf8; color: #e4e4e7; }
+    .drop-card strong { display: block; color: #e4e4e7; margin-bottom: 6px; font-size: 0.95rem; }
+    .drop-card small { font-size: 0.75rem; color: #71717a; }
+
+    .info-hud {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 3;
+      background: rgba(24, 24, 27, 0.9);
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.7rem;
+      color: #a1a1aa;
+      line-height: 1.55;
+      display: none;
+      pointer-events: none;
+      max-width: min(420px, calc(100% - 24px));
+    }
+    .info-hud strong { color: #7dd3fc; }
+    .status {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      background: rgba(24, 24, 27, 0.92);
+      border: 1px solid #27272a;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      display: none;
+      white-space: nowrap;
+    }
+    .status.error { color: #f87171; border-color: #7f1d1d; }
+
+    .sidebar {
+      background: #18181b;
+      border-left: 1px solid #27272a;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    @media (max-width: 760px) {
+      .sidebar { border-left: none; border-top: 1px solid #27272a; }
+    }
+    .sidebar-head {
+      padding: 10px 12px;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .sidebar-head h2 {
+      font-size: 0.75rem;
+      font-family: ui-monospace, monospace;
+      color: #71717a;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .mode-btns { display: flex; gap: 4px; }
+    .mode-btns button {
+      background: #09090b;
+      border: 1px solid #27272a;
+      color: #71717a;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+    .mode-btns button.active {
+      color: #7dd3fc;
+      border-color: rgba(56, 189, 248, 0.45);
+      background: rgba(56, 189, 248, 0.08);
+    }
+    #layerList {
+      flex: 1;
+      overflow: auto;
+      padding: 8px;
+    }
+    .layer-empty {
+      color: #52525b;
+      font-size: 0.8rem;
+      padding: 16px 8px;
+      text-align: center;
+    }
+    .layer-item {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 7px 8px;
+      color: #d4d4d8;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    .layer-item:hover { background: #09090b; border-color: #27272a; }
+    .layer-item.active {
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+    .layer-item.hidden-layer { opacity: 0.45; }
+    .layer-item.group { color: #a1a1aa; }
+    .layer-indent { flex-shrink: 0; width: 0; }
+    .layer-meta { min-width: 0; flex: 1; }
+    .layer-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .layer-sub {
+      font-size: 0.68rem;
+      color: #71717a;
+      font-family: ui-monospace, monospace;
+      margin-top: 2px;
+    }
+    .badge {
+      flex-shrink: 0;
+      font-size: 0.62rem;
+      font-family: ui-monospace, monospace;
+      color: #71717a;
+      border: 1px solid #3f3f46;
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="back"><a href="index.html">← marsko</a></div>
+      <h1 id="title">PSD Viewer</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="pngBtn" type="button" disabled>PNG 저장</button>
+      <button class="btn primary" id="openBtn" type="button">PSD 열기</button>
+      <input type="file" id="fileInput" accept=".psd,.psb,image/vnd.adobe.photoshop">
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="stage" id="stage">
+      <div class="checker" aria-hidden="true"></div>
+      <div id="canvasWrap"></div>
+      <div id="empty">
+        <div class="drop-card" id="dropCard" role="button" tabindex="0" aria-label="PSD 파일 선택 또는 끌어다 놓기">
+          <strong>PSD 파일 열기</strong>
+          클릭하거나 여기에 끌어다 놓으세요
+          <small>서버 업로드 없음 · 브라우저에서만 파싱</small>
+        </div>
+      </div>
+      <div class="info-hud" id="infoHud"></div>
+      <div class="status" id="status"></div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>Layers</h2>
+        <div class="mode-btns">
+          <button type="button" class="active" id="modeComposite" data-mode="composite">합성</button>
+          <button type="button" id="modeLayer" data-mode="layer">레이어</button>
+        </div>
+      </div>
+      <div id="layerList"><div class="layer-empty">PSD를 열면 레이어가 표시됩니다</div></div>
+    </aside>
+  </div>
+
+<script>
+(function () {
+  const fileInput = document.getElementById('fileInput');
+  const openBtn = document.getElementById('openBtn');
+  const pngBtn = document.getElementById('pngBtn');
+  const dropCard = document.getElementById('dropCard');
+  const stage = document.getElementById('stage');
+  const empty = document.getElementById('empty');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const layerList = document.getElementById('layerList');
+  const infoHud = document.getElementById('infoHud');
+  const statusEl = document.getElementById('status');
+  const titleEl = document.getElementById('title');
+  const modeComposite = document.getElementById('modeComposite');
+  const modeLayer = document.getElementById('modeLayer');
+
+  let currentFileName = '';
+  let compositeCanvas = null;
+  let selectedCanvas = null;
+  let viewMode = 'composite';
+  let selectedId = null;
+  let flatLayers = [];
+
+  function openPicker() { fileInput.click(); }
+
+  openBtn.addEventListener('click', openPicker);
+  dropCard.addEventListener('click', openPicker);
+  dropCard.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPicker();
+    }
+  });
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = (e.target.files || [])[0];
+    if (file) await loadFile(file);
+    fileInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach((ev) => {
+    stage.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      stage.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach((ev) => {
+    stage.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      stage.classList.remove('dragover');
+    });
+  });
+  stage.addEventListener('drop', (e) => {
+    const file = (e.dataTransfer.files || [])[0];
+    if (file) loadFile(file);
+  });
+
+  modeComposite.addEventListener('click', () => setMode('composite'));
+  modeLayer.addEventListener('click', () => setMode('layer'));
+
+  pngBtn.addEventListener('click', () => {
+    const src = viewMode === 'layer' && selectedCanvas ? selectedCanvas : compositeCanvas;
+    if (!src) return;
+    const base = (currentFileName || 'psd').replace(/\.[^/.]+$/, '');
+    const suffix = viewMode === 'layer' && selectedId != null ? `_layer${selectedId}` : '';
+    src.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${base}${suffix}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    }, 'image/png');
+  });
+
+  function setMode(mode) {
+    viewMode = mode;
+    modeComposite.classList.toggle('active', mode === 'composite');
+    modeLayer.classList.toggle('active', mode === 'layer');
+    renderPreview();
+  }
+
+  function showStatus(text, isError) {
+    statusEl.style.display = 'block';
+    statusEl.textContent = text;
+    statusEl.classList.toggle('error', !!isError);
+  }
+
+  function hideStatus() {
+    statusEl.style.display = 'none';
+  }
+
+  function formatBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function colorModeName(mode) {
+    const map = { 0: 'Bitmap', 1: 'Grayscale', 2: 'Indexed', 3: 'RGB', 4: 'CMYK', 7: 'Multichannel', 8: 'Duotone', 9: 'Lab' };
+    return map[mode] || String(mode ?? '?');
+  }
+
+  function walkLayers(nodes, depth, out) {
+    if (!nodes) return;
+    for (const node of nodes) {
+      const isGroup = Array.isArray(node.children);
+      const id = out.length;
+      out.push({
+        id,
+        name: node.name || (isGroup ? 'Group' : 'Layer'),
+        depth,
+        hidden: !!node.hidden,
+        opacity: node.opacity == null ? 255 : node.opacity,
+        blendMode: node.blendMode || 'normal',
+        isGroup,
+        canvas: node.canvas || null,
+        width: node.canvas ? node.canvas.width : (node.right - node.left) || 0,
+        height: node.canvas ? node.canvas.height : (node.bottom - node.top) || 0
+      });
+      if (isGroup) walkLayers(node.children, depth + 1, out);
+    }
+  }
+
+  async function loadFile(file) {
+    const name = file.name || 'untitled.psd';
+    const lower = name.toLowerCase();
+    if (!lower.endsWith('.psd') && !lower.endsWith('.psb') && file.type !== 'image/vnd.adobe.photoshop') {
+      showStatus('PSD/PSB 파일만 열 수 있습니다.', true);
+      return;
+    }
+
+    empty.style.display = 'none';
+    showStatus(`읽는 중… ${name} (${formatBytes(file.size)})`);
+    pngBtn.disabled = true;
+    compositeCanvas = null;
+    selectedCanvas = null;
+    selectedId = null;
+    flatLayers = [];
+    canvasWrap.innerHTML = '';
+    layerList.innerHTML = '<div class="layer-empty">파싱 중…</div>';
+
+    try {
+      const buffer = await file.arrayBuffer();
+      if (typeof agPsd === 'undefined' || typeof agPsd.readPsd !== 'function') {
+        throw new Error('ag-psd 라이브러리를 불러오지 못했습니다.');
+      }
+
+      const psd = agPsd.readPsd(buffer);
+      currentFileName = name;
+      titleEl.textContent = name;
+
+      compositeCanvas = psd.canvas || null;
+      if (!compositeCanvas && psd.width && psd.height) {
+        // 일부 PSD는 합성 미리보기가 없을 수 있음 — 빈 캔버스 자리표시
+        const c = document.createElement('canvas');
+        c.width = psd.width;
+        c.height = psd.height;
+        compositeCanvas = c;
+      }
+
+      flatLayers = [];
+      walkLayers(psd.children || [], 0, flatLayers);
+
+      const layerCount = flatLayers.filter((l) => !l.isGroup).length;
+      const groupCount = flatLayers.filter((l) => l.isGroup).length;
+
+      infoHud.style.display = 'block';
+      infoHud.innerHTML =
+        `<strong>${psd.width || '?'}×${psd.height || '?'}</strong>` +
+        ` · ${colorModeName(psd.colorMode)}` +
+        ` · ${psd.bitsPerChannel || 8}bit` +
+        `<br>${layerCount} layers` +
+        (groupCount ? ` · ${groupCount} groups` : '') +
+        ` · ${formatBytes(file.size)}`;
+
+      renderLayerList();
+      setMode('composite');
+      pngBtn.disabled = !compositeCanvas;
+      hideStatus();
+      if (!psd.canvas) {
+        showStatus('합성 미리보기가 없는 PSD입니다. 레이어를 선택해 확인하세요.');
+      }
+    } catch (err) {
+      console.error(err);
+      empty.style.display = 'flex';
+      infoHud.style.display = 'none';
+      layerList.innerHTML = '<div class="layer-empty">불러오기 실패</div>';
+      titleEl.textContent = 'PSD Viewer';
+      showStatus('PSD를 읽지 못했습니다. 손상 파일이거나 미지원 형식일 수 있습니다.', true);
+    }
+  }
+
+  function renderLayerList() {
+    if (!flatLayers.length) {
+      layerList.innerHTML = '<div class="layer-empty">레이어 없음</div>';
+      return;
+    }
+
+    layerList.innerHTML = '';
+    flatLayers.forEach((layer) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'layer-item' +
+        (layer.isGroup ? ' group' : '') +
+        (layer.hidden ? ' hidden-layer' : '') +
+        (selectedId === layer.id ? ' active' : '');
+
+      const indent = document.createElement('span');
+      indent.className = 'layer-indent';
+      indent.style.width = (layer.depth * 12) + 'px';
+
+      const meta = document.createElement('div');
+      meta.className = 'layer-meta';
+      const name = document.createElement('div');
+      name.className = 'layer-name';
+      name.textContent = layer.name;
+      const sub = document.createElement('div');
+      sub.className = 'layer-sub';
+      const opPct = Math.round((layer.opacity / 255) * 100);
+      const sizeTxt = layer.width && layer.height ? `${layer.width}×${layer.height}` : '—';
+      sub.textContent = `${layer.blendMode} · ${opPct}% · ${sizeTxt}`;
+      meta.appendChild(name);
+      meta.appendChild(sub);
+
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = layer.isGroup ? 'G' : (layer.canvas ? 'L' : '—');
+
+      btn.appendChild(indent);
+      btn.appendChild(meta);
+      btn.appendChild(badge);
+
+      btn.addEventListener('click', () => {
+        selectedId = layer.id;
+        selectedCanvas = layer.canvas || null;
+        viewMode = selectedCanvas ? 'layer' : 'composite';
+        modeComposite.classList.toggle('active', viewMode === 'composite');
+        modeLayer.classList.toggle('active', viewMode === 'layer');
+        renderLayerList();
+        renderPreview();
+        if (!selectedCanvas && !layer.isGroup) {
+          showStatus('이 레이어에는 비트맵이 없습니다.', true);
+        } else if (layer.isGroup) {
+          showStatus('그룹입니다. 하위 레이어를 선택하세요.');
+        } else {
+          hideStatus();
+        }
+      });
+
+      layerList.appendChild(btn);
+    });
+  }
+
+  function renderPreview() {
+    canvasWrap.innerHTML = '';
+    empty.style.display = 'none';
+
+    let src = null;
+    if (viewMode === 'layer' && selectedCanvas) src = selectedCanvas;
+    else src = compositeCanvas;
+
+    if (!src) {
+      if (!compositeCanvas && !selectedCanvas) empty.style.display = 'flex';
+      return;
+    }
+
+    // 원본 캔버스를 직접 붙이면 라이브러리 내부 참조가 꼬일 수 있어 복제
+    const clone = document.createElement('canvas');
+    clone.width = src.width;
+    clone.height = src.height;
+    const ctx = clone.getContext('2d');
+    ctx.drawImage(src, 0, 0);
+    canvasWrap.appendChild(clone);
+    pngBtn.disabled = false;
+  }
+})();
+</script>
+</body>
+</html>
