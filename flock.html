@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Marsko lab tool — flock.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#030407">
+  <title>Starling Murmuration // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #030407;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #flockCanvas { cursor: crosshair; touch-action: none; }
+
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    }
+    .hint {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: rgba(248, 250, 252, 0.55);
+      pointer-events: none;
+      transition: opacity 1.2s ease;
+      z-index: 5;
+      text-align: center;
+      line-height: 1.7;
+    }
+    .hint.gone { opacity: 0; }
+  </style>
+</head>
+<body>
+
+<canvas id="skyCanvas"></canvas>
+<canvas id="flockCanvas"></canvas>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>STARLING MURMURATION</h1>
+  <div class="hud-meta">BOIDS · SEPARATION / ALIGNMENT / COHESION</div>
+</header>
+
+<div class="telemetry-card">
+  BIRDS <strong id="tBirds">0</strong><br>
+  ORDER <strong id="tOrder">0.00</strong><br>
+  SPEED <strong id="tSpeed">0.0</strong><br>
+  FPS <strong id="tFps">0</strong>
+</div>
+
+<div class="hint" id="hint">마우스를 움직이면 매가 됩니다<br>drag / touch = hawk</div>
+
+<div class="control-dock">
+  <div class="dock-primary">
+    <button type="button" class="dock-btn active" id="btnHawk">HAWK</button>
+    <button type="button" class="dock-btn active" id="btnTrail">TRAIL</button>
+    <button type="button" class="dock-btn" id="btnSky">DUSK</button>
+    <button type="button" class="dock-btn" id="btnPause">PAUSE</button>
+    <button type="button" class="dock-btn" id="btnScatter">SCATTER</button>
+    <span class="dock-sep"></span>
+    <button type="button" class="dock-btn" id="btnMore">PARAMS ▾</button>
+  </div>
+  <div class="dock-params" id="dockParams" hidden>
+    <label class="slider-group">BIRDS <input type="range" id="sCount" min="200" max="3000" step="100" value="1400"><span class="val" id="vCount">1400</span></label>
+    <label class="slider-group">SEP <input type="range" id="sSep" min="0" max="3" step="0.05" value="1.5"><span class="val" id="vSep">1.50</span></label>
+    <label class="slider-group">ALI <input type="range" id="sAli" min="0" max="3" step="0.05" value="1.0"><span class="val" id="vAli">1.00</span></label>
+    <label class="slider-group">COH <input type="range" id="sCoh" min="0" max="3" step="0.05" value="0.8"><span class="val" id="vCoh">0.80</span></label>
+    <label class="slider-group">SPEED <input type="range" id="sSpeed" min="1" max="6" step="0.1" value="3.2"><span class="val" id="vSpeed">3.2</span></label>
+    <label class="slider-group">VISION <input type="range" id="sVision" min="15" max="80" step="1" value="38"><span class="val" id="vVision">38</span></label>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const sky = document.getElementById('skyCanvas');
+  const skyCtx = sky.getContext('2d');
+  const cv = document.getElementById('flockCanvas');
+  const ctx = cv.getContext('2d');
+
+  let W = 0, H = 0, DPR = 1;
+
+  // ---- 파라미터 ----
+  const P = {
+    count: 1400,
+    sep: 1.5,
+    ali: 1.0,
+    coh: 0.8,
+    maxSpeed: 3.2,
+    vision: 38,
+    hawk: true,
+    trail: true,
+    night: false,
+    paused: false,
+  };
+
+  // ---- 새 데이터 (Typed arrays) ----
+  const MAX = 3000;
+  const px = new Float32Array(MAX), py = new Float32Array(MAX);
+  const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
+  const shade = new Float32Array(MAX);
+  let n = 0;
+
+  function spawn(i, x, y) {
+    px[i] = x ?? (W * 0.3 + Math.random() * W * 0.4);
+    py[i] = y ?? (H * 0.2 + Math.random() * H * 0.35);
+    const a = Math.random() * Math.PI * 2;
+    const s = P.maxSpeed * (0.5 + Math.random() * 0.5);
+    vx[i] = Math.cos(a) * s;
+    vy[i] = Math.sin(a) * s;
+    shade[i] = Math.random();
+  }
+
+  function setCount(c) {
+    c = Math.min(MAX, c);
+    for (let i = n; i < c; i++) spawn(i);
+    n = c;
+  }
+
+  // ---- 공간 해시 그리드 ----
+  let cellSize = P.vision, cols = 1, rows = 1;
+  let cellHead = new Int32Array(1);
+  const next = new Int32Array(MAX);
+
+  function buildGrid() {
+    cellSize = P.vision;
+    cols = Math.max(1, Math.ceil(W / cellSize));
+    rows = Math.max(1, Math.ceil(H / cellSize));
+    if (cellHead.length < cols * rows) cellHead = new Int32Array(cols * rows);
+    cellHead.fill(-1, 0, cols * rows);
+    for (let i = 0; i < n; i++) {
+      let cx = (px[i] / cellSize) | 0, cy = (py[i] / cellSize) | 0;
+      if (cx < 0) cx = 0; else if (cx >= cols) cx = cols - 1;
+      if (cy < 0) cy = 0; else if (cy >= rows) cy = rows - 1;
+      const c = cy * cols + cx;
+      next[i] = cellHead[c];
+      cellHead[c] = i;
+    }
+  }
+
+  // ---- 매 (포인터) ----
+  const hawk = { x: -9999, y: -9999, active: false, lastMove: 0 };
+
+  function setPointer(e) {
+    const r = cv.getBoundingClientRect();
+    hawk.x = e.clientX - r.left;
+    hawk.y = e.clientY - r.top;
+    hawk.active = true;
+    hawk.lastMove = performance.now();
+    hideHint();
+  }
+  cv.addEventListener('pointermove', setPointer);
+  cv.addEventListener('pointerdown', setPointer);
+  cv.addEventListener('pointerleave', () => { hawk.active = false; });
+  cv.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') hawk.active = false; });
+
+  const hintEl = document.getElementById('hint');
+  let hintHidden = false;
+  function hideHint() {
+    if (hintHidden) return;
+    hintHidden = true;
+    hintEl.classList.add('gone');
+  }
+  setTimeout(hideHint, 6000);
+
+  // ---- 시뮬레이션 스텝 ----
+  let orderStat = 0, speedStat = 0;
+
+  function step(dt) {
+    buildGrid();
+    const vis = P.vision, vis2 = vis * vis;
+    const sepR = vis * 0.42, sepR2 = sepR * sepR;
+    const maxS = P.maxSpeed, minS = maxS * 0.45;
+    const maxF = 0.09 * maxS;
+    const margin = Math.min(W, H) * 0.12;
+    const hawkR = 140, hawkR2 = hawkR * hawkR;
+    const hawkOn = P.hawk && hawk.active && (performance.now() - hawk.lastMove < 2500);
+
+    let sumVx = 0, sumVy = 0, sumSpeed = 0;
+
+    for (let i = 0; i < n; i++) {
+      const x = px[i], y = py[i];
+      let ax = 0, ay = 0, alx = 0, aly = 0, cx = 0, cy = 0, sx = 0, sy = 0;
+      let cnt = 0, sepCnt = 0;
+
+      const gx = (x / cellSize) | 0, gy = (y / cellSize) | 0;
+      for (let oy = -1; oy <= 1; oy++) {
+        const yy = gy + oy;
+        if (yy < 0 || yy >= rows) continue;
+        for (let ox = -1; ox <= 1; ox++) {
+          const xx = gx + ox;
+          if (xx < 0 || xx >= cols) continue;
+          let j = cellHead[yy * cols + xx];
+          let guard = 0;
+          while (j !== -1 && guard++ < 64) {
+            if (j !== i) {
+              const dx = px[j] - x, dy = py[j] - y;
+              const d2 = dx * dx + dy * dy;
+              if (d2 < vis2) {
+                // 시야각: 뒤쪽은 덜 봄
+                const dot = dx * vx[i] + dy * vy[i];
+                if (dot > -0.35 * Math.sqrt(d2 * (vx[i] * vx[i] + vy[i] * vy[i]))) {
+                  alx += vx[j]; aly += vy[j];
+                  cx += px[j]; cy += py[j];
+                  cnt++;
+                  if (d2 < sepR2 && d2 > 0.0001) {
+                    const inv = 1 / d2;
+                    sx -= dx * inv; sy -= dy * inv;
+                    sepCnt++;
+                  }
+                }
+              }
+            }
+            j = next[j];
+          }
+        }
+      }
+
+      if (cnt > 0) {
+        // 정렬
+        alx /= cnt; aly /= cnt;
+        let m = Math.hypot(alx, aly) || 1;
+        let fx = alx / m * maxS - vx[i], fy = aly / m * maxS - vy[i];
+        let fm = Math.hypot(fx, fy);
+        if (fm > maxF) { fx = fx / fm * maxF; fy = fy / fm * maxF; }
+        ax += fx * P.ali; ay += fy * P.ali;
+
+        // 응집
+        cx = cx / cnt - x; cy = cy / cnt - y;
+        m = Math.hypot(cx, cy) || 1;
+        fx = cx / m * maxS - vx[i]; fy = cy / m * maxS - vy[i];
+        fm = Math.hypot(fx, fy);
+        if (fm > maxF) { fx = fx / fm * maxF; fy = fy / fm * maxF; }
+        ax += fx * P.coh; ay += fy * P.coh;
+      }
+      if (sepCnt > 0) {
+        // 분리
+        const m = Math.hypot(sx, sy) || 1;
+        let fx = sx / m * maxS - vx[i], fy = sy / m * maxS - vy[i];
+        const fm = Math.hypot(fx, fy);
+        if (fm > maxF * 1.5) { fx = fx / fm * maxF * 1.5; fy = fy / fm * maxF * 1.5; }
+        ax += fx * P.sep; ay += fy * P.sep;
+      }
+
+      // 매 회피
+      if (hawkOn) {
+        const dx = x - hawk.x, dy = y - hawk.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < hawkR2) {
+          const d = Math.sqrt(d2) || 1;
+          const k = (1 - d / hawkR) * maxF * 6;
+          ax += dx / d * k; ay += dy / d * k;
+        }
+      }
+
+      // 화면 가장자리에서 부드럽게 돌아오기 (지평선 아래로는 잘 안 내려감)
+      const floor = H * 0.78;
+      const turn = maxF * 0.9;
+      if (x < margin) ax += turn * (1 - x / margin);
+      else if (x > W - margin) ax -= turn * (1 - (W - x) / margin);
+      if (y < margin) ay += turn * (1 - y / margin);
+      else if (y > floor - margin) ay -= turn * Math.min(2, (y - (floor - margin)) / margin);
+
+      // 약간의 바람 흔들림
+      ax += (Math.random() - 0.5) * 0.02 * maxS;
+      ay += (Math.random() - 0.5) * 0.02 * maxS;
+
+      let nvx = vx[i] + ax * dt, nvy = vy[i] + ay * dt;
+      let s = Math.hypot(nvx, nvy) || 0.0001;
+      if (s > maxS) { nvx = nvx / s * maxS; nvy = nvy / s * maxS; s = maxS; }
+      else if (s < minS) { nvx = nvx / s * minS; nvy = nvy / s * minS; s = minS; }
+      vx[i] = nvx; vy[i] = nvy;
+
+      sumVx += nvx / s; sumVy += nvy / s; sumSpeed += s;
+    }
+
+    for (let i = 0; i < n; i++) {
+      px[i] += vx[i] * dt;
+      py[i] += vy[i] * dt;
+      // 혹시 튕겨나간 새 회수
+      if (px[i] < -50) px[i] = W + 40; else if (px[i] > W + 50) px[i] = -40;
+      if (py[i] < -50) py[i] = 0; else if (py[i] > H + 50) py[i] = H * 0.6;
+    }
+
+    if (n > 0) {
+      orderStat += (Math.hypot(sumVx, sumVy) / n - orderStat) * 0.08;
+      speedStat += (sumSpeed / n - speedStat) * 0.08;
+    }
+  }
+
+  // ---- 하늘 + 도쿄 교외 실루엣 (정적 레이어) ----
+  let skyline = null;
+
+  function makeSkyline() {
+    // 결정적 난수로 지붕선, 전봇대, 전선 생성
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const roofs = [];
+    let x = -0.02;
+    const base = 0.86;
+    while (x < 1.05) {
+      const w = 0.025 + rnd() * 0.06;
+      const h = 0.02 + rnd() * 0.07 + (rnd() < 0.08 ? 0.08 : 0);
+      roofs.push({ x, w, h, gable: rnd() < 0.45 });
+      x += w;
+    }
+    const poles = [];
+    let p = 0.06 + rnd() * 0.05;
+    while (p < 1.05) {
+      poles.push({ x: p, h: 0.2 + rnd() * 0.04 });
+      p += 0.18 + rnd() * 0.12;
+    }
+    return { roofs, poles, base };
+  }
+
+  function drawSky() {
+    const w = W, h = H;
+    skyCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const g = skyCtx.createLinearGradient(0, 0, 0, h);
+    if (P.night) {
+      g.addColorStop(0, '#02030a');
+      g.addColorStop(0.55, '#0a1024');
+      g.addColorStop(0.85, '#1b1f3a');
+      g.addColorStop(1, '#0c0e1c');
+    } else {
+      g.addColorStop(0, '#1a2146');
+      g.addColorStop(0.35, '#4b3f72');
+      g.addColorStop(0.6, '#c0617a');
+      g.addColorStop(0.78, '#f29a6b');
+      g.addColorStop(0.88, '#ffd29a');
+      g.addColorStop(1, '#ffe7c2');
+    }
+    skyCtx.fillStyle = g;
+    skyCtx.fillRect(0, 0, w, h);
+
+    if (P.night) {
+      // 별
+      let seed = 42;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 160; i++) {
+        const sx = rnd() * w, sy = rnd() * h * 0.7;
+        skyCtx.fillStyle = `rgba(226,232,240,${0.2 + rnd() * 0.6})`;
+        skyCtx.fillRect(sx, sy, rnd() < 0.1 ? 1.6 : 1, rnd() < 0.1 ? 1.6 : 1);
+      }
+    } else {
+      // 낮게 걸린 해
+      const sunX = w * 0.68, sunY = h * 0.83;
+      const sg = skyCtx.createRadialGradient(sunX, sunY, 0, sunX, sunY, h * 0.35);
+      sg.addColorStop(0, 'rgba(255,240,200,0.95)');
+      sg.addColorStop(0.08, 'rgba(255,214,150,0.7)');
+      sg.addColorStop(0.4, 'rgba(255,160,110,0.15)');
+      sg.addColorStop(1, 'rgba(255,160,110,0)');
+      skyCtx.fillStyle = sg;
+      skyCtx.fillRect(0, 0, w, h);
+    }
+
+    // 실루엣
+    const s = skyline;
+    const silhouette = P.night ? '#05060c' : '#1a1020';
+    skyCtx.fillStyle = silhouette;
+    skyCtx.beginPath();
+    skyCtx.moveTo(0, h);
+    for (const r of s.roofs) {
+      const x0 = r.x * w, x1 = (r.x + r.w) * w;
+      const top = (s.base - r.h) * h;
+      if (r.gable) {
+        skyCtx.lineTo(x0, top + 6);
+        skyCtx.lineTo((x0 + x1) / 2, top - 6);
+        skyCtx.lineTo(x1, top + 6);
+      } else {
+        skyCtx.lineTo(x0, top);
+        skyCtx.lineTo(x1, top);
+      }
+    }
+    skyCtx.lineTo(w, h);
+    skyCtx.closePath();
+    skyCtx.fill();
+    skyCtx.fillRect(0, s.base * h, w, h);
+
+    // 전봇대 + 전선
+    skyCtx.strokeStyle = silhouette;
+    skyCtx.lineWidth = 3;
+    const tops = [];
+    for (const p of s.poles) {
+      const x = p.x * w, top = (s.base - p.h) * h;
+      skyCtx.beginPath();
+      skyCtx.moveTo(x, s.base * h);
+      skyCtx.lineTo(x, top);
+      skyCtx.stroke();
+      skyCtx.lineWidth = 2;
+      skyCtx.beginPath();
+      skyCtx.moveTo(x - 14, top + 10); skyCtx.lineTo(x + 14, top + 10);
+      skyCtx.moveTo(x - 10, top + 22); skyCtx.lineTo(x + 10, top + 22);
+      skyCtx.stroke();
+      skyCtx.lineWidth = 3;
+      tops.push({ x, top });
+    }
+    skyCtx.lineWidth = 0.8;
+    for (let k = 0; k < tops.length - 1; k++) {
+      const a = tops[k], b = tops[k + 1];
+      for (const [dx, dy] of [[-14, 10], [14, 10], [-10, 22], [10, 22]]) {
+        const x0 = a.x + dx, y0 = a.top + dy, x1 = b.x + dx, y1 = b.top + dy;
+        skyCtx.beginPath();
+        skyCtx.moveTo(x0, y0);
+        skyCtx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + 18, x1, y1);
+        skyCtx.stroke();
+      }
+    }
+  }
+
+  // ---- 그리기 ----
+  function draw() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (P.trail) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'source-over';
+    } else {
+      ctx.clearRect(0, 0, W, H);
+    }
+
+    const dark = P.night ? 'rgba(203,213,225,' : 'rgba(18,10,24,';
+    // 3단계 음영으로 묶어서 그림 (드로우콜 절약)
+    for (let band = 0; band < 3; band++) {
+      ctx.fillStyle = dark + (0.55 + band * 0.2) + ')';
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        if (((shade[i] * 3) | 0) !== band) continue;
+        const x = px[i], y = py[i];
+        const s = Math.hypot(vx[i], vy[i]) || 1;
+        const ux = vx[i] / s, uy = vy[i] / s;
+        const L = 3.2, Wd = 1.6;
+        ctx.moveTo(x + ux * L, y + uy * L);
+        ctx.lineTo(x - ux * L - uy * Wd, y - uy * L + ux * Wd);
+        ctx.lineTo(x - ux * L + uy * Wd, y - uy * L - ux * Wd);
+        ctx.closePath();
+      }
+      ctx.fill();
+    }
+
+    // 매 표시
+    if (P.hawk && hawk.active && performance.now() - hawk.lastMove < 2500) {
+      ctx.strokeStyle = P.night ? 'rgba(103,232,249,0.55)' : 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(hawk.x, hawk.y, 9, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([2, 5]);
+      ctx.beginPath();
+      ctx.arc(hawk.x, hawk.y, 140, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // ---- 리사이즈 ----
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const oldW = W || window.innerWidth, oldH = H || window.innerHeight;
+    W = window.innerWidth; H = window.innerHeight;
+    for (const c of [sky, cv]) {
+      c.width = W * DPR; c.height = H * DPR;
+    }
+    for (let i = 0; i < n; i++) { px[i] *= W / oldW; py[i] *= H / oldH; }
+    if (!skyline) skyline = makeSkyline();
+    drawSky();
+  }
+  window.addEventListener('resize', resize);
+
+  // ---- 루프 ----
+  let last = performance.now(), fpsAcc = 0, fpsFrames = 0, fps = 0;
+  function loop(now) {
+    let dt = (now - last) / 16.667;
+    last = now;
+    if (dt > 3) dt = 3;
+    fpsAcc += now - (loop.prev || now); loop.prev = now; fpsFrames++;
+    if (fpsAcc > 500) {
+      fps = Math.round(fpsFrames * 1000 / fpsAcc); fpsAcc = 0; fpsFrames = 0;
+      document.getElementById('tBirds').textContent = n;
+      document.getElementById('tOrder').textContent = orderStat.toFixed(2);
+      document.getElementById('tSpeed').textContent = speedStat.toFixed(1);
+      document.getElementById('tFps').textContent = fps;
+    }
+    if (!P.paused) step(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---- UI ----
+  const $ = (id) => document.getElementById(id);
+  function toggle(id, key, onChange) {
+    $(id).addEventListener('click', () => {
+      P[key] = !P[key];
+      $(id).classList.toggle('active', P[key]);
+      onChange && onChange();
+    });
+  }
+  toggle('btnHawk', 'hawk');
+  toggle('btnTrail', 'trail');
+  toggle('btnPause', 'paused', () => { $('btnPause').textContent = P.paused ? 'PLAY' : 'PAUSE'; });
+  $('btnSky').addEventListener('click', () => {
+    P.night = !P.night;
+    $('btnSky').textContent = P.night ? 'NIGHT' : 'DUSK';
+    $('btnSky').classList.toggle('active', P.night);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    drawSky();
+  });
+  $('btnScatter').addEventListener('click', () => {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      vx[i] = Math.cos(a) * P.maxSpeed;
+      vy[i] = Math.sin(a) * P.maxSpeed;
+    }
+  });
+  $('btnMore').addEventListener('click', () => {
+    const el = $('dockParams');
+    el.hidden = !el.hidden;
+    $('btnMore').textContent = el.hidden ? 'PARAMS ▾' : 'PARAMS ▴';
+    $('btnMore').classList.toggle('active', !el.hidden);
+  });
+
+  function slider(id, valId, key, digits, onChange) {
+    const el = $(id);
+    el.addEventListener('input', () => {
+      P[key] = parseFloat(el.value);
+      $(valId).textContent = P[key].toFixed(digits);
+      onChange && onChange();
+    });
+  }
+  slider('sCount', 'vCount', 'count', 0, () => {
+    if (P.count > n) setCount(P.count); else n = P.count;
+  });
+  slider('sSep', 'vSep', 'sep', 2);
+  slider('sAli', 'vAli', 'ali', 2);
+  slider('sCoh', 'vCoh', 'coh', 2);
+  slider('sSpeed', 'vSpeed', 'maxSpeed', 1);
+  slider('sVision', 'vVision', 'vision', 0);
+
+  // ---- 시작 ----
+  resize();
+  setCount(P.count);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
