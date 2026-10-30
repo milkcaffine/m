@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Marsko lab tool — long-card.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#ffffff">
-  <title>SNS 긴 글 카드 슬라이서</title>
+<meta name="theme-color" content="#09090b">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <title>SNS 긴 글 카드 슬라이서 // marsko</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,45 +16,51 @@
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-      background: #f4f6f8;
-      color: #1a1a1a;
+      background: #09090b;
+      color: #e4e4e7;
       display: flex;
       justify-content: center;
       padding: 12px;
     }
     .container {
-      background: #ffffff;
+      background: #18181b;
+      border: 1px solid #27272a;
       max-width: 520px;
       width: 100%;
       border-radius: 20px;
       padding: 20px 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
     }
-    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
-    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; color: #f4f4f5; }
+    p.sub { font-size: 0.8rem; color: #a1a1aa; text-align: center; margin-bottom: 16px; }
     .input-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
     .input-title {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #ced4da;
+      border: 1px solid #3f3f46;
       border-radius: 10px;
       font-size: 0.95rem;
       font-weight: 600;
+      background: #18181b;
+      color: #f4f4f5;
     }
-    .input-title:focus, textarea:focus { border-color: #007aff; outline: none; }
+    .input-title:focus, textarea:focus { border-color: #38bdf8; outline: none; }
     textarea {
       width: 100%;
       height: 130px;
       padding: 12px;
-      border: 1px solid #ced4da;
+      border: 1px solid #3f3f46;
       border-radius: 12px;
       font-size: 0.9rem;
       line-height: 1.6;
       resize: vertical;
       font-family: inherit;
+      background: #18181b;
+      color: #f4f4f5;
     }
     .control-panel {
-      background: #f8f9fa;
+      background: #27272a;
+      border: 1px solid #3f3f46;
       padding: 14px;
       border-radius: 12px;
       display: flex;
@@ -66,34 +73,35 @@
       justify-content: space-between;
       font-size: 0.88rem;
     }
-    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row label { font-weight: 600; color: #d4d4d8; }
     .control-row select, .control-row input[type="text"] {
       font-size: 0.9rem;
       border-radius: 8px;
       padding: 6px 10px;
-      border: 1px solid #ced4da;
-      background: #fff;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #f4f4f5;
     }
     .control-row input[type="text"] { width: 170px; }
     .slider-box { display: flex; align-items: center; gap: 8px; }
     .slider-box input[type="range"] { width: 110px; }
-    .slider-box span { font-size: 0.8rem; color: #495057; width: 44px; text-align: right; }
+    .slider-box span { font-size: 0.8rem; color: #94a3b8; width: 44px; text-align: right; }
     .color-picker-group { display: flex; gap: 6px; }
     .color-btn {
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      border: 2px solid #ced4da;
+      border: 2px solid #3f3f46;
       cursor: pointer;
     }
-    .color-btn.active { border-color: #007aff; transform: scale(1.15); }
+    .color-btn.active { border-color: #38bdf8; transform: scale(1.15); }
     #previewArea {
       margin-top: 16px;
       width: 100%;
     }
     .preview-header {
       font-size: 0.78rem;
-      color: #6c757d;
+      color: #a1a1aa;
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
@@ -103,9 +111,12 @@
       display: flex;
       gap: 10px;
       overflow-x: auto;
-      padding-bottom: 8px;
+      padding: 10px;
       scroll-snap-type: x mandatory;
       max-height: 42vh;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 12px;
     }
     .card-carousel canvas {
       flex: 0 0 min(180px, 42vw);
@@ -113,9 +124,8 @@
       width: auto;
       height: auto;
       border-radius: 10px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
       scroll-snap-align: start;
-      background: #fff;
       object-fit: contain;
     }
     .btn-group { margin-top: 18px; }
@@ -130,12 +140,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #007aff;
+      background: #0284c7;
       color: #ffffff;
+      transition: background 0.15s ease;
     }
+    .btn:hover { background: #0369a1; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
-    .back a { color: #007aff; text-decoration: none; }
+    .back a { color: #64748b; text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+    .back a:hover { color: #38bdf8; }
   </style>
 </head>
 <body>

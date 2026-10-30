@@ -5,46 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Marsko lab tool — x-optimize.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#ffffff">
-  <title>X 사진 최적화 & 미니 다크룸</title>
+<meta name="theme-color" content="#09090b">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <title>X 사진 최적화 & 미니 다크룸 // marsko</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
-      background: #f4f6f8;
-      color: #1a1a1a;
+      background: #09090b;
+      color: #e4e4e7;
       display: flex;
       justify-content: center;
       padding: 12px;
     }
     .container {
-      background: #ffffff;
+      background: #18181b;
+      border: 1px solid #27272a;
       max-width: 520px;
       width: 100%;
       border-radius: 20px;
       padding: 20px 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
     }
-    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
-    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; color: #f4f4f5; }
+    p.sub { font-size: 0.8rem; color: #a1a1aa; text-align: center; margin-bottom: 16px; }
 
     /* 업로드 영역 */
     .dropzone {
-      border: 2px dashed #007aff;
-      background: #f0f7ff;
+      border: 2px dashed #0284c7;
+      background: #0f172a;
       border-radius: 14px;
       padding: 20px 12px;
       text-align: center;
       cursor: pointer;
       font-size: 0.95rem;
       font-weight: 600;
-      color: #007aff;
+      color: #38bdf8;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 4px;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
-    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    .dropzone:hover {
+      background: #132038;
+      border-color: #38bdf8;
+    }
+    .dropzone small { font-size: 0.75rem; color: #94a3b8; font-weight: 400; }
     input[type="file"] { display: none; }
 
     /* 미리보기 뷰 */
@@ -55,16 +62,18 @@
     }
     .preview-info {
       font-size: 0.75rem;
-      color: #495057;
+      color: #cbd5e1;
       margin-bottom: 6px;
       display: flex;
       justify-content: space-between;
       font-weight: 600;
+      font-family: 'IBM Plex Mono', monospace;
     }
     .canvas-container {
       width: 100%;
       max-height: 380px;
-      background: #18191a;
+      background: #09090b;
+      border: 1px solid #27272a;
       border-radius: 12px;
       display: flex;
       align-items: center;
@@ -77,12 +86,14 @@
       max-height: 364px;
       border-radius: 4px;
       display: block;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
 
     /* 컨트롤 패널 */
     .control-panel {
       margin-top: 14px;
-      background: #f8f9fa;
+      background: #27272a;
+      border: 1px solid #3f3f46;
       padding: 14px;
       border-radius: 12px;
       display: flex;
@@ -95,19 +106,21 @@
       justify-content: space-between;
       font-size: 0.88rem;
     }
-    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row label { font-weight: 600; color: #d4d4d8; }
     .control-row select {
       font-size: 0.88rem;
       border-radius: 8px;
       padding: 6px 10px;
-      border: 1px solid #ced4da;
-      background: #fff;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #f4f4f5;
     }
 
     /* 흑백 프리셋 세그먼트 */
     .segmented-control {
       display: flex;
-      background: #e9ecef;
+      background: #18181b;
+      border: 1px solid #3f3f46;
       border-radius: 8px;
       padding: 3px;
       width: 100%;
@@ -121,18 +134,19 @@
       font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
-      color: #495057;
+      color: #a1a1aa;
+      transition: all 0.15s ease;
     }
     .segmented-control button.active {
-      background: #fff;
-      color: #007aff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+      background: #0284c7;
+      color: #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
 
     /* 슬라이더 */
     .slider-box { display: flex; align-items: center; gap: 8px; }
     .slider-box input[type="range"] { width: 130px; }
-    .slider-box span { font-size: 0.8rem; color: #495057; width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+    .slider-box span { font-size: 0.8rem; color: #94a3b8; width: 38px; text-align: right; font-variant-numeric: tabular-nums; font-family: 'IBM Plex Mono', monospace; }
 
     /* 하단 버튼 그룹 */
     .btn-group {
@@ -151,12 +165,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background 0.15s ease;
     }
-    .btn-reset { background: #e9ecef; color: #495057; flex: 0 0 90px; }
-    .btn-primary { background: #007aff; color: #ffffff; }
+    .btn-reset { background: #27272a; border: 1px solid #3f3f46; color: #cbd5e1; flex: 0 0 90px; }
+    .btn-reset:hover { background: #3f3f46; color: #f4f4f5; }
+    .btn-primary { background: #0284c7; color: #ffffff; }
+    .btn-primary:hover { background: #0369a1; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
-    .back a { color: #007aff; text-decoration: none; }
+    .back a { color: #64748b; text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+    .back a:hover { color: #38bdf8; }
   </style>
 </head>
 <body>

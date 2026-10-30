@@ -5,44 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Marsko lab tool — collage.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#ffffff">
-  <title>포토 콜라주 메이커</title>
+<meta name="theme-color" content="#09090b">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <title>포토 콜라주 메이커 // marsko</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
-      background: #f4f6f8;
-      color: #1a1a1a;
+      background: #09090b;
+      color: #e4e4e7;
       display: flex;
       justify-content: center;
       padding: 12px;
     }
     .container {
-      background: #ffffff;
+      background: #18181b;
+      border: 1px solid #27272a;
       max-width: 500px;
       width: 100%;
       border-radius: 20px;
       padding: 20px 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
     }
-    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
-    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; color: #f4f4f5; }
+    p.sub { font-size: 0.8rem; color: #a1a1aa; text-align: center; margin-bottom: 16px; }
     .dropzone {
-      border: 2px dashed #007aff;
-      background: #f0f7ff;
+      border: 2px dashed #0284c7;
+      background: #0f172a;
       border-radius: 14px;
       padding: 20px 12px;
       text-align: center;
       cursor: pointer;
       font-size: 0.95rem;
       font-weight: 600;
-      color: #007aff;
+      color: #38bdf8;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 4px;
+      transition: border-color 0.15s ease, background 0.15s ease;
     }
-    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    .dropzone:hover {
+      background: #132038;
+      border-color: #38bdf8;
+    }
+    .dropzone small { font-size: 0.75rem; color: #94a3b8; font-weight: 400; }
     input[type="file"] { display: none; }
     .photo-manage-list {
       display: flex;
@@ -57,10 +64,10 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      background: #f8f9fa;
+      background: #27272a;
       padding: 8px 10px;
       border-radius: 10px;
-      border: 1px solid #e9ecef;
+      border: 1px solid #3f3f46;
     }
     .photo-thumb {
       width: 44px;
@@ -73,14 +80,15 @@
       flex: 1;
       padding: 8px 10px;
       font-size: 0.85rem;
-      border: 1px solid #ced4da;
+      border: 1px solid #3f3f46;
       border-radius: 6px;
-      background: #fff;
+      background: #18181b;
+      color: #f4f4f5;
     }
-    .caption-input:focus { border-color: #007aff; outline: none; }
+    .caption-input:focus { border-color: #38bdf8; outline: none; }
     .del-btn {
-      background: #e9ecef;
-      color: #495057;
+      background: #3f3f46;
+      color: #cbd5e1;
       border: none;
       border-radius: 50%;
       width: 24px;
@@ -92,11 +100,13 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      transition: background 0.15s ease, color 0.15s ease;
     }
-    .del-btn:hover { background: #dee2e6; color: #fa5252; }
+    .del-btn:hover { background: #52525b; color: #f87171; }
     .control-panel {
       margin-top: 14px;
-      background: #f8f9fa;
+      background: #27272a;
+      border: 1px solid #3f3f46;
       padding: 14px;
       border-radius: 12px;
       display: flex;
@@ -109,27 +119,30 @@
       justify-content: space-between;
       font-size: 0.88rem;
     }
-    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row label { font-weight: 600; color: #d4d4d8; }
     .control-row select, .control-row input[type="range"], .control-row input[type="text"] {
       font-size: 0.9rem;
       border-radius: 8px;
     }
     .control-row select {
       padding: 6px 10px;
-      border: 1px solid #ced4da;
-      background: #fff;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #f4f4f5;
     }
     .watermark-input {
       width: 170px;
       padding: 7px 10px;
-      border: 1px solid #ced4da;
-      background: #fff;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #f4f4f5;
       font-size: 0.85rem;
     }
-    .watermark-input:focus { border-color: #007aff; outline: none; }
+    .watermark-input:focus { border-color: #38bdf8; outline: none; }
     .shape-control {
       display: flex;
-      background: #e9ecef;
+      background: #18181b;
+      border: 1px solid #3f3f46;
       border-radius: 8px;
       padding: 3px;
       width: 140px;
@@ -143,33 +156,35 @@
       font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
-      color: #495057;
+      color: #a1a1aa;
+      transition: all 0.15s ease;
     }
     .shape-control button.active {
-      background: #fff;
-      color: #007aff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+      background: #0284c7;
+      color: #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
     .color-picker-group { display: flex; gap: 6px; }
     .color-btn {
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      border: 2px solid #ced4da;
+      border: 2px solid #3f3f46;
       cursor: pointer;
     }
-    .color-btn.active { border-color: #007aff; transform: scale(1.1); }
+    .color-btn.active { border-color: #38bdf8; transform: scale(1.1); }
     #previewArea {
       margin-top: 16px;
       display: none;
       width: 100%;
       text-align: center;
     }
-    .preview-header { font-size: 0.75rem; color: #868e96; margin-bottom: 6px; text-align: left; }
+    .preview-header { font-size: 0.75rem; color: #a1a1aa; margin-bottom: 6px; text-align: left; }
     .canvas-container {
       width: 100%;
       max-height: 380px;
-      background: #e9ecef;
+      background: #09090b;
+      border: 1px solid #27272a;
       border-radius: 10px;
       display: flex;
       align-items: center;
@@ -180,7 +195,7 @@
     #previewCanvas {
       max-width: 100%;
       max-height: 360px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       border-radius: 6px;
     }
     .btn-group { margin-top: 18px; }
@@ -195,11 +210,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background 0.15s ease;
     }
-    .btn-primary { background: #007aff; color: #ffffff; }
+    .btn-primary { background: #0284c7; color: #ffffff; }
+    .btn-primary:hover { background: #0369a1; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
-    .back a { color: #007aff; text-decoration: none; }
+    .back a { color: #64748b; text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+    .back a:hover { color: #38bdf8; }
   </style>
 </head>
 <body>

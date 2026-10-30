@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#05070e">
+    <meta name="description" content="소설 《삼체》 궤도 역학 기반 실시간 항성계 시뮬레이션 & 행성 기후·문명 생존 모니터">
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <title>삼체 궤도 & 행성 생존 시뮬레이터 // marsko</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Pretendard / Inter -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #05070e;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            user-select: none;
+        }
+        .mono {
+            font-family: 'IBM Plex Mono', ui-monospace, monospace;
+        }
+        /* 우주 배경 그라데이션 및 미세 그리드 */
+        .space-bg {
+            background: radial-gradient(circle at 50% 50%, #0d1326 0%, #05070e 100%);
+        }
+        /* 커스텀 스크롤바 및 슬라이더 스타일 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1e293b;
+            height: 6px;
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+            transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        .preset-btn.active {
+            border-color: #38bdf8;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.05));
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+        }
+        canvas {
+            touch-action: none;
+        }
+        .home-link {
+            color: #64748b;
+            font-size: 0.75rem;
+            text-decoration: none;
+            font-family: 'IBM Plex Mono', ui-monospace, monospace;
+            padding: 3px 8px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(4px);
+            transition: color 0.15s ease, border-color 0.15s ease;
+        }
+        .home-link:hover {
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- 상단 헤더 -->
+    <header class="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <a href="index.html" class="home-link flex items-center gap-1.5" title="marsko 도구모음 홈으로">
+                    <span>←</span>
+                    <span>marsko</span>
+                </a>
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-base md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        삼체 궤도 & 행성 생존 시뮬레이터
+                        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 mono">Trisolaris N-Body</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400">만유인력 법칙(Velocity Verlet 적분) 기반 실시간 천체 물리 & 기후 시뮬레이션</p>
+                </div>
+            </div>
+
+            <!-- 단일 HTML 파일 다운로드 버튼 -->
+            <button id="downloadHtmlBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition shadow-lg shadow-emerald-950/50">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                단일 HTML 파일 저장 (.html)
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 레이아웃 -->
+    <main class="max-w-7xl w-full mx-auto px-4 py-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        
+        <!-- 좌측/중앙: 시뮬레이션 캔버스 영역 (8 칼럼) -->
+        <div class="lg:col-span-8 flex flex-col gap-3">
+            
+            <!-- 궤도 프리셋 선택 탭 -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <button data-preset="chaos" class="preset-btn active text-left p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 transition flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-amber-400">모드 1 · 소설 《삼체》</span>
+                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                    </div>
+                    <div class="text-sm font-bold text-white">소설 속 혼돈 삼체 (불안정)</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">세 항성이 뒤엉켜 항세와 난세가 불규칙 반복</div>
+                </button>
+
+                <button data-preset="stype" class="preset-btn text-left p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 transition flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-emerald-400">모드 2 · 실제 프록시마 b형</span>
+                        <span class="text-[10px] px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded">생명 가능</span>
+                    </div>
+                    <div class="text-sm font-bold text-white">실제 우주: S형 안정 궤도</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">중심별 1개를 가까이 돌고 두 별은 외곽 공전</div>
+                </button>
+
+                <button data-preset="ptype" class="preset-btn text-left p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 transition flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-sky-400">모드 3 · 실제 타투인형</span>
+                        <span class="text-[10px] px-1.5 py-0.2 bg-sky-500/20 text-sky-300 rounded">생명 가능</span>
+                    </div>
+                    <div class="text-sm font-bold text-white">실제 우주: P형 안정 궤도</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">중심 쌍성(2개)을 행성이 넓게 감싸며 공전</div>
+                </button>
+            </div>
+
+            <!-- 캔버스 컨테이너 -->
+            <div class="relative flex-1 min-h-[420px] md:min-h-[520px] rounded-2xl border border-slate-800 space-bg overflow-hidden shadow-2xl">
+                <canvas id="simCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+                <!-- 캔버스 상단 오버레이: 실시간 상태 배지 & 생존 타이머 -->
+                <div class="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                    <div id="eraBadge" class="px-3.5 py-1.5 rounded-xl bg-slate-900/85 border border-slate-700/80 backdrop-blur-md flex items-center gap-2.5 shadow-lg">
+                        <span id="eraDot" class="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span>
+                        <div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">현재 행성 기후 및 궤도 상태</div>
+                            <div id="eraText" class="text-sm font-bold text-white">항세 (안정적 기후 유지 중)</div>
+                        </div>
+                    </div>
+
+                    <div class="px-3.5 py-1.5 rounded-xl bg-slate-900/85 border border-slate-700/80 backdrop-blur-md text-right shadow-lg">
+                        <div class="text-[10px] text-slate-400">문명 생존 시간</div>
+                        <div id="survivalTime" class="text-sm font-mono font-bold text-sky-300">0.0 년</div>
+                    </div>
+                </div>
+
+                <!-- 캔버스 하단 인터랙션 안내 팁 -->
+                <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                    <div class="px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 text-xs text-slate-300 backdrop-blur-sm flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-sky-400"></span>
+                        <span><strong>조작 안내:</strong> 우주 화면 아무 곳이나 <strong>마우스로 클릭 & 드래그</strong>하면 원하는 속도로 새로운 행성을 직접 발사할 수 있습니다!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측: 실시간 행성 대시보드 및 컨트롤 패널 (4 칼럼) -->
+        <div class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- 카드 1: 행성 표면 온도 & 생명 거주성 모니터 -->
+            <div class="p-4 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        실시간 행성 환경 모니터
+                    </h2>
+                    <span id="dehydrateBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        생명체 활동 중
+                    </span>
+                </div>
+
+                <!-- 온도 표시 & 게이지 바 -->
+                <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                    <div class="flex items-baseline justify-between mb-2">
+                        <span class="text-xs text-slate-400">추정 표면 온도 (세 태양 복사열 합산)</span>
+                        <span id="tempValue" class="text-2xl font-mono font-extrabold text-emerald-400">18 °C</span>
+                    </div>
+                    <!-- 온도 그라데이션 바 -->
+                    <div class="w-full h-3 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-rose-600 relative overflow-hidden p-0.5">
+                        <div id="tempIndicator" class="w-2.5 h-full bg-white rounded-full shadow-[0_0_8px_#fff] transition-all duration-75" style="margin-left: 45%;"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                        <span>-200°C (절대혹한)</span>
+                        <span class="text-emerald-400">0~40°C (생명가능)</span>
+                        <span>+500°C (증발)</span>
+                    </div>
+                </div>
+
+                <!-- 온도 변화 미니 그래프 (Canvas) -->
+                <div>
+                    <div class="flex justify-between text-xs text-slate-400 mb-1">
+                        <span>최근 표면 온도 변화 추이</span>
+                        <span class="text-[11px] text-emerald-400/80">── 녹색 구간: 골디락스 존</span>
+                    </div>
+                    <canvas id="tempGraph" width="320" height="80" class="w-full h-20 rounded-xl bg-slate-950/80 border border-slate-800/80 block"></canvas>
+                </div>
+            </div>
+
+            <!-- 카드 2: 시뮬레이션 물리 제어판 -->
+            <div class="p-4 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-col gap-3.5">
+                <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                    </svg>
+                    시뮬레이션 컨트롤
+                </h2>
+
+                <!-- 재생 / 일시정지 / 초기화 버튼 -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="playPauseBtn" class="py-2.5 px-4 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-lg shadow-sky-500/20">
+                        <span id="playPauseIcon">⏸</span>
+                        <span id="playPauseText">일시정지</span>
+                    </button>
+                    <button id="resetBtn" class="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition">
+                        <span>🔄</span>
+                        <span>현재 궤도 다시 시작</span>
+                    </button>
+                </div>
+
+                <!-- 배속 슬라이더 -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">시뮬레이션 시간 배속</span>
+                        <span id="speedLabel" class="font-mono font-bold text-sky-400">1.0x</span>
+                    </div>
+                    <input id="speedSlider" type="range" min="0.2" max="3.0" step="0.1" value="1.0">
+                </div>
+
+                <!-- 궤적 길이 슬라이더 -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">궤도 잔상(Trail) 길이</span>
+                        <span id="trailLabel" class="font-mono font-bold text-sky-400">보통</span>
+                    </div>
+                    <input id="trailSlider" type="range" min="30" max="450" step="10" value="180">
+                </div>
+
+                <!-- 중심점 고정 옵션 -->
+                <label class="flex items-center justify-between text-xs text-slate-300 cursor-pointer pt-1 border-t border-slate-800/80">
+                    <span>무게중심 화면 중앙 자동 추적</span>
+                    <input id="centerTrackToggle" type="checkbox" checked class="w-4 h-4 accent-sky-400 rounded cursor-pointer">
+                </label>
+            </div>
+
+            <!-- 카드 3: 현재 궤도 과학적 해설 -->
+            <div class="p-4 rounded-2xl border border-slate-800 bg-slate-900/40 flex-1 flex flex-col justify-between gap-2">
+                <div>
+                    <div class="text-xs font-bold text-sky-400 mb-1" id="infoTitle">📘 소설 속 혼돈 삼체 (Chaos Orbit)</div>
+                    <p class="text-xs text-slate-300 leading-relaxed" id="infoDesc">
+                        세 항성이 비슷한 거리에서 서로의 중력에 얽혀 불규칙하게 공전합니다. 행성은 이 태양에서 저 태양으로 빼앗기듯 끌려다니며 극한의 추위와 더위(난세)를 겪고, 결국 중력 새총 효과로 우주 밖으로 튕겨 나가거나 태양에 충돌합니다.
+                    </p>
+                </div>
+                <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>💡 HTML5 Canvas + Verlet 중력 엔진</span>
+                    <span>외부 라이브러리 0개</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 알림 토스트 메시지 -->
+    <div id="toastMsg" class="fixed bottom-5 right-5 px-4 py-3 rounded-xl bg-slate-900/95 border border-sky-500/40 text-white text-xs font-semibold shadow-2xl backdrop-blur-md transition-all duration-300 opacity-0 pointer-events-none translate-y-3 z-50">
+        알림 메시지
+    </div>
+
+    <!-- 시뮬레이션 자바스크립트 코드 -->
+    <script>
+        (function() {
+            const canvas = document.getElementById('simCanvas');
+            const ctx = canvas.getContext('2d');
+            const tempGraphCanvas = document.getElementById('tempGraph');
+            const tempGraphCtx = tempGraphCanvas.getContext('2d');
+
+            // UI 요소 참조
+            const eraBadge = document.getElementById('eraBadge');
+            const eraDot = document.getElementById('eraDot');
+            const eraText = document.getElementById('eraText');
+            const survivalTimeEl = document.getElementById('survivalTime');
+            const tempValueEl = document.getElementById('tempValue');
+            const tempIndicator = document.getElementById('tempIndicator');
+            const dehydrateBadge = document.getElementById('dehydrateBadge');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const playPauseIcon = document.getElementById('playPauseIcon');
+            const playPauseText = document.getElementById('playPauseText');
+            const resetBtn = document.getElementById('resetBtn');
+            const speedSlider = document.getElementById('speedSlider');
+            const speedLabel = document.getElementById('speedLabel');
+            const trailSlider = document.getElementById('trailSlider');
+            const trailLabel = document.getElementById('trailLabel');
+            const centerTrackToggle = document.getElementById('centerTrackToggle');
+            const infoTitle = document.getElementById('infoTitle');
+            const infoDesc = document.getElementById('infoDesc');
+            const downloadHtmlBtn = document.getElementById('downloadHtmlBtn');
+            const toastMsg = document.getElementById('toastMsg');
+
+            // 시뮬레이션 상태 변수
+            let width = 800;
+            let height = 520;
+            let stars = [];
+            let planet = null;
+            let bgStars = [];
+            let currentPreset = 'chaos';
+            let isRunning = true;
+            let simSpeed = 1.0;
+            let maxTrailLen = 180;
+            let survivalYears = 0;
+            let tempHistory = [];
+
+            // 물리 상수
+            const G = 1200; // 중력 상수 (시각화 스케일 조정)
+            const SOFTENING = 18; // 중력 발산 방지 상수
+
+            // 마우스 드래그로 행성 발사 인터랙션 상태
+            let isDragging = false;
+            let dragStart = { x: 0, y: 0 };
+            let dragCurrent = { x: 0, y: 0 };
+
+            // 토스트 알림 함수
+            function showToast(text) {
+                toastMsg.textContent = text;
+                toastMsg.classList.remove('opacity-0', 'translate-y-3');
+                toastMsg.classList.add('opacity-100', 'translate-y-0');
+                setTimeout(() => {
+                    toastMsg.classList.remove('opacity-100', 'translate-y-0');
+                    toastMsg.classList.add('opacity-0', 'translate-y-3');
+                }, 2800);
+            }
+
+            // 배경 별 생성
+            function initBackgroundStars() {
+                bgStars = [];
+                for (let i = 0; i < 140; i++) {
+                    bgStars.push({
+                        x: Math.random(),
+                        y: Math.random(),
+                        r: Math.random() * 1.4 + 0.3,
+                        alpha: Math.random() * 0.6 + 0.2
+                    });
+                }
+            }
+
+            // 캔버스 크기 반응형 조절
+            function resizeCanvas() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                width = rect.width;
+                height = rect.height;
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+
+            // 프리셋별 초기 조건 설정
+            function loadPreset(presetName) {
+                currentPreset = presetName;
+                survivalYears = 0;
+                tempHistory = [];
+                stars = [];
+
+                const cx = width / 2;
+                const cy = height / 2;
+
+                if (presetName === 'chaos') {
+                    // 1. 소설 속 혼돈 삼체: 세 항성이 비슷한 질량으로 비대칭 위치에서 서로 얽힘
+                    stars = [
+                        {
+                            name: '알파 A',
+                            mass: 1.05,
+                            luminosity: 1.1,
+                            x: cx - 110,
+                            y: cy - 65,
+                            vx: 18,
+                            vy: -26,
+                            radius: 13,
+                            color: '#fbbf24', // 황색 주계열성
+                            glow: 'rgba(251, 191, 36, 0.55)',
+                            trail: []
+                        },
+                        {
+                            name: '알파 B',
+                            mass: 0.95,
+                            luminosity: 0.9,
+                            x: cx + 115,
+                            y: cy - 45,
+                            vx: 14,
+                            vy: 30,
+                            radius: 12,
+                            color: '#f97316', // 주황색 항성
+                            glow: 'rgba(249, 115, 22, 0.55)',
+                            trail: []
+                        },
+                        {
+                            name: '프록시마 C',
+                            mass: 0.85,
+                            luminosity: 0.7,
+                            x: cx + 5,
+                            y: cy + 115,
+                            vx: -34,
+                            vy: -4,
+                            radius: 10,
+                            color: '#ef4444', // 적색 항성
+                            glow: 'rgba(239, 68, 68, 0.55)',
+                            trail: []
+                        }
+                    ];
+
+                    // 세 별 사이를 위태롭게 도는 삼체 행성
+                    planet = {
+                        x: cx - 45,
+                        y: cy - 5,
+                        vx: -15,
+                        vy: -95,
+                        radius: 4.5,
+                        temp: 20,
+                        alive: true,
+                        status: 'normal',
+                        trail: []
+                    };
+
+                    infoTitle.textContent = '📘 소설 속 혼돈 삼체 (Chaos Orbit)';
+                    infoDesc.textContent = '세 항성이 비슷한 거리에서 서로의 중력에 얽혀 불규칙하게 공전합니다. 행성은 이 태양에서 저 태양으로 빼앗기듯 끌려다니며 극한의 추위와 더위(난세)를 겪고, 결국 중력 새총 효과로 튕겨 나가거나 태양에 충돌합니다.';
+
+                } else if (presetName === 'stype') {
+                    // 2. 실제 우주: S형 안정 궤도 (프록시마 b 스타일 계층적 2+1 구조)
+                    // 중심에 가까운 주성 1개 + 그 주위를 가까이 도는 행성 + 아주 멀리서 도는 쌍성
+                    stars = [
+                        {
+                            name: '중심 항성 (프록시마)',
+                            mass: 0.9,
+                            luminosity: 0.65,
+                            x: cx - 95,
+                            y: cy,
+                            vx: 0,
+                            vy: -24,
+                            radius: 11,
+                            color: '#ef4444',
+                            glow: 'rgba(239, 68, 68, 0.5)',
+                            trail: []
+                        },
+                        {
+                            name: '원거리 쌍성 A',
+                            mass: 0.75,
+                            luminosity: 0.75,
+                            x: cx + 150,
+                            y: cy - 28,
+                            vx: 25,
+                            vy: 14,
+                            radius: 10,
+                            color: '#fbbf24',
+                            glow: 'rgba(251, 191, 36, 0.5)',
+                            trail: []
+                        },
+                        {
+                            name: '원거리 쌍성 B',
+                            mass: 0.65,
+                            luminosity: 0.6,
+                            x: cx + 150,
+                            y: cy + 28,
+                            vx: -28,
+                            vy: 15,
+                            radius: 9,
+                            color: '#f97316',
+                            glow: 'rgba(249, 115, 22, 0.5)',
+                            trail: []
+                        }
+                    ];
+
+                    // 첫 번째 항성 주위 골디락스 존(거리 46px)에 안정적으로 안착한 행성
+                    const orbitR = 46;
+                    const orbitV = Math.sqrt((G * stars[0].mass) / orbitR);
+                    planet = {
+                        x: stars[0].x,
+                        y: stars[0].y - orbitR,
+                        vx: stars[0].vx + orbitV,
+                        vy: stars[0].vy,
+                        radius: 4.5,
+                        temp: 18,
+                        alive: true,
+                        status: 'normal',
+                        trail: []
+                    };
+
+                    infoTitle.textContent = '📗 실제 우주: S형 안정 궤도 (프록시마 b형)';
+                    infoDesc.textContent = '실제 센타우루스자리 알파의 프록시마 b처럼, 행성이 하나의 중심별을 골디락스 존에서 안정적으로 공전하고 나머지 두 별은 멀찌감치 떨어져 도는 계층적 구조입니다. 기후가 수십억 년 동안 온화하게 유지됩니다.';
+
+                } else if (presetName === 'ptype') {
+                    // 3. 실제 우주: P형 안정 궤도 (타투인 스타일 쌍성 주위 공전)
+                    const binDist = 26;
+                    const binMass = 0.75;
+                    const binV = Math.sqrt((G * binMass) / (4 * binDist));
+
+                    stars = [
+                        {
+                            name: '중심 쌍성 A',
+                            mass: binMass,
+                            luminosity: 0.55,
+                            x: cx - binDist,
+                            y: cy,
+                            vx: 0,
+                            vy: -binV,
+                            radius: 10.5,
+                            color: '#fbbf24',
+                            glow: 'rgba(251, 191, 36, 0.5)',
+                            trail: []
+                        },
+                        {
+                            name: '중심 쌍성 B',
+                            mass: binMass,
+                            luminosity: 0.55,
+                            x: cx + binDist,
+                            y: cy,
+                            vx: 0,
+                            vy: binV,
+                            radius: 10.5,
+                            color: '#f97316',
+                            glow: 'rgba(249, 115, 22, 0.5)',
+                            trail: []
+                        },
+                        {
+                            name: '외곽 왜성 C',
+                            mass: 0.12,
+                            luminosity: 0.1,
+                            x: cx,
+                            y: cy - 220,
+                            vx: Math.sqrt((G * (binMass * 2)) / 220),
+                            vy: 0,
+                            radius: 6.5,
+                            color: '#ef4444',
+                            glow: 'rgba(239, 68, 68, 0.4)',
+                            trail: []
+                        }
+                    ];
+
+                    const pDist = 105;
+                    const pVel = Math.sqrt((G * (binMass * 2)) / pDist);
+                    planet = {
+                        x: cx,
+                        y: cy + pDist,
+                        vx: -pVel,
+                        vy: 0,
+                        radius: 4.5,
+                        temp: 22,
+                        alive: true,
+                        status: 'normal',
+                        trail: []
+                    };
+
+                    infoTitle.textContent = '📙 실제 우주: P형 안정 궤도 (타투인형)';
+                    infoDesc.textContent = '영화 <스타워즈>의 타투인이나 실제 케플러-16b 행성처럼, 중심에서 두 태양이 서로 가깝게 춤추듯 돌고 행성이 그 바깥을 둥글게 감싸며 도는 안정 궤도입니다. 하늘에 두 개의 태양이 동시에 뜨고 집니다.';
+                }
+            }
+
+            // 만유인력 가속도 계산 함수
+            function computeStarAccelerations(stateStars) {
+                const acc = stateStars.map(() => ({ ax: 0, ay: 0 }));
+                for (let i = 0; i < stateStars.length; i++) {
+                    for (let j = i + 1; j < stateStars.length; j++) {
+                        const dx = stateStars[j].x - stateStars[i].x;
+                        const dy = stateStars[j].y - stateStars[i].y;
+                        const distSq = dx * dx + dy * dy + SOFTENING * SOFTENING;
+                        const dist = Math.sqrt(distSq);
+                        const force = (G / distSq);
+
+                        const fx = force * (dx / dist);
+                        const fy = force * (dy / dist);
+
+                        acc[i].ax += fx * stateStars[j].mass;
+                        acc[i].ay += fy * stateStars[j].mass;
+                        acc[j].ax -= fx * stateStars[i].mass;
+                        acc[j].ay -= fy * stateStars[i].mass;
+                    }
+                }
+                return acc;
+            }
+
+            // 행성이 받는 중력 가속도 계산
+            function computePlanetAcceleration(px, py, stateStars) {
+                let ax = 0;
+                let ay = 0;
+                for (let i = 0; i < stateStars.length; i++) {
+                    const dx = stateStars[i].x - px;
+                    const dy = stateStars[i].y - py;
+                    const distSq = dx * dx + dy * dy + (SOFTENING * 0.4) * (SOFTENING * 0.4);
+                    const dist = Math.sqrt(distSq);
+                    const a = (G * stateStars[i].mass) / distSq;
+                    ax += a * (dx / dist);
+                    ay += a * (dy / dist);
+                }
+                return { ax, ay };
+            }
+
+            // 물리 업데이트 (Velocity Verlet 서브스테핑)
+            function stepPhysics(dt) {
+                const subSteps = 8;
+                const h = (dt * simSpeed) / subSteps;
+
+                for (let step = 0; step < subSteps; step++) {
+                    // 1. 항성 간 Velocity Verlet 적분
+                    const acc1 = computeStarAccelerations(stars);
+                    for (let i = 0; i < stars.length; i++) {
+                        stars[i].x += stars[i].vx * h + 0.5 * acc1[i].ax * h * h;
+                        stars[i].y += stars[i].vy * h + 0.5 * acc1[i].ay * h * h;
+                    }
+                    const acc2 = computeStarAccelerations(stars);
+                    for (let i = 0; i < stars.length; i++) {
+                        stars[i].vx += 0.5 * (acc1[i].ax + acc2[i].ax) * h;
+                        stars[i].vy += 0.5 * (acc1[i].ay + acc2[i].ay) * h;
+                    }
+
+                    // 2. 행성 Velocity Verlet 적분
+                    if (planet && planet.alive) {
+                        const pAcc1 = computePlanetAcceleration(planet.x, planet.y, stars);
+                        planet.x += planet.vx * h + 0.5 * pAcc1.ax * h * h;
+                        planet.y += planet.vy * h + 0.5 * pAcc1.ay * h * h;
+                        const pAcc2 = computePlanetAcceleration(planet.x, planet.y, stars);
+                        planet.vx += 0.5 * (pAcc1.ax + pAcc2.ax) * h;
+                        planet.vy += 0.5 * (pAcc1.ay + pAcc2.ay) * h;
+
+                        // 항성 충돌 판정
+                        for (let i = 0; i < stars.length; i++) {
+                            const dx = stars[i].x - planet.x;
+                            const dy = stars[i].y - planet.y;
+                            const dist = Math.hypot(dx, dy);
+                            if (dist < stars[i].radius + planet.radius - 2) {
+                                planet.alive = false;
+                                planet.status = 'collided';
+                                planet.temp = 2500;
+                                showToast(`💥 행성이 [${stars[i].name}]에 추락하여 증발했습니다!`);
+                            }
+                        }
+
+                        // 항성계 영구 이탈 판정
+                        const cx = width / 2;
+                        const cy = height / 2;
+                        if (Math.hypot(planet.x - cx, planet.y - cy) > Math.max(width, height) * 1.15) {
+                            planet.alive = false;
+                            planet.status = 'escaped';
+                            planet.temp = -270;
+                            showToast('🌌 행성이 중력 새총 효과로 항성계 바깥 암흑 우주로 튕겨 나갔습니다!');
+                        }
+                    }
+                }
+
+                // 무게중심 화면 중앙 보정 옵션
+                if (centerTrackToggle.checked) {
+                    let totalMass = 0;
+                    let comX = 0;
+                    let comY = 0;
+                    for (const s of stars) {
+                        totalMass += s.mass;
+                        comX += s.x * s.mass;
+                        comY += s.y * s.mass;
+                    }
+                    comX /= totalMass;
+                    comY /= totalMass;
+
+                    const shiftX = (width / 2 - comX) * 0.08;
+                    const shiftY = (height / 2 - comY) * 0.08;
+
+                    for (const s of stars) {
+                        s.x += shiftX;
+                        s.y += shiftY;
+                    }
+                    if (planet) {
+                        planet.x += shiftX;
+                        planet.y += shiftY;
+                    }
+                }
+
+                // 궤적(Trail) 기록 및 온도 계산
+                for (const s of stars) {
+                    s.trail.push({ x: s.x, y: s.y });
+                    if (s.trail.length > maxTrailLen) s.trail.shift();
+                }
+
+                if (planet && planet.alive) {
+                    planet.trail.push({ x: planet.x, y: planet.y });
+                    if (planet.trail.length > maxTrailLen * 1.4) planet.trail.shift();
+
+                    // 복사 평형 온도 근사 계산: 각 항성의 광도 / 거리^2 합산
+                    let flux = 0;
+                    for (const s of stars) {
+                        const d = Math.max(12, Math.hypot(s.x - planet.x, s.y - planet.y));
+                        flux += (s.luminosity * 2400) / (d * d);
+                    }
+                    const targetTemp = -235 + 255 * Math.pow(flux, 0.35);
+                    planet.temp = planet.temp * 0.85 + targetTemp * 0.15;
+
+                    survivalYears += 0.04 * simSpeed;
+                    tempHistory.push(planet.temp);
+                    if (tempHistory.length > 160) tempHistory.shift();
+                }
+
+                updateDashboardUI();
+            }
+
+            // 대시보드 텍스트 및 게이지 업데이트
+            function updateDashboardUI() {
+                survivalTimeEl.textContent = `${survivalYears.toFixed(1)} 년`;
+
+                if (!planet) return;
+
+                const t = Math.round(planet.temp);
+                tempValueEl.textContent = `${t} °C`;
+
+                // 온도 게이지 바 위치 계산 (-200 ~ +400 범위)
+                const pct = Math.max(2, Math.min(98, ((t + 200) / 600) * 100));
+                tempIndicator.style.marginLeft = `${pct}%`;
+
+                if (!planet.alive) {
+                    if (planet.status === 'collided') {
+                        eraDot.className = 'w-3 h-3 rounded-full bg-rose-500 animate-ping';
+                        eraText.textContent = '행성 멸망 (항성 충돌 및 증발!)';
+                        eraText.className = 'text-sm font-bold text-rose-400';
+                        dehydrateBadge.textContent = '문명 소멸';
+                        dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30';
+                    } else {
+                        eraDot.className = 'w-3 h-3 rounded-full bg-cyan-400';
+                        eraText.textContent = '행성 궤도 이탈 (영원한 암흑 우주)';
+                        eraText.className = 'text-sm font-bold text-cyan-300';
+                        dehydrateBadge.textContent = '영구 동결';
+                        dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+                    }
+                    return;
+                }
+
+                // 살아있는 행성의 기후 판정
+                if (t >= -15 && t <= 55) {
+                    eraDot.className = 'w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]';
+                    eraText.textContent = '항세 (온화한 기후 · 액체 물 존재)';
+                    eraText.className = 'text-sm font-bold text-emerald-300';
+                    tempValueEl.className = 'text-2xl font-mono font-extrabold text-emerald-400';
+                    dehydrateBadge.textContent = '생명체 번영 (수분 보충)';
+                    dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                } else if (t > 55) {
+                    eraDot.className = 'w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_12px_#f97316]';
+                    eraText.textContent = '난세: 극한 혹서 (바다 증발 · 표면 용융)';
+                    eraText.className = 'text-sm font-bold text-orange-400';
+                    tempValueEl.className = 'text-2xl font-mono font-extrabold text-orange-400';
+                    dehydrateBadge.textContent = '삼체인 긴급 탈수!';
+                    dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30';
+                } else {
+                    eraDot.className = 'w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee]';
+                    eraText.textContent = '난세: 극한 혹한 (대기 결빙 · 빙하기)';
+                    eraText.className = 'text-sm font-bold text-cyan-300';
+                    tempValueEl.className = 'text-2xl font-mono font-extrabold text-cyan-300';
+                    dehydrateBadge.textContent = '삼체인 긴급 탈수!';
+                    dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+                }
+            }
+
+            // 우측 미니 온도 그래프 렌더링
+            function drawTempGraph() {
+                const gw = tempGraphCanvas.width;
+                const gh = tempGraphCanvas.height;
+                tempGraphCtx.clearRect(0, 0, gw, gh);
+
+                // 골디락스 존(-15°C ~ 55°C) 녹색 안전 지대 표시
+                const mapY = (temp) => {
+                    const clamped = Math.max(-200, Math.min(300, temp));
+                    return gh - ((clamped + 200) / 500) * gh;
+                };
+
+                const yTop = mapY(55);
+                const yBot = mapY(-15);
+                tempGraphCtx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+                tempGraphCtx.fillRect(0, yTop, gw, yBot - yTop);
+
+                if (tempHistory.length < 2) return;
+
+                tempGraphCtx.beginPath();
+                for (let i = 0; i < tempHistory.length; i++) {
+                    const x = (i / 160) * gw;
+                    const y = mapY(tempHistory[i]);
+                    if (i === 0) tempGraphCtx.moveTo(x, y);
+                    else tempGraphCtx.lineTo(x, y);
+                }
+                tempGraphCtx.strokeStyle = '#38bdf8';
+                tempGraphCtx.lineWidth = 2;
+                tempGraphCtx.stroke();
+            }
+
+            // 메인 시뮬레이션 캔버스 렌더링
+            function render() {
+                ctx.clearRect(0, 0, width, height);
+
+                // 1. 배경 별 그리기
+                for (const b of bgStars) {
+                    ctx.fillStyle = `rgba(226, 232, 240, ${b.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(b.x * width, b.y * height, b.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 2. 항성 궤적(Trail) 그리기
+                for (const s of stars) {
+                    if (s.trail.length > 2) {
+                        ctx.beginPath();
+                        for (let i = 0; i < s.trail.length; i++) {
+                            if (i === 0) ctx.moveTo(s.trail[i].x, s.trail[i].y);
+                            else ctx.lineTo(s.trail[i].x, s.trail[i].y);
+                        }
+                        ctx.strokeStyle = s.color + '44';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+
+                // 3. 행성 궤적(Trail) 그리기
+                if (planet && planet.trail.length > 2) {
+                    ctx.beginPath();
+                    for (let i = 0; i < planet.trail.length; i++) {
+                        if (i === 0) ctx.moveTo(planet.trail[i].x, planet.trail[i].y);
+                        else ctx.lineTo(planet.trail[i].x, planet.trail[i].y);
+                    }
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+                    ctx.lineWidth = 1.6;
+                    ctx.stroke();
+                }
+
+                // 4. 항성 본체 및 코로나 발광 효과 그리기
+                for (const s of stars) {
+                    const grad = ctx.createRadialGradient(s.x, s.y, s.radius * 0.2, s.x, s.y, s.radius * 3.2);
+                    grad.addColorStop(0, '#ffffff');
+                    grad.addColorStop(0.3, s.color);
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.radius * 3.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.radius * 0.55, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 항성 이름 라벨
+                    ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
+                    ctx.font = '11px Pretendard, sans-serif';
+                    ctx.fillText(s.name, s.x + s.radius + 4, s.y + 4);
+                }
+
+                // 5. 행성 그리기 (온도에 따라 색상 변화)
+                if (planet && planet.alive) {
+                    let pColor = '#34d399'; // 적정 온도(초록/푸른빛)
+                    if (planet.temp > 55) pColor = '#fb7185'; // 과열(붉은빛)
+                    else if (planet.temp < -15) pColor = '#67e8f9'; // 결빙(얼음빛)
+
+                    ctx.shadowColor = pColor;
+                    ctx.shadowBlur = 12;
+                    ctx.fillStyle = pColor;
+                    ctx.beginPath();
+                    ctx.arc(planet.x, planet.y, planet.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 11px Pretendard, sans-serif';
+                    ctx.fillText(`행성 (${Math.round(planet.temp)}°C)`, planet.x + 8, planet.y - 6);
+                }
+
+                // 6. 마우스 드래그로 새 행성 발사 화살표 가이드 렌더링
+                if (isDragging) {
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(dragStart.x, dragStart.y);
+                    ctx.lineTo(dragCurrent.x, dragCurrent.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(dragStart.x, dragStart.y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const vx = (dragCurrent.x - dragStart.x) * 1.6;
+                    const vy = (dragCurrent.y - dragStart.y) * 1.6;
+                    const speedVal = Math.round(Math.hypot(vx, vy));
+                    ctx.fillStyle = '#e0f2fe';
+                    ctx.font = 'bold 12px Pretendard, sans-serif';
+                    ctx.fillText(`새 행성 발사 속도: ${speedVal} km/s`, dragCurrent.x + 10, dragCurrent.y);
+                }
+
+                drawTempGraph();
+            }
+
+            // 메인 루프
+            function animate() {
+                if (isRunning) {
+                    stepPhysics(0.016);
+                }
+                render();
+                requestAnimationFrame(animate);
+            }
+
+            // 마우스/터치로 행성 직접 배치 및 발사 이벤트
+            function getPointerPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            canvas.addEventListener('pointerdown', (e) => {
+                isDragging = true;
+                dragStart = getPointerPos(e);
+                dragCurrent = { ...dragStart };
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                dragCurrent = getPointerPos(e);
+            });
+
+            window.addEventListener('pointerup', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                const vx = (dragCurrent.x - dragStart.x) * 1.6;
+                const vy = (dragCurrent.y - dragStart.y) * 1.6;
+
+                planet = {
+                    x: dragStart.x,
+                    y: dragStart.y,
+                    vx: vx,
+                    vy: vy,
+                    radius: 4.5,
+                    temp: 15,
+                    alive: true,
+                    status: 'normal',
+                    trail: []
+                };
+                survivalYears = 0;
+                tempHistory = [];
+                showToast('🚀 새로운 행성을 궤도에 진입시켰습니다!');
+            });
+
+            // 프리셋 버튼 이벤트
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    loadPreset(btn.dataset.preset);
+                });
+            });
+
+            // 컨트롤 버튼 이벤트
+            playPauseBtn.addEventListener('click', () => {
+                isRunning = !isRunning;
+                playPauseIcon.textContent = isRunning ? '⏸' : '▶';
+                playPauseText.textContent = isRunning ? '일시정지' : '다시 재생';
+            });
+
+            resetBtn.addEventListener('click', () => {
+                loadPreset(currentPreset);
+                showToast('궤도를 초기 상태로 리셋했습니다.');
+            });
+
+            speedSlider.addEventListener('input', (e) => {
+                simSpeed = parseFloat(e.target.value);
+                speedLabel.textContent = `${simSpeed.toFixed(1)}x`;
+            });
+
+            trailSlider.addEventListener('input', (e) => {
+                maxTrailLen = parseInt(e.target.value, 10);
+                if (maxTrailLen < 100) trailLabel.textContent = '짧게';
+                else if (maxTrailLen < 260) trailLabel.textContent = '보통';
+                else trailLabel.textContent = '길게';
+            });
+
+            // 단일 HTML 파일 다운로드 기능
+            downloadHtmlBtn.addEventListener('click', () => {
+                const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+                const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'trisolaris_simulator.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('✅ trisolaris_simulator.html 파일이 저장되었습니다!');
+            });
+
+            // 초기화 실행
+            window.onload = function() {
+                resizeCanvas();
+                initBackgroundStars();
+                loadPreset('chaos');
+                animate();
+            };
+        })();
+    </script>
+</body>
+</html>

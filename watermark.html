@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Marsko lab tool — watermark.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#ffffff">
-  <title>사진 워터마크 메이커</title>
+<meta name="theme-color" content="#09090b">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <title>사진 워터마크 메이커 // marsko</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Playfair+Display:ital,wght@1,600&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
@@ -14,42 +15,49 @@
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-      background: #f4f6f8;
-      color: #1a1a1a;
+      background: #09090b;
+      color: #e4e4e7;
       display: flex;
       justify-content: center;
       padding: 12px;
     }
     .container {
-      background: #ffffff;
+      background: #18181b;
+      border: 1px solid #27272a;
       max-width: 520px;
       width: 100%;
       border-radius: 20px;
       padding: 20px 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
     }
-    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; }
-    p.sub { font-size: 0.8rem; color: #868e96; text-align: center; margin-bottom: 16px; }
+    h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; color: #f4f4f5; }
+    p.sub { font-size: 0.8rem; color: #a1a1aa; text-align: center; margin-bottom: 16px; }
     .dropzone {
-      border: 2px dashed #007aff;
-      background: #f0f7ff;
+      border: 2px dashed #0284c7;
+      background: #0f172a;
       border-radius: 14px;
       padding: 22px 12px;
       text-align: center;
       cursor: pointer;
       font-size: 0.95rem;
       font-weight: 600;
-      color: #007aff;
+      color: #38bdf8;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 4px;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
-    .dropzone small { font-size: 0.75rem; color: #6c757d; font-weight: 400; }
+    .dropzone:hover {
+      background: #132038;
+      border-color: #38bdf8;
+    }
+    .dropzone small { font-size: 0.75rem; color: #94a3b8; font-weight: 400; }
     input[type="file"] { display: none; }
     .control-panel {
       margin-top: 14px;
-      background: #f8f9fa;
+      background: #27272a;
+      border: 1px solid #3f3f46;
       padding: 14px;
       border-radius: 12px;
       display: flex;
@@ -62,13 +70,14 @@
       justify-content: space-between;
       font-size: 0.88rem;
     }
-    .control-row label { font-weight: 600; color: #343a40; }
+    .control-row label { font-weight: 600; color: #d4d4d8; }
     .control-row select, .control-row input[type="text"] {
       font-size: 0.9rem;
       border-radius: 8px;
       padding: 7px 10px;
-      border: 1px solid #ced4da;
-      background: #fff;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #f4f4f5;
     }
     .control-row input[type="text"] { width: 180px; }
     .slider-box {
@@ -77,7 +86,7 @@
       gap: 8px;
     }
     .slider-box input[type="range"] { width: 110px; }
-    .slider-box span { font-size: 0.8rem; color: #495057; width: 38px; text-align: right; }
+    .slider-box span { font-size: 0.8rem; color: #94a3b8; width: 38px; text-align: right; }
     .pos-grid {
       display: grid;
       grid-template-columns: repeat(3, 28px);
@@ -86,20 +95,21 @@
     .pos-btn {
       width: 28px;
       height: 28px;
-      border: 1px solid #ced4da;
-      background: #fff;
+      border: 1px solid #3f3f46;
+      background: #18181b;
       border-radius: 4px;
       cursor: pointer;
       font-size: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #868e96;
+      color: #a1a1aa;
+      transition: all 0.15s ease;
     }
     .pos-btn.active {
-      background: #007aff;
+      background: #0284c7;
       color: #fff;
-      border-color: #007aff;
+      border-color: #38bdf8;
     }
     .color-options {
       display: flex;
@@ -109,7 +119,7 @@
     input[type="color"] {
       width: 32px;
       height: 32px;
-      border: none;
+      border: 1px solid #3f3f46;
       border-radius: 6px;
       background: none;
       cursor: pointer;
@@ -120,11 +130,12 @@
       width: 100%;
       text-align: center;
     }
-    .preview-header { font-size: 0.75rem; color: #868e96; margin-bottom: 6px; text-align: left; }
+    .preview-header { font-size: 0.75rem; color: #a1a1aa; margin-bottom: 6px; text-align: left; }
     .canvas-container {
       width: 100%;
       max-height: 400px;
-      background: #e9ecef;
+      background: #09090b;
+      border: 1px solid #27272a;
       border-radius: 10px;
       display: flex;
       align-items: center;
@@ -135,7 +146,7 @@
     #previewCanvas {
       max-width: 100%;
       max-height: 380px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       border-radius: 6px;
     }
     .btn-group { margin-top: 18px; }
@@ -150,12 +161,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #007aff;
+      background: #0284c7;
       color: #ffffff;
+      transition: background 0.15s ease;
     }
+    .btn:hover { background: #0369a1; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
-    .back a { color: #007aff; text-decoration: none; }
+    .back a { color: #64748b; text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+    .back a:hover { color: #38bdf8; }
   </style>
 </head>
 <body>
