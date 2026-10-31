@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#05070e">
-    <meta name="description" content="소설 《삼체》 궤도 역학 기반 실시간 항성계 시뮬레이션 & 행성 기후·문명 생존 모니터">
+    <meta name="description" content="삼중성계 N체 궤도 역학 기반 실시간 항성계 시뮬레이션 & 행성 기후·문명 생존 모니터">
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-    <title>삼체 궤도 & 행성 생존 시뮬레이터 // marsko</title>
+    <title>삼중성계 궤도 & 행성 생존 시뮬레이터 // marsko</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Pretendard / Inter -->
@@ -95,8 +95,8 @@
                 </div>
                 <div>
                     <h1 class="text-base md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                        삼체 궤도 & 행성 생존 시뮬레이터
-                        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 mono">Trisolaris N-Body</span>
+                        삼중성계 궤도 & 행성 생존 시뮬레이터
+                        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 mono">Triple-Star N-Body</span>
                     </h1>
                     <p class="text-[11px] text-slate-400">만유인력 법칙(Velocity Verlet 적분) 기반 실시간 천체 물리 & 기후 시뮬레이션</p>
                 </div>
@@ -122,11 +122,11 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <button data-preset="chaos" class="preset-btn active text-left p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 transition flex flex-col justify-between">
                     <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-bold text-amber-400">모드 1 · 소설 《삼체》</span>
+                        <span class="text-xs font-bold text-amber-400">모드 1 · 혼돈 삼중성</span>
                         <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
                     </div>
-                    <div class="text-sm font-bold text-white">소설 속 혼돈 삼체 (불안정)</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">세 항성이 뒤엉켜 항세와 난세가 불규칙 반복</div>
+                    <div class="text-sm font-bold text-white">혼돈 삼중성 궤도 (불안정)</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">세 항성이 뒤엉켜 안정기와 혼돈기가 불규칙 반복</div>
                 </button>
 
                 <button data-preset="stype" class="preset-btn text-left p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 transition flex flex-col justify-between">
@@ -140,7 +140,7 @@
 
                 <button data-preset="ptype" class="preset-btn text-left p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/60 transition flex flex-col justify-between">
                     <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-bold text-sky-400">모드 3 · 실제 타투인형</span>
+                        <span class="text-xs font-bold text-sky-400">모드 3 · 실제 케플러-16b형</span>
                         <span class="text-[10px] px-1.5 py-0.2 bg-sky-500/20 text-sky-300 rounded">생명 가능</span>
                     </div>
                     <div class="text-sm font-bold text-white">실제 우주: P형 안정 궤도</div>
@@ -158,7 +158,7 @@
                         <span id="eraDot" class="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span>
                         <div>
                             <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">현재 행성 기후 및 궤도 상태</div>
-                            <div id="eraText" class="text-sm font-bold text-white">항세 (안정적 기후 유지 중)</div>
+                            <div id="eraText" class="text-sm font-bold text-white">안정기 (안정적 기후 유지 중)</div>
                         </div>
                     </div>
 
@@ -271,9 +271,9 @@
             <!-- 카드 3: 현재 궤도 과학적 해설 -->
             <div class="p-4 rounded-2xl border border-slate-800 bg-slate-900/40 flex-1 flex flex-col justify-between gap-2">
                 <div>
-                    <div class="text-xs font-bold text-sky-400 mb-1" id="infoTitle">📘 소설 속 혼돈 삼체 (Chaos Orbit)</div>
+                    <div class="text-xs font-bold text-sky-400 mb-1" id="infoTitle">📘 혼돈 삼중성 궤도 (Chaos Orbit)</div>
                     <p class="text-xs text-slate-300 leading-relaxed" id="infoDesc">
-                        세 항성이 비슷한 거리에서 서로의 중력에 얽혀 불규칙하게 공전합니다. 행성은 이 태양에서 저 태양으로 빼앗기듯 끌려다니며 극한의 추위와 더위(난세)를 겪고, 결국 중력 새총 효과로 우주 밖으로 튕겨 나가거나 태양에 충돌합니다.
+                        세 항성이 비슷한 거리에서 서로의 중력에 얽혀 불규칙하게 공전합니다. 행성은 이 태양에서 저 태양으로 빼앗기듯 끌려다니며 극한의 추위와 더위(혼돈기)를 겪고, 결국 중력 새총 효과로 우주 밖으로 튕겨 나가거나 태양에 충돌합니다.
                     </p>
                 </div>
                 <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
@@ -388,7 +388,7 @@
                 const cy = height / 2;
 
                 if (presetName === 'chaos') {
-                    // 1. 소설 속 혼돈 삼체: 세 항성이 비슷한 질량으로 비대칭 위치에서 서로 얽힘
+                    // 1. 혼돈 삼중성: 세 항성이 비슷한 질량으로 비대칭 위치에서 서로 얽힘
                     stars = [
                         {
                             name: '알파 A',
@@ -431,7 +431,7 @@
                         }
                     ];
 
-                    // 세 별 사이를 위태롭게 도는 삼체 행성
+                    // 세 별 사이를 위태롭게 도는 행성
                     planet = {
                         x: cx - 45,
                         y: cy - 5,
@@ -444,8 +444,8 @@
                         trail: []
                     };
 
-                    infoTitle.textContent = '📘 소설 속 혼돈 삼체 (Chaos Orbit)';
-                    infoDesc.textContent = '세 항성이 비슷한 거리에서 서로의 중력에 얽혀 불규칙하게 공전합니다. 행성은 이 태양에서 저 태양으로 빼앗기듯 끌려다니며 극한의 추위와 더위(난세)를 겪고, 결국 중력 새총 효과로 튕겨 나가거나 태양에 충돌합니다.';
+                    infoTitle.textContent = '📘 혼돈 삼중성 궤도 (Chaos Orbit)';
+                    infoDesc.textContent = '세 항성이 비슷한 거리에서 서로의 중력에 얽혀 불규칙하게 공전합니다. 행성은 이 태양에서 저 태양으로 빼앗기듯 끌려다니며 극한의 추위와 더위(혼돈기)를 겪고, 결국 중력 새총 효과로 튕겨 나가거나 태양에 충돌합니다.';
 
                 } else if (presetName === 'stype') {
                     // 2. 실제 우주: S형 안정 궤도 (프록시마 b 스타일 계층적 2+1 구조)
@@ -511,7 +511,7 @@
                     infoDesc.textContent = '실제 센타우루스자리 알파의 프록시마 b처럼, 행성이 하나의 중심별을 골디락스 존에서 안정적으로 공전하고 나머지 두 별은 멀찌감치 떨어져 도는 계층적 구조입니다. 기후가 수십억 년 동안 온화하게 유지됩니다.';
 
                 } else if (presetName === 'ptype') {
-                    // 3. 실제 우주: P형 안정 궤도 (타투인 스타일 쌍성 주위 공전)
+                    // 3. 실제 우주: P형 안정 궤도 (쌍성 주위 circumbinary 공전)
                     const binDist = 26;
                     const binMass = 0.75;
                     const binV = Math.sqrt((G * binMass) / (4 * binDist));
@@ -572,8 +572,8 @@
                         trail: []
                     };
 
-                    infoTitle.textContent = '📙 실제 우주: P형 안정 궤도 (타투인형)';
-                    infoDesc.textContent = '영화 <스타워즈>의 타투인이나 실제 케플러-16b 행성처럼, 중심에서 두 태양이 서로 가깝게 춤추듯 돌고 행성이 그 바깥을 둥글게 감싸며 도는 안정 궤도입니다. 하늘에 두 개의 태양이 동시에 뜨고 집니다.';
+                    infoTitle.textContent = '📙 실제 우주: P형 안정 궤도 (케플러-16b형)';
+                    infoDesc.textContent = '실제 케플러-16b처럼, 중심에서 두 태양이 서로 가깝게 공전하고 행성이 그 바깥을 둥글게 감싸며 도는 circumbinary(P형) 안정 궤도입니다. 하늘에 두 개의 태양이 동시에 뜨고 집니다.';
                 }
             }
 
@@ -754,24 +754,24 @@
                 // 살아있는 행성의 기후 판정
                 if (t >= -15 && t <= 55) {
                     eraDot.className = 'w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]';
-                    eraText.textContent = '항세 (온화한 기후 · 액체 물 존재)';
+                    eraText.textContent = '안정기 (온화한 기후 · 액체 물 존재)';
                     eraText.className = 'text-sm font-bold text-emerald-300';
                     tempValueEl.className = 'text-2xl font-mono font-extrabold text-emerald-400';
                     dehydrateBadge.textContent = '생명체 번영 (수분 보충)';
                     dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
                 } else if (t > 55) {
                     eraDot.className = 'w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_12px_#f97316]';
-                    eraText.textContent = '난세: 극한 혹서 (바다 증발 · 표면 용융)';
+                    eraText.textContent = '혼돈기: 극한 혹서 (바다 증발 · 표면 용융)';
                     eraText.className = 'text-sm font-bold text-orange-400';
                     tempValueEl.className = 'text-2xl font-mono font-extrabold text-orange-400';
-                    dehydrateBadge.textContent = '삼체인 긴급 탈수!';
+                    dehydrateBadge.textContent = '생명체 긴급 휴면!';
                     dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30';
                 } else {
                     eraDot.className = 'w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee]';
-                    eraText.textContent = '난세: 극한 혹한 (대기 결빙 · 빙하기)';
+                    eraText.textContent = '혼돈기: 극한 혹한 (대기 결빙 · 빙하기)';
                     eraText.className = 'text-sm font-bold text-cyan-300';
                     tempValueEl.className = 'text-2xl font-mono font-extrabold text-cyan-300';
-                    dehydrateBadge.textContent = '삼체인 긴급 탈수!';
+                    dehydrateBadge.textContent = '생명체 긴급 휴면!';
                     dehydrateBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
                 }
             }
@@ -1007,12 +1007,12 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'trisolaris_simulator.html';
+                a.download = 'triple_star_simulator.html';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showToast('✅ trisolaris_simulator.html 파일이 저장되었습니다!');
+                showToast('✅ triple_star_simulator.html 파일이 저장되었습니다!');
             });
 
             // 초기화 실행
