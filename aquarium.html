@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#020306">
+  <meta name="description" content="3D Bio-Kinematic Aquarium: 카테시안 3D 수조 속 심해 해파리와 발광 어류의 유기적 생체 운동학 시뮬레이터 및 심리스 루프 GIF 생성기">
+  <title>3D Bio-Kinematic Aquarium // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #aquaCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #aquaCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .axis-x { color: #f43f5e; }
+    .telemetry-card .axis-y { color: #34d399; }
+    .telemetry-card .axis-z { color: #38bdf8; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 0.73rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn:disabled { opacity: 0.5; cursor: wait; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+    .dock-btn.gif-btn {
+      background: rgba(168, 85, 247, 0.16);
+      border-color: rgba(168, 85, 247, 0.45);
+      color: #c084fc;
+      font-weight: 600;
+    }
+    .dock-btn.gif-btn:hover:not(:disabled) {
+      background: #a855f7;
+      color: #ffffff;
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>3D BIO-KINEMATIC AQUARIUM</h1>
+  <div class="hud-meta">CARTESIAN X·Y·Z MANIFOLD · PROCEDURAL SWIMMING</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SPECIMEN: <strong id="hudMode">ABYSSAL JELLYFISH</strong></div>
+  <div>POS (X,Y,Z): <strong id="hudCoords">0.0, +12.4, 0.0</strong></div>
+  <div>CAMERA YAW/PITCH: <strong id="hudCam">32° / 18°</strong></div>
+  <div>AXES: <span class="axis-x">X</span> · <span class="axis-y">Y</span> · <span class="axis-z">Z</span></div>
+</div>
+
+<canvas id="aquaCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnJelly">심해 해파리 (Jelly)</button>
+  <button type="button" class="dock-btn" id="btnFish">발광 어류 (Koi)</button>
+  <button type="button" class="dock-btn" id="btnSchool">군집 유영 (Swarm)</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn active" id="btnAxes">XYZ 축/그리드</button>
+  <button type="button" class="dock-btn active" id="btnAutoRot">자동 회전</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn gif-btn" id="btnGif">GIF 저장 (Loop) 🎞️</button>
+</div>
+
+<script>
+  // ============================================================================
+  // 1. 내장 GIF89a LZW 인코더 (외부 의존성 0%, 심리스 루프 전용)
+  // ============================================================================
+  class PureGifEncoder {
+    constructor(width, height) {
+      this.width = width;
+      this.height = height;
+      this.bytes = [];
+      this.palette = [];
+      this.colorCache = new Int16Array(32768).fill(-1);
+      this.buildPalette();
+    }
+
+    buildPalette() {
+      this.palette = [];
+      this.palette.push([2, 3, 6]); // 0: 배경 (#020306)
+
+      // 네온 시안, 바이올렛, 마젠타, 에메랄드, 화이트 다단계 안티앨리어싱 팔레트
+      const keyColors = [
+        [56, 189, 248], [14, 165, 233], [125, 211, 252],
+        [168, 85, 247], [217, 70, 239], [244, 63, 94],
+        [52, 211, 153], [251, 191, 36], [248, 250, 252],
+        [100, 116, 139], [51, 65, 85], [30, 41, 59]
+      ];
+      for (let c of keyColors) {
+        for (let f of [0.18, 0.35, 0.55, 0.78, 1.0]) {
+          if (this.palette.length < 120) {
+            this.palette.push([
+              Math.round(2 + (c[0] - 2) * f),
+              Math.round(3 + (c[1] - 3) * f),
+              Math.round(6 + (c[2] - 6) * f)
+            ]);
+          }
+        }
+      }
+
+      const levels = [0, 51, 102, 153, 204, 255];
+      for (let r of levels) {
+        for (let g of levels) {
+          for (let b of levels) {
+            if (this.palette.length < 256) this.palette.push([r, g, b]);
+          }
+        }
+      }
+      while (this.palette.length < 256) this.palette.push([0, 0, 0]);
+    }
+
+    writeByte(b) { this.bytes.push(b & 0xFF); }
+    writeShort(s) { this.writeByte(s & 0xFF); this.writeByte((s >> 8) & 0xFF); }
+    writeString(str) { for (let i = 0; i < str.length; i++) this.writeByte(str.charCodeAt(i)); }
+
+    start() {
+      this.bytes = [];
+      this.writeString("GIF89a");
+      this.writeShort(this.width);
+      this.writeShort(this.height);
+      this.writeByte(0xF7);
+      this.writeByte(0);
+      this.writeByte(0);
+
+      for (let i = 0; i < 256; i++) {
+        const c = this.palette[i];
+        this.writeByte(c[0]);
+        this.writeByte(c[1]);
+        this.writeByte(c[2]);
+      }
+
+      this.writeByte(0x21);
+      this.writeByte(0xFF);
+      this.writeByte(11);
+      this.writeString("NETSCAPE2.0");
+      this.writeByte(3);
+      this.writeByte(1);
+      this.writeShort(0);
+      this.writeByte(0);
+    }
+
+    quantizeFrame(rgbaData) {
+      const len = this.width * this.height;
+      const indexed = new Uint8Array(len);
+      const pal = this.palette;
+      const cache = this.colorCache;
+
+      for (let i = 0; i < len; i++) {
+        const p = i * 4;
+        const r = rgbaData[p];
+        const g = rgbaData[p + 1];
+        const b = rgbaData[p + 2];
+
+        if (r <= 4 && g <= 5 && b <= 9) {
+          indexed[i] = 0;
+          continue;
+        }
+
+        const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+        const cached = cache[key];
+        if (cached !== -1) {
+          indexed[i] = cached;
+          continue;
+        }
+
+        let bestIdx = 0;
+        let bestDist = Infinity;
+        for (let k = 0; k < 256; k++) {
+          const pr = pal[k][0] - r;
+          const pg = pal[k][1] - g;
+          const pb = pal[k][2] - b;
+          const d = pr * pr + pg * pg + pb * pb;
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = k;
+            if (d === 0) break;
+          }
+        }
+        cache[key] = bestIdx;
+        indexed[i] = bestIdx;
+      }
+      return indexed;
+    }
+
+    addFrame(rgbaData, delayCs = 5) {
+      const indexed = this.quantizeFrame(rgbaData);
+      this.writeByte(0x21);
+      this.writeByte(0xF9);
+      this.writeByte(4);
+      this.writeByte(0x04);
+      this.writeShort(delayCs);
+      this.writeByte(0);
+      this.writeByte(0);
+
+      this.writeByte(0x2C);
+      this.writeShort(0);
+      this.writeShort(0);
+      this.writeShort(this.width);
+      this.writeShort(this.height);
+      this.writeByte(0);
+
+      this.writeLZW(indexed, 8);
+    }
+
+    writeLZW(pixels, minCodeSize) {
+      this.writeByte(minCodeSize);
+      const clearCode = 1 << minCodeSize;
+      const eoiCode = clearCode + 1;
+      let codeSize = minCodeSize + 1;
+      let nextCode = eoiCode + 1;
+      const dictionary = new Int32Array(4096 * 256).fill(-1);
+
+      let bitBuf = 0;
+      let bitCount = 0;
+      const subBlock = [];
+
+      const flushSubBlock = () => {
+        if (subBlock.length > 0) {
+          this.writeByte(subBlock.length);
+          for (let i = 0; i < subBlock.length; i++) this.writeByte(subBlock[i]);
+          subBlock.length = 0;
+        }
+      };
+
+      const emitCode = (code) => {
+        bitBuf |= (code << bitCount);
+        bitCount += codeSize;
+        while (bitCount >= 8) {
+          subBlock.push(bitBuf & 0xFF);
+          if (subBlock.length === 255) flushSubBlock();
+          bitBuf >>>= 8;
+          bitCount -= 8;
+        }
+      };
+
+      emitCode(clearCode);
+      let prefix = pixels[0];
+      for (let i = 1; i < pixels.length; i++) {
+        const c = pixels[i];
+        const dictKey = (prefix << 8) | c;
+        const found = dictionary[dictKey];
+        if (found !== -1) {
+          prefix = found;
+        } else {
+          emitCode(prefix);
+          if (nextCode < 4096) {
+            dictionary[dictKey] = nextCode++;
+            if (nextCode > (1 << codeSize) && codeSize < 12) codeSize++;
+          } else {
+            emitCode(clearCode);
+            dictionary.fill(-1);
+            codeSize = minCodeSize + 1;
+            nextCode = eoiCode + 1;
+          }
+          prefix = c;
+        }
+      }
+      emitCode(prefix);
+      emitCode(eoiCode);
+      if (bitCount > 0) subBlock.push(bitBuf & 0xFF);
+      flushSubBlock();
+      this.writeByte(0);
+    }
+
+    finish() {
+      this.writeByte(0x3B);
+      return new Uint8Array(this.bytes);
+    }
+  }
+
+  // ============================================================================
+  // 2. 3D 수조 엔진 및 생체 운동학 (Jellyfish & Fish)
+  // ============================================================================
+  const canvas = document.getElementById('aquaCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const hudMode = document.getElementById('hudMode');
+  const hudCoords = document.getElementById('hudCoords');
+  const hudCam = document.getElementById('hudCam');
+
+  const btnJelly = document.getElementById('btnJelly');
+  const btnFish = document.getElementById('btnFish');
+  const btnSchool = document.getElementById('btnSchool');
+  const btnAxes = document.getElementById('btnAxes');
+  const btnAutoRot = document.getElementById('btnAutoRot');
+  const btnGif = document.getElementById('btnGif');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 상태 변수
+  let currentMode = 'JELLY'; // 'JELLY' | 'FISH' | 'SCHOOL'
+  let showAxes = true;
+  let autoRotate = true;
+
+  // 3D 카메라 오빗 각도
+  let camYaw = 0.58;   // Y축 중심 회전 (rad)
+  let camPitch = 0.32; // X축 기울기 (rad)
+  let camZoom = 1.0;
+
+  // 시간 위상 (0 ~ 2π 주기로 순환하여 완벽한 심리스 루프 형성)
+  let phaseTime = 0;
+
+  // 부유 플랑크톤 입자 (3D 공간 내 고정 위상)
+  const PLANKTON_COUNT = 45;
+  const planktons = [];
+  for (let i = 0; i < PLANKTON_COUNT; i++) {
+    planktons.push({
+      x: (Math.random() - 0.5) * 260,
+      y: (Math.random() - 0.5) * 220,
+      z: (Math.random() - 0.5) * 260,
+      phaseOffset: Math.random() * Math.PI * 2,
+      size: Math.random() * 1.5 + 0.8
+    });
+  }
+
+  // --- 3D -> 2D 원근 투영 변환기 ---
+  function project3D(x, y, z, cx, cy, scaleFactor, yaw, pitch) {
+    // 1. Y축 회전 (Yaw)
+    const cosY = Math.cos(yaw);
+    const sinY = Math.sin(yaw);
+    const x1 = x * cosY - z * sinY;
+    const z1 = z * cosY + x * sinY;
+
+    // 2. X축 회전 (Pitch)
+    const cosP = Math.cos(pitch);
+    const sinP = Math.sin(pitch);
+    const y2 = y * cosP - z1 * sinP;
+    const z2 = z1 * cosP + y * sinP;
+
+    // 3. 원근 투영 (Perspective)
+    const fov = 520;
+    const viewerDist = 420;
+    const depth = viewerDist + z2;
+    const persp = (fov / Math.max(60, depth)) * scaleFactor;
+
+    return {
+      sx: cx + x1 * persp,
+      sy: cy - y2 * persp, // 수학적 +Y가 화면 위쪽을 향하도록 반전
+      zDepth: z2,
+      scale: persp
+    };
+  }
+
+  // --- 3D 카테시안 좌표축(X,Y,Z) 및 바운딩 큐브 렌더링 ---
+  function drawCoordinateManifold(targetCtx, cx, cy, scaleFactor, yaw, pitch) {
+    const B = 135; // 수조 반경
+
+    // 1. 바운딩 큐브 12개 모서리 와이어프레임
+    const corners = [
+      [-B, -B, -B], [ B, -B, -B], [ B, -B,  B], [-B, -B,  B],
+      [-B,  B, -B], [ B,  B, -B], [ B,  B,  B], [-B,  B,  B]
+    ];
+    const edges = [
+      [0,1],[1,2],[2,3],[3,0], // 바닥면
+      [4,5],[5,6],[6,7],[7,4], // 천장면
+      [0,4],[1,5],[2,6],[3,7]  // 기둥
+    ];
+
+    targetCtx.strokeStyle = 'rgba(148, 163, 184, 0.13)';
+    targetCtx.lineWidth = 1;
+    targetCtx.beginPath();
+    for (let [i, j] of edges) {
+      const p1 = project3D(corners[i][0], corners[i][1], corners[i][2], cx, cy, scaleFactor, yaw, pitch);
+      const p2 = project3D(corners[j][0], corners[j][1], corners[j][2], cx, cy, scaleFactor, yaw, pitch);
+      targetCtx.moveTo(p1.sx, p1.sy);
+      targetCtx.lineTo(p2.sx, p2.sy);
+    }
+    targetCtx.stroke();
+
+    // 2. 바닥면(Y = -B) 격자 그리드
+    targetCtx.strokeStyle = 'rgba(56, 189, 248, 0.07)';
+    targetCtx.beginPath();
+    for (let g = -B; g <= B; g += 45) {
+      const p1 = project3D(g, -B, -B, cx, cy, scaleFactor, yaw, pitch);
+      const p2 = project3D(g, -B,  B, cx, cy, scaleFactor, yaw, pitch);
+      targetCtx.moveTo(p1.sx, p1.sy); targetCtx.lineTo(p2.sx, p2.sy);
+
+      const p3 = project3D(-B, -B, g, cx, cy, scaleFactor, yaw, pitch);
+      const p4 = project3D( B, -B, g, cx, cy, scaleFactor, yaw, pitch);
+      targetCtx.moveTo(p3.sx, p3.sy); targetCtx.lineTo(p4.sx, p4.sy);
+    }
+    targetCtx.stroke();
+
+    // 3. 원점 중심 X, Y, Z 주축 및 라벨
+    const axisLen = 95;
+    const origin = project3D(0, 0, 0, cx, cy, scaleFactor, yaw, pitch);
+    const axesDef = [
+      { x: axisLen, y: 0, z: 0, color: '#f43f5e', label: '+X' },
+      { x: 0, y: axisLen, z: 0, color: '#34d399', label: '+Y' },
+      { x: 0, y: 0, z: axisLen, color: '#38bdf8', label: '+Z' }
+    ];
+
+    targetCtx.font = '600 10px "IBM Plex Mono", monospace';
+    for (let ax of axesDef) {
+      const tip = project3D(ax.x, ax.y, ax.z, cx, cy, scaleFactor, yaw, pitch);
+      targetCtx.strokeStyle = ax.color;
+      targetCtx.lineWidth = 1.4;
+      targetCtx.setLineDash([3, 3]);
+      targetCtx.beginPath();
+      targetCtx.moveTo(origin.sx, origin.sy);
+      targetCtx.lineTo(tip.sx, tip.sy);
+      targetCtx.stroke();
+      targetCtx.setLineDash([]);
+
+      targetCtx.fillStyle = ax.color;
+      targetCtx.fillText(ax.label, tip.sx + 4, tip.sy + 3);
+    }
+  }
+
+  // --- 개체 1: 3D 심해 해파리 (Abyssal Jellyfish) 렌더링 ---
+  function drawJellyfish(targetCtx, cx, cy, scaleFactor, yaw, pitch, t) {
+    // 해파리 중심의 유영 궤적 (부드러운 3D 8자 및 상하 박동 부유)
+    const jx = Math.sin(t) * 35;
+    const jy = Math.sin(t * 2) * 22 + 10;
+    const jz = Math.cos(t) * 35;
+
+    // 진행 방향에 따른 미세한 몸체 기울기
+    const tiltX = Math.cos(t) * 0.22;
+    const tiltZ = -Math.sin(t) * 0.22;
+
+    // 갓(Bell)의 수축·이완 박동 함수 (sin 파형 비대칭 조합)
+    const pulse = Math.sin(t * 2); // 1루프(2π)당 정확히 2번 박동하여 심리스 루프 완성
+    const bellRadius = 46 * (1.0 - 0.18 * pulse);
+    const bellHeight = 38 * (1.0 + 0.16 * pulse);
+
+    // 3D 로컬 좌표 변환 헬퍼
+    const toWorld = (lx, ly, lz) => {
+      // 로컬 기울기 반영
+      const rx = lx + ly * tiltZ;
+      const ry = ly - lx * tiltZ - lz * tiltX;
+      const rz = lz + ly * tiltX;
+      return { x: jx + rx, y: jy + ry, z: jz + rz };
+    };
+
+    // 1. 내부 구강 촉수 (Oral Arms - 중심부 4가닥 프릴)
+    for (let a = 0; a < 4; a++) {
+      const baseAng = (a / 4) * Math.PI * 2;
+      targetCtx.strokeStyle = 'rgba(232, 121, 249, 0.45)';
+      targetCtx.lineWidth = 2.0 * scaleFactor;
+      targetCtx.beginPath();
+
+      for (let s = 0; s <= 18; s++) {
+        const u = s / 18;
+        const wave = Math.sin(t * 2 - u * 4.5 + a) * (10 * u);
+        const lx = Math.cos(baseAng) * (6 + wave);
+        const lz = Math.sin(baseAng) * (6 + wave);
+        const ly = -u * 78;
+        const w = toWorld(lx, ly, lz);
+        const p = project3D(w.x, w.y, w.z, cx, cy, scaleFactor, yaw, pitch);
+        if (s === 0) targetCtx.moveTo(p.sx, p.sy);
+        else targetCtx.lineTo(p.sx, p.sy);
+      }
+      targetCtx.stroke();
+    }
+
+    // 2. 외곽 긴 유영 촉수 (12가닥)
+    const numTentacles = 12;
+    for (let k = 0; k < numTentacles; k++) {
+      const theta = (k / numTentacles) * Math.PI * 2;
+      const rimX = Math.cos(theta) * bellRadius * 0.88;
+      const rimZ = Math.sin(theta) * bellRadius * 0.88;
+
+      targetCtx.strokeStyle = k % 2 === 0 ? 'rgba(56, 189, 248, 0.55)' : 'rgba(168, 85, 247, 0.55)';
+      targetCtx.lineWidth = 1.2 * scaleFactor;
+      targetCtx.beginPath();
+
+      const segs = 22;
+      for (let s = 0; s <= segs; s++) {
+        const u = s / segs;
+        // 아래로 내려갈수록 위상이 지연되는 해류 파동
+        const waveR = Math.sin(t * 2 - u * 5.0 + k * 0.5) * (14 * u);
+        const lx = rimX + Math.cos(theta) * waveR;
+        const lz = rimZ + Math.sin(theta) * waveR;
+        const ly = -bellHeight * 0.65 - u * 95;
+
+        const w = toWorld(lx, ly, lz);
+        const p = project3D(w.x, w.y, w.z, cx, cy, scaleFactor, yaw, pitch);
+        if (s === 0) targetCtx.moveTo(p.sx, p.sy);
+        else targetCtx.lineTo(p.sx, p.sy);
+      }
+      targetCtx.stroke();
+    }
+
+    // 3. 해파리 우산 갓 (3D Parametric Bell Dome - 위도 링 & 경도 리브)
+    const latRings = 7;
+    const lonRibs = 16;
+
+    // 위도 링 (Latitude Rings)
+    for (let r = 1; r <= latRings; r++) {
+      const v = r / latRings; // 0(꼭대기) ~ 1(우산 끝자락)
+      const phi = v * (Math.PI * 0.58);
+      const rad = Math.sin(phi) * bellRadius;
+      const ly = Math.cos(phi) * bellHeight - bellHeight * 0.65;
+
+      targetCtx.strokeStyle = v > 0.8 ? 'rgba(56, 189, 248, 0.85)' : 'rgba(56, 189, 248, 0.32)';
+      targetCtx.lineWidth = (v > 0.8 ? 1.8 : 1.0) * scaleFactor;
+      targetCtx.beginPath();
+
+      for (let s = 0; s <= 32; s++) {
+        const th = (s / 32) * Math.PI * 2;
+        // 우산 가장자리 스캘럽(물결 주름)
+        const scallop = v > 0.7 ? Math.sin(th * 8) * 2.2 * v : 0;
+        const lx = Math.cos(th) * (rad + scallop);
+        const lz = Math.sin(th) * (rad + scallop);
+        const w = toWorld(lx, ly, lz);
+        const p = project3D(w.x, w.y, w.z, cx, cy, scaleFactor, yaw, pitch);
+        if (s === 0) targetCtx.moveTo(p.sx, p.sy);
+        else targetCtx.lineTo(p.sx, p.sy);
+      }
+      targetCtx.stroke();
+    }
+
+    // 경도 갈비뼈 리브 (Longitude Bioluminescent Ribs)
+    for (let j = 0; j < lonRibs; j++) {
+      const th = (j / lonRibs) * Math.PI * 2;
+      targetCtx.strokeStyle = j % 2 === 0 ? 'rgba(125, 211, 252, 0.65)' : 'rgba(192, 132, 252, 0.45)';
+      targetCtx.lineWidth = 1.2 * scaleFactor;
+      targetCtx.beginPath();
+
+      for (let r = 0; r <= 12; r++) {
+        const v = r / 12;
+        const phi = v * (Math.PI * 0.58);
+        const rad = Math.sin(phi) * bellRadius;
+        const ly = Math.cos(phi) * bellHeight - bellHeight * 0.65;
+        const lx = Math.cos(th) * rad;
+        const lz = Math.sin(th) * rad;
+        const w = toWorld(lx, ly, lz);
+        const p = project3D(w.x, w.y, w.z, cx, cy, scaleFactor, yaw, pitch);
+        if (r === 0) targetCtx.moveTo(p.sx, p.sy);
+        else targetCtx.lineTo(p.sx, p.sy);
+      }
+      targetCtx.stroke();
+    }
+
+    // 중심 생체 핵 발광
+    const coreW = toWorld(0, 0, 0);
+    const coreP = project3D(coreW.x, coreW.y, coreW.z, cx, cy, scaleFactor, yaw, pitch);
+    const grad = targetCtx.createRadialGradient(coreP.sx, coreP.sy, 1, coreP.sx, coreP.sy, 26 * coreP.scale);
+    grad.addColorStop(0, 'rgba(240, 249, 255, 0.9)');
+    grad.addColorStop(0.4, 'rgba(56, 189, 248, 0.45)');
+    grad.addColorStop(1, 'rgba(2, 3, 6, 0)');
+    targetCtx.fillStyle = grad;
+    targetCtx.beginPath();
+    targetCtx.arc(coreP.sx, coreP.sy, 26 * coreP.scale, 0, Math.PI * 2);
+    targetCtx.fill();
+
+    return coreW;
+  }
+
+  // --- 개체 2: 3D 척추 관절 어류 (Bioluminescent Fish) 단일/군집 렌더링 ---
+  function drawArticulatedFish(targetCtx, cx, cy, scaleFactor, yaw, pitch, t, offsetPhase = 0, orbitScale = 1.0, mainColor = '#38bdf8', finColor = '#f43f5e') {
+    // 3D 수조 내 유영 궤도 함수 (시간 s에 대한 위치 반환)
+    const getPosAtTime = (s) => {
+      const ang = s + offsetPhase;
+      return {
+        x: Math.cos(ang) * 82 * orbitScale,
+        y: Math.sin(ang * 2) * 32 * orbitScale,
+        z: Math.sin(ang) * 82 * orbitScale
+      };
+    };
+
+    const SPINE_NODES = 18;
+    const spine3D = [];
+
+    // 머리(s=t)부터 꼬리 끝까지 척추 마디 좌표 및 지느러미 좌우 흔들림(Undulation) 계산
+    for (let i = 0; i < SPINE_NODES; i++) {
+      const u = i / (SPINE_NODES - 1); // 0(머리) ~ 1(꼬리 끝)
+      const delay = u * 0.55;
+      const basePos = getPosAtTime(t - delay);
+      const aheadPos = getPosAtTime(t - delay + 0.05);
+
+      // 진행 접선 벡터
+      const dx = aheadPos.x - basePos.x;
+      const dz = aheadPos.z - basePos.z;
+      const len = Math.hypot(dx, dz) || 1;
+      // 수평 법선 벡터 (몸통 좌우 흔들림 방향)
+      const nx = -dz / len;
+      const nz = dx / len;
+
+      // 꼬리로 갈수록 진폭이 커지는 생체 헤엄 파동 (1주기당 4회 진동)
+      const tailWave = Math.sin(t * 4 - u * 5.5 + offsetPhase) * (15 * u * u) * orbitScale;
+
+      // 어류 체형 프로파일 (머리 -> 몸통 최대 두께 -> 잘록한 꼬리자루 -> 넓은 꼬리지느러미)
+      let bodyRadius = 0;
+      if (u < 0.72) {
+        bodyRadius = Math.sin((u / 0.72) * Math.PI) * 14 * orbitScale;
+      } else {
+        bodyRadius = ((u - 0.72) / 0.28) * 18 * orbitScale + 2;
+      }
+
+      spine3D.push({
+        x: basePos.x + nx * tailWave,
+        y: basePos.y + (u > 0.72 ? (u - 0.72) * 12 : 0),
+        z: basePos.z + nz * tailWave,
+        nx, nz,
+        r: bodyRadius,
+        u
+      });
+    }
+
+    // 1. 척추 마디별 3D 갈비뼈 타원 단면 (Rib Cross-sections) 및 등/배 능선 연결
+    const topRidge = [];
+    const botRidge = [];
+    const leftRidge = [];
+    const rightRidge = [];
+
+    for (let i = 0; i < SPINE_NODES; i++) {
+      const node = spine3D[i];
+      const rHoriz = node.r * (node.u > 0.72 ? 0.25 : 0.75);
+      const rVert = node.r * (node.u > 0.72 ? 1.35 : 1.1);
+
+      const pCenter = project3D(node.x, node.y, node.z, cx, cy, scaleFactor, yaw, pitch);
+      const pTop = project3D(node.x, node.y + rVert, node.z, cx, cy, scaleFactor, yaw, pitch);
+      const pBot = project3D(node.x, node.y - rVert, node.z, cx, cy, scaleFactor, yaw, pitch);
+      const pLeft = project3D(node.x + node.nx * rHoriz, node.y, node.z + node.nz * rHoriz, cx, cy, scaleFactor, yaw, pitch);
+      const pRight = project3D(node.x - node.nx * rHoriz, node.y, node.z - node.nz * rHoriz, cx, cy, scaleFactor, yaw, pitch);
+
+      topRidge.push(pTop);
+      botRidge.push(pBot);
+      leftRidge.push(pLeft);
+      rightRidge.push(pRight);
+
+      // 몸통 갈비뼈 링
+      targetCtx.strokeStyle = node.u > 0.72 ? finColor : mainColor;
+      targetCtx.globalAlpha = node.u > 0.72 ? 0.65 : 0.45;
+      targetCtx.lineWidth = 1.2 * scaleFactor;
+      targetCtx.beginPath();
+      targetCtx.moveTo(pTop.sx, pTop.sy);
+      targetCtx.lineTo(pLeft.sx, pLeft.sy);
+      targetCtx.lineTo(pBot.sx, pBot.sy);
+      targetCtx.lineTo(pRight.sx, pRight.sy);
+      targetCtx.closePath();
+      targetCtx.stroke();
+
+      // 척추 중심 발광 노드
+      targetCtx.globalAlpha = 0.9;
+      targetCtx.fillStyle = '#ffffff';
+      targetCtx.beginPath();
+      targetCtx.arc(pCenter.sx, pCenter.sy, (1.8 * (1 - node.u * 0.5)) * scaleFactor, 0, Math.PI * 2);
+      targetCtx.fill();
+    }
+    targetCtx.globalAlpha = 1.0;
+
+    // 2. 능선 실루엣 스트립 연결
+    const drawStrip = (pts, col, alpha) => {
+      targetCtx.strokeStyle = col;
+      targetCtx.globalAlpha = alpha;
+      targetCtx.lineWidth = 1.5 * scaleFactor;
+      targetCtx.beginPath();
+      pts.forEach((p, idx) => {
+        if (idx === 0) targetCtx.moveTo(p.sx, p.sy);
+        else targetCtx.lineTo(p.sx, p.sy);
+      });
+      targetCtx.stroke();
+      targetCtx.globalAlpha = 1.0;
+    };
+
+    drawStrip(topRidge, mainColor, 0.8);
+    drawStrip(botRidge, mainColor, 0.6);
+    drawStrip(leftRidge, mainColor, 0.5);
+    drawStrip(rightRidge, mainColor, 0.5);
+
+    // 3. 좌우 가슴지느러미 (Pectoral Fins - 3번 마디에서 날개처럼 펼쳐짐)
+    const pecNode = spine3D[3];
+    const pecBack = spine3D[6];
+    const finFlap = Math.sin(t * 4 + offsetPhase) * 8 * orbitScale;
+    const finSpan = 32 * orbitScale;
+
+    for (let side of [-1, 1]) {
+      const pBase = project3D(pecNode.x, pecNode.y, pecNode.z, cx, cy, scaleFactor, yaw, pitch);
+      const pTip = project3D(
+        pecBack.x + pecNode.nx * side * finSpan,
+        pecBack.y - 6 + finFlap,
+        pecBack.z + pecNode.nz * side * finSpan,
+        cx, cy, scaleFactor, yaw, pitch
+      );
+      const pTrail = project3D(pecBack.x, pecBack.y, pecBack.z, cx, cy, scaleFactor, yaw, pitch);
+
+      targetCtx.strokeStyle = finColor;
+      targetCtx.fillStyle = 'rgba(244, 63, 94, 0.18)';
+      targetCtx.lineWidth = 1.3 * scaleFactor;
+      targetCtx.beginPath();
+      targetCtx.moveTo(pBase.sx, pBase.sy);
+      targetCtx.lineTo(pTip.sx, pTip.sy);
+      targetCtx.lineTo(pTrail.sx, pTrail.sy);
+      targetCtx.closePath();
+      targetCtx.fill();
+      targetCtx.stroke();
+    }
+
+    return spine3D[0];
+  }
+
+  // --- 전체 씬 통합 렌더러 (화면 및 GIF 오프스크린 공용) ---
+  function renderSceneOnContext(targetCtx, w, h, scaleFactor, t, yaw, pitch) {
+    targetCtx.fillStyle = '#020306';
+    targetCtx.fillRect(0, 0, w, h);
+
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+
+    // 1. 3D XYZ 좌표축 및 바운딩 큐브
+    if (showAxes) {
+      drawCoordinateManifold(targetCtx, cx, cy, scaleFactor, yaw, pitch);
+    }
+
+    // 2. 부유 심해 플랑크톤 입자
+    for (let pk of planktons) {
+      const py = pk.y + Math.sin(t + pk.phaseOffset) * 8;
+      const p = project3D(pk.x, py, pk.z, cx, cy, scaleFactor, yaw, pitch);
+      const alpha = Math.max(0.1, Math.min(0.6, (250 - p.zDepth) / 400));
+      targetCtx.fillStyle = `rgba(125, 211, 252, ${alpha})`;
+      targetCtx.beginPath();
+      targetCtx.arc(p.sx, p.sy, pk.size * scaleFactor, 0, Math.PI * 2);
+      targetCtx.fill();
+    }
+
+    // 3. 선택된 생명체 렌더링
+    let primaryPos = { x: 0, y: 0, z: 0 };
+
+    if (currentMode === 'JELLY') {
+      primaryPos = drawJellyfish(targetCtx, cx, cy, scaleFactor, yaw, pitch, t);
+    } else if (currentMode === 'FISH') {
+      primaryPos = drawArticulatedFish(targetCtx, cx, cy, scaleFactor, yaw, pitch, t, 0, 1.05, '#38bdf8', '#f43f5e');
+    } else if (currentMode === 'SCHOOL') {
+      const palette = [
+        ['#38bdf8', '#f43f5e'],
+        ['#a855f7', '#38bdf8'],
+        ['#34d399', '#fbbf24'],
+        ['#fbbf24', '#f43f5e'],
+        ['#e879f9', '#38bdf8']
+      ];
+      for (let f = 0; f < 5; f++) {
+        const offset = (f / 5) * Math.PI * 2;
+        const sc = 0.65 + (f % 3) * 0.12;
+        const pos = drawArticulatedFish(targetCtx, cx, cy, scaleFactor, yaw, pitch, t, offset, sc, palette[f][0], palette[f][1]);
+        if (f === 0) primaryPos = pos;
+      }
+    }
+
+    // 4. 주인공 개체에서 바닥면(Y = -135)으로 떨어지는 3D 직교 수선 및 그림자 마커 (공간감 극대화)
+    if (showAxes && primaryPos) {
+      const floorY = -135;
+      const pObj = project3D(primaryPos.x, primaryPos.y, primaryPos.z, cx, cy, scaleFactor, yaw, pitch);
+      const pFloor = project3D(primaryPos.x, floorY, primaryPos.z, cx, cy, scaleFactor, yaw, pitch);
+
+      targetCtx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+      targetCtx.lineWidth = 1;
+      targetCtx.setLineDash([2, 3]);
+      targetCtx.beginPath();
+      targetCtx.moveTo(pObj.sx, pObj.sy);
+      targetCtx.lineTo(pFloor.sx, pFloor.sy);
+      targetCtx.stroke();
+      targetCtx.setLineDash([]);
+
+      targetCtx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+      targetCtx.beginPath();
+      targetCtx.arc(pFloor.sx, pFloor.sy, 4 * scaleFactor, 0, Math.PI * 2);
+      targetCtx.stroke();
+    }
+
+    return primaryPos;
+  }
+
+  // --- 메인 애니메이션 루프 ---
+  function loop() {
+    phaseTime = (phaseTime + 0.028) % (Math.PI * 2);
+    if (autoRotate && !isDragging) {
+      camYaw = (camYaw + 0.0035) % (Math.PI * 2);
+    }
+
+    const baseScale = (Math.min(width, height) / 480) * camZoom;
+    const pos = renderSceneOnContext(ctx, width, height, baseScale, phaseTime, camYaw, camPitch);
+
+    // 텔레메트리 갱신
+    if (pos) {
+      hudCoords.textContent = `${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}, ${pos.z.toFixed(0)}`;
+    }
+    const yawDeg = Math.round(((camYaw * 180 / Math.PI) % 360 + 360) % 360);
+    const pitchDeg = Math.round(camPitch * 180 / Math.PI);
+    hudCam.textContent = `${yawDeg}° / ${pitchDeg}°`;
+
+    requestAnimationFrame(loop);
+  }
+
+  // --- 심리스 루프 GIF 저장 (MARSKO.ART 워터마크 포함) ---
+  async function exportSeamlessGif() {
+    const GIF_SIZE = 500;
+    const TOTAL_FRAMES = 36; // 0 ~ 2π 1주기를 36프레임으로 등분
+    const DELAY_CS = 5;      // 50ms (20fps)
+
+    btnGif.disabled = true;
+    const origText = btnGif.textContent;
+
+    const gifCanvas = document.createElement('canvas');
+    gifCanvas.width = GIF_SIZE;
+    gifCanvas.height = GIF_SIZE;
+    const gCtx = gifCanvas.getContext('2d', { willReadFrequently: true });
+
+    const encoder = new PureGifEncoder(GIF_SIZE, GIF_SIZE);
+    encoder.start();
+
+    // 녹화 시작 시점의 카메라 각도 및 위상 스냅샷 고정
+    const startPhase = phaseTime;
+    const fixedYaw = camYaw;
+    const fixedPitch = camPitch;
+    const gifScale = (GIF_SIZE / 460) * camZoom;
+
+    for (let f = 0; f < TOTAL_FRAMES; f++) {
+      btnGif.textContent = `GIF 생성 ${Math.round(((f + 1) / TOTAL_FRAMES) * 100)}%`;
+      await new Promise(r => setTimeout(r, 12));
+
+      // 정확히 2π 주기를 등분하여 첫 프레임과 마지막 프레임이 100% 이어지도록 설정
+      const exactT = startPhase + (f / TOTAL_FRAMES) * (Math.PI * 2);
+      renderSceneOnContext(gCtx, GIF_SIZE, GIF_SIZE, gifScale, exactT, fixedYaw, fixedPitch);
+
+      // 하단 고정 MARSKO.ART 시그니처 워터마크
+      gCtx.font = '600 12px "IBM Plex Mono", monospace';
+      gCtx.fillStyle = 'rgba(248, 250, 252, 0.55)';
+      gCtx.textAlign = 'center';
+      gCtx.fillText('MARSKO.ART', GIF_SIZE * 0.5, GIF_SIZE - 24);
+
+      gCtx.font = '400 9px "IBM Plex Mono", monospace';
+      gCtx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+      gCtx.fillText(`3D AQUARIUM · ${currentMode} KINEMATICS`, GIF_SIZE * 0.5, GIF_SIZE - 11);
+
+      const imgData = gCtx.getImageData(0, 0, GIF_SIZE, GIF_SIZE);
+      encoder.addFrame(imgData.data, DELAY_CS);
+    }
+
+    const gifBytes = encoder.finish();
+    const blob = new Blob([gifBytes], { type: 'image/gif' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.download = `marsko-aquarium-${currentMode.toLowerCase()}-${Date.now()}.gif`;
+    link.href = url;
+    link.click();
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    btnGif.disabled = false;
+    btnGif.textContent = origText;
+  }
+
+  // --- UI 및 마우스/터치 카메라 조작 ---
+  function setSpecimenMode(mode) {
+    currentMode = mode;
+    [btnJelly, btnFish, btnSchool].forEach(b => b.classList.remove('active'));
+    if (mode === 'JELLY') {
+      btnJelly.classList.add('active');
+      hudMode.textContent = 'ABYSSAL JELLYFISH';
+    } else if (mode === 'FISH') {
+      btnFish.classList.add('active');
+      hudMode.textContent = 'BIOLUMINESCENT KOI';
+    } else {
+      btnSchool.classList.add('active');
+      hudMode.textContent = '3D SWARM SCHOOL';
+    }
+  }
+
+  btnJelly.addEventListener('click', () => setSpecimenMode('JELLY'));
+  btnFish.addEventListener('click', () => setSpecimenMode('FISH'));
+  btnSchool.addEventListener('click', () => setSpecimenMode('SCHOOL'));
+
+  btnAxes.addEventListener('click', () => {
+    showAxes = !showAxes;
+    btnAxes.classList.toggle('active', showAxes);
+  });
+
+  btnAutoRot.addEventListener('click', () => {
+    autoRotate = !autoRotate;
+    btnAutoRot.classList.toggle('active', autoRotate);
+  });
+
+  btnGif.addEventListener('click', exportSeamlessGif);
+
+  let isDragging = false;
+  let lastMouse = { x: 0, y: 0 };
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastMouse = { x: e.clientX, y: e.clientY };
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastMouse.x;
+    const dy = e.clientY - lastMouse.y;
+    camYaw += dx * 0.007;
+    camPitch = Math.max(-1.2, Math.min(1.2, camPitch + dy * 0.007));
+    lastMouse = { x: e.clientX, y: e.clientY };
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    camZoom = Math.max(0.5, Math.min(2.5, camZoom * factor));
+  }, { passive: false });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - lastMouse.x;
+      const dy = e.touches[0].clientY - lastMouse.y;
+      camYaw += dx * 0.007;
+      camPitch = Math.max(-1.2, Math.min(1.2, camPitch + dy * 0.007));
+      lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
