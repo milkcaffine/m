@@ -862,8 +862,8 @@
       const nx = -dz / len;
       const nz = dx / len;
 
-      // 꼬리로 갈수록 커지는 생체 파동 (wave 파라미터 연동)
-      const tailWave = Math.sin(t * 4 - u * 5.5 + offsetPhase) * (15 * u * u * params.wave) * individualScale;
+      // 꼬리로 갈수록 커지는 생체 파동 (wave 파라미터 연동, 부드러운 3주기 유영)
+      const tailWave = Math.sin(t * 3 - u * 5.0 + offsetPhase) * (15 * u * u * params.wave) * individualScale;
 
       // 어류 체형 프로파일 (size, shape 파라미터 연동)
       let bodyRadius = 0;
@@ -948,7 +948,7 @@
     // 3. 좌우 가슴지느러미 (Pectoral Fins - fin 파라미터 연동)
     const pecNode = spine3D[3];
     const pecBack = spine3D[6];
-    const finFlap = Math.sin(t * 4 + offsetPhase) * 8 * params.wave * individualScale;
+    const finFlap = Math.sin(t * 3 + offsetPhase) * 8 * params.wave * individualScale;
     const finSpan = 32 * params.fin * params.size * individualScale;
 
     for (let side of [-1, 1]) {
@@ -1054,9 +1054,9 @@
 
   // --- 메인 애니메이션 루프 ---
   function loop() {
-    phaseTime = (phaseTime + 0.028 * params.speed) % (Math.PI * 2);
+    phaseTime = (phaseTime + 0.021 * params.speed) % (Math.PI * 2);
     if (autoRotate && !isDragging) {
-      camYaw = (camYaw + 0.0035) % (Math.PI * 2);
+      camYaw = (camYaw + 0.0025) % (Math.PI * 2);
     }
 
     const baseScale = (Math.min(width, height) / 480) * camZoom;
@@ -1073,11 +1073,13 @@
     requestAnimationFrame(loop);
   }
 
-  // --- 심리스 루프 GIF 저장 (파라미터 반영) ---
+  // --- 심리스 루프 GIF 저장 (여유로운 자연 유영 속도 적용) ---
   async function exportSeamlessGif() {
     const GIF_SIZE = 500;
-    const TOTAL_FRAMES = 36;
-    const DELAY_CS = 5;
+    const TOTAL_FRAMES = 46; // 프레임 수를 늘려 한층 더 부드러운 궤적 유지
+    // 기본 9cs (90ms)로 설정하여 1루프당 약 4.14초의 여유롭고 우아한 헤엄 속도 구현
+    const baseDelayCs = 9;
+    const DELAY_CS = Math.max(4, Math.min(18, Math.round(baseDelayCs / Math.max(0.3, params.speed))));
 
     btnGif.disabled = true;
     const origText = btnGif.textContent;
