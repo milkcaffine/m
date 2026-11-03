@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#020306">
+  <meta name="description" content="은하 정점(Apex) 60° 황도면 전진 나선형 태양계 볼텍스 3D 시뮬레이터">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <title>Helical Solar System // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #vortexCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #vortexCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .sun-txt { color: #fbbf24; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 65px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>HELICAL SOLAR VORTEX</h1>
+  <div class="hud-meta">GALACTIC APEX DRIFT · 60° ECLIPTIC INCLINATION</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SOLAR VELOCITY: <strong class="sun-txt" id="valVel">220 km/s</strong></div>
+  <div>ECLIPTIC TILT: <strong id="valTilt">60.2°</strong></div>
+  <div>CAMERA VIEW: <strong id="valCam">ISOMETRIC 3D</strong></div>
+  <div>GALACTIC DIST: <strong id="valDist">0.00 AU</strong></div>
+</div>
+
+<canvas id="vortexCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnCamIso">입체 뷰 (3D)</button>
+  <button type="button" class="dock-btn" id="btnCamSide">측면 나선 뷰</button>
+  <button type="button" class="dock-btn" id="btnCamFront">정면 공전 뷰</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>태양 전진 속도</span>
+    <input type="range" id="driftRange" min="0" max="60" value="28">
+  </div>
+  <div class="slider-group">
+    <span>공전 속도</span>
+    <input type="range" id="orbitRange" min="5" max="50" value="20">
+  </div>
+  <div class="slider-group">
+    <span>궤도 기울기</span>
+    <input type="range" id="tiltRange" min="0" max="90" value="60">
+  </div>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn active" id="btnPlane">황도면 링</button>
+  <button type="button" class="dock-btn" id="btnPause">❚❚ 정지</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('vortexCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const valVel = document.getElementById('valVel');
+  const valTilt = document.getElementById('valTilt');
+  const valCam = document.getElementById('valCam');
+  const valDist = document.getElementById('valDist');
+
+  const btnCamIso = document.getElementById('btnCamIso');
+  const btnCamSide = document.getElementById('btnCamSide');
+  const btnCamFront = document.getElementById('btnCamFront');
+  const btnPlane = document.getElementById('btnPlane');
+  const btnPause = document.getElementById('btnPause');
+
+  const driftRange = document.getElementById('driftRange');
+  const orbitRange = document.getElementById('orbitRange');
+  const tiltRange = document.getElementById('tiltRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 시뮬레이션 파라미터
+  let sunDriftSpeed = 2.8;     // 태양의 은하계 전진 속도 (+Z 방향)
+  let orbitSpeedScale = 1.0;   // 행성 공전 배속
+  let eclipticTiltDeg = 60;    // 은하 진행 방향 대비 황도면 기울기 (실제 약 60도)
+  let showEclipticRings = true;
+  let isRunning = true;
+
+  // 카메라 구면 좌표 (마우스 드래그로 360도 회전)
+  let camYaw = -0.65;          // 수평 회전각 (rad)
+  let camPitch = 0.32;         // 수직 고도각 (rad)
+  let targetYaw = -0.65;
+  let targetPitch = 0.32;
+  let camZoom = 1.0;
+  const FOV = 650;
+
+  // 태양 위치 (월드 좌표: X=0, Y=0, Z가 계속 전진)
+  let sunZ = 0;
+  const sunTrail = [];
+  const MAX_TRAIL = 220;
+
+  // 8대 행성 데이터 (시각적 조화를 위해 거리는 비선형 스케일링)
+  const PLANETS = [
+    { name: 'MERCURY', r: 32,  omega: 0.085, phase: 0.2, size: 2.2, color: '#94a3b8', trail: [] },
+    { name: 'VENUS',   r: 52,  omega: 0.055, phase: 1.8, size: 3.2, color: '#fde047', trail: [] },
+    { name: 'EARTH',   r: 76,  omega: 0.040, phase: 3.1, size: 3.6, color: '#38bdf8', trail: [], hasMoon: true, moonPhase: 0 },
+    { name: 'MARS',    r: 102, omega: 0.028, phase: 4.5, size: 2.9, color: '#f43f5e', trail: [] },
+    { name: 'JUPITER', r: 145, omega: 0.016, phase: 0.9, size: 6.2, color: '#fb923c', trail: [] },
+    { name: 'SATURN',  r: 190, omega: 0.011, phase: 2.4, size: 5.2, color: '#eab308', hasRing: true, trail: [] },
+    { name: 'URANUS',  r: 235, omega: 0.007, phase: 5.0, size: 4.0, color: '#2dd4bf', trail: [] },
+    { name: 'NEPTUNE', r: 278, omega: 0.005, phase: 1.2, size: 3.9, color: '#818cf8', trail: [] }
+  ];
+
+  // 배경 우주 성간 먼지 (태양이 앞으로 나아가는 속도감을 주기 위한 스트리밍 별들)
+  const STAR_COUNT = 160;
+  const stars = [];
+  for (let i = 0; i < STAR_COUNT; i++) {
+    stars.push({
+      x: (Math.random() - 0.5) * 1400,
+      y: (Math.random() - 0.5) * 1000,
+      z: (Math.random() - 0.5) * 1600,
+      size: Math.random() * 1.5 + 0.5,
+      alpha: Math.random() * 0.6 + 0.2
+    });
+  }
+
+  // --- 황도면 기울기(Tilt)가 반영된 로컬 궤도 좌표 ➔ 월드 3D 좌표 변환 ---
+  // 기본 공전면은 XY 평면(기울기 90도일 때 Z축에 수직).
+  // 기울기(eclipticTiltDeg)만큼 X축 기준으로 회전시켜 황도면을 기울임
+  function getPlanetWorldPos(radius, angle, currentSunZ) {
+    const lx = radius * Math.cos(angle);
+    const ly = radius * Math.sin(angle);
+
+    // 90도일 때 진행축(Z)과 완전히 수직, 60도일 때 실제 태양계처럼 비스듬히 기울어져 전진
+    const rotRad = (90 - eclipticTiltDeg) * (Math.PI / 180);
+    const cosT = Math.cos(rotRad);
+    const sinT = Math.sin(rotRad);
+
+    const wx = lx;
+    const wy = ly * cosT;
+    const wz = currentSunZ - ly * sinT;
+
+    return { x: wx, y: wy, z: wz };
+  }
+
+  // --- 3D 월드 좌표 ➔ 카메라 기준 2D 화면 원근 투영 (Perspective Projection) ---
+  // 카메라는 항상 현재 태양의 앞뒤 중심(camFocusZ)을 따라가며 추적함
+  function project3D(wx, wy, wz, camFocusZ) {
+    // 카메라 중심 상대 좌표
+    let rx = wx;
+    let ry = wy;
+    let rz = wz - camFocusZ;
+
+    // 1. Yaw 회전 (Y축 기준 수평 회전)
+    const cosY = Math.cos(camYaw);
+    const sinY = Math.sin(camYaw);
+    const x1 = rx * cosY - rz * sinY;
+    const z1 = rz * cosY + rx * sinY;
+
+    // 2. Pitch 회전 (X축 기준 수직 회전)
+    const cosP = Math.cos(camPitch);
+    const sinP = Math.sin(camPitch);
+    const y2 = ry * cosP - z1 * sinP;
+    const z2 = z1 * cosP + ry * sinP;
+
+    const cameraDistance = 620 / camZoom;
+    const depth = z2 + cameraDistance;
+
+    if (depth < 20) return null; // 카메라 뒤편 클리핑
+
+    const scale = FOV / depth;
+    return {
+      x: width * 0.5 + x1 * scale,
+      y: height * 0.5 - y2 * scale,
+      scale: scale,
+      depth: depth
+    };
+  }
+
+  // --- 초기 궤적 사전 워밍업 (시작하자마자 멋진 나선 꼬리가 보이도록 180스텝 선계산) ---
+  function warmupTrails() {
+    sunZ = 0;
+    sunTrail.length = 0;
+    PLANETS.forEach(p => { p.trail.length = 0; });
+
+    for (let i = 0; i < MAX_TRAIL; i++) {
+      stepPhysics();
+    }
+  }
+
+  function stepPhysics() {
+    sunZ += sunDriftSpeed;
+    sunTrail.push({ x: 0, y: 0, z: sunZ });
+    if (sunTrail.length > MAX_TRAIL) sunTrail.shift();
+
+    PLANETS.forEach(p => {
+      p.phase += p.omega * orbitSpeedScale;
+      const pos = getPlanetWorldPos(p.r, p.phase, sunZ);
+
+      // 지구의 경우 달의 미세 나선 궤도까지 중첩 계산
+      if (p.hasMoon) {
+        p.moonPhase += 0.32 * orbitSpeedScale;
+        const mPos = getPlanetWorldPos(11, p.moonPhase, 0);
+        pos.moonX = pos.x + mPos.x;
+        pos.moonY = pos.y + mPos.y;
+        pos.moonZ = pos.z + (mPos.z - 0);
+      }
+
+      p.trail.push(pos);
+      if (p.trail.length > MAX_TRAIL) p.trail.shift();
+    });
+  }
+
+  // --- 메인 렌더링 루프 ---
+  function render() {
+    // 부드러운 카메라 감속 보간
+    camYaw += (targetYaw - camYaw) * 0.1;
+    camPitch += (targetPitch - camPitch) * 0.1;
+
+    if (isRunning) {
+      stepPhysics();
+      valDist.textContent = `${(sunZ * 0.015).toFixed(2)} AU`;
+    }
+
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    // 카메라가 바라보는 기준 Z점 (태양보다 약간 뒤쪽 꼬리 중심을 주시해 구도 안정화)
+    const camFocusZ = sunZ - sunDriftSpeed * 45;
+
+    // 1. 배경 성간 별자리 스트리밍 (태양 전진에 따른 상대적 후퇴 운동)
+    ctx.fillStyle = '#cbd5e1';
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const s = stars[i];
+      // 별이 카메라 뒤로 한참 지나가면 태양 앞쪽 먼 우주로 재배치
+      if (s.z < camFocusZ - 800) s.z += 1600;
+      if (s.z > camFocusZ + 800) s.z -= 1600;
+
+      const proj = project3D(s.x, s.y, s.z, camFocusZ);
+      if (proj) {
+        ctx.globalAlpha = s.alpha * Math.min(1, 500 / proj.depth);
+        const r = Math.max(0.6, s.size * proj.scale * 0.7);
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1.0;
+
+    // 2. 은하계 중심 진행 벡터 축 (태양의 진로 점선 화살표)
+    const axisStart = project3D(0, 0, sunZ - MAX_TRAIL * sunDriftSpeed, camFocusZ);
+    const axisEnd = project3D(0, 0, sunZ + 140, camFocusZ);
+    if (axisStart && axisEnd) {
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(axisStart.x, axisStart.y);
+      ctx.lineTo(axisEnd.x, axisEnd.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 진행 방향 APEX 표식
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('☀ SOLAR APEX (GALACTIC DRIFT) ➔', axisEnd.x + 8, axisEnd.y + 4);
+    }
+
+    // 3. 현재 태양 중심의 황도면 가이드 링 (Ecliptic Plane Rings)
+    if (showEclipticRings) {
+      PLANETS.forEach(p => {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        let started = false;
+        for (let deg = 0; deg <= 360; deg += 10) {
+          const rad = deg * (Math.PI / 180);
+          const wPos = getPlanetWorldPos(p.r, rad, sunZ);
+          const proj = project3D(wPos.x, wPos.y, wPos.z, camFocusZ);
+          if (proj) {
+            if (!started) { ctx.moveTo(proj.x, proj.y); started = true; }
+            else ctx.lineTo(proj.x, proj.y);
+          }
+        }
+        ctx.stroke();
+      });
+    }
+
+    // 4. 행성들의 3D DNA 나선 궤적 (Helical Trails) 드로잉
+    PLANETS.forEach(p => {
+      const len = p.trail.length;
+      if (len < 2) return;
+
+      // 꼬리를 구간별로 나누어 뒤로 갈수록 투명해지는 네온 그라데이션 연출
+      ctx.lineCap = 'round';
+      for (let i = 1; i < len; i += 2) {
+        const pt1 = p.trail[i - 1];
+        const pt2 = p.trail[Math.min(len - 1, i + 1)];
+        const pr1 = project3D(pt1.x, pt1.y, pt1.z, camFocusZ);
+        const pr2 = project3D(pt2.x, pt2.y, pt2.z, camFocusZ);
+
+        if (pr1 && pr2) {
+          const ratio = i / len; // 0(꼬리 끝) ~ 1(현재 행성 머리)
+          ctx.strokeStyle = p.color;
+          ctx.globalAlpha = Math.pow(ratio, 1.6) * 0.85;
+          ctx.lineWidth = Math.max(0.8, p.size * 0.65 * pr2.scale * ratio);
+          ctx.beginPath();
+          ctx.moveTo(pr1.x, pr1.y);
+          ctx.lineTo(pr2.x, pr2.y);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1.0;
+    });
+
+    // 5. 태양 및 8대 행성 본체 (원근 깊이 Z-Sorting 정렬 후 렌더링)
+    const renderables = [];
+
+    // 태양 추가
+    const sunProj = project3D(0, 0, sunZ, camFocusZ);
+    if (sunProj) {
+      renderables.push({
+        type: 'SUN',
+        proj: sunProj,
+        depth: sunProj.depth
+      });
+    }
+
+    // 행성 및 달 추가
+    PLANETS.forEach(p => {
+      const curPos = p.trail[p.trail.length - 1];
+      if (!curPos) return;
+      const proj = project3D(curPos.x, curPos.y, curPos.z, camFocusZ);
+      if (proj) {
+        renderables.push({
+          type: 'PLANET',
+          planet: p,
+          pos: curPos,
+          proj: proj,
+          depth: proj.depth
+        });
+      }
+    });
+
+    // 먼 천체부터 가까운 천체 순으로 정렬 (Painter's Algorithm)
+    renderables.sort((a, b) => b.depth - a.depth);
+
+    renderables.forEach(item => {
+      if (item.type === 'SUN') {
+        const sp = item.proj;
+        const sunRadius = Math.max(4, 11 * sp.scale);
+
+        // 태양 코로나 광채
+        const glow = ctx.createRadialGradient(sp.x, sp.y, sunRadius * 0.2, sp.x, sp.y, sunRadius * 4.2);
+        glow.addColorStop(0, '#ffffff');
+        glow.addColorStop(0.25, '#fde047');
+        glow.addColorStop(0.55, 'rgba(251, 146, 60, 0.35)');
+        glow.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, sunRadius * 4.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, sunRadius * 0.85, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const p = item.planet;
+        const pr = item.proj;
+        const rad = Math.max(1.8, p.size * pr.scale);
+
+        // 태양과 행성을 잇는 중력 연결선 (은은한 광선)
+        if (sunProj) {
+          ctx.strokeStyle = p.color;
+          ctx.globalAlpha = 0.16;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(sunProj.x, sunProj.y);
+          ctx.lineTo(pr.x, pr.y);
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+        }
+
+        // 행성 발광 구체
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(pr.x, pr.y, rad, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 토성 고리
+        if (p.hasRing) {
+          ctx.strokeStyle = 'rgba(253, 224, 71, 0.65)';
+          ctx.lineWidth = Math.max(1, 1.8 * pr.scale);
+          ctx.beginPath();
+          ctx.ellipse(pr.x, pr.y, rad * 2.2, rad * 0.8, -0.3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 지구 주변을 도는 달
+        if (p.hasMoon && item.pos.moonX !== undefined) {
+          const mProj = project3D(item.pos.moonX, item.pos.moonY, item.pos.moonZ, camFocusZ);
+          if (mProj) {
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.arc(mProj.x, mProj.y, Math.max(1, 1.5 * mProj.scale), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // 행성 이름 라벨
+        ctx.font = '600 9px "IBM Plex Mono", monospace';
+        ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
+        ctx.fillText(p.name, pr.x + rad + 5, pr.y + 3);
+      }
+    });
+
+    requestAnimationFrame(render);
+  }
+
+  // --- 카메라 뷰 프리셋 버튼 ---
+  function clearCamActive() {
+    [btnCamIso, btnCamSide, btnCamFront].forEach(b => b.classList.remove('active'));
+  }
+
+  btnCamIso.addEventListener('click', () => {
+    clearCamActive();
+    btnCamIso.classList.add('active');
+    targetYaw = -0.65;
+    targetPitch = 0.32;
+    valCam.textContent = 'ISOMETRIC 3D';
+  });
+
+  btnCamSide.addEventListener('click', () => {
+    clearCamActive();
+    btnCamSide.classList.add('active');
+    targetYaw = -Math.PI * 0.5; // 완전 측면에서 사인파 나선 관측
+    targetPitch = 0.0;
+    valCam.textContent = 'SIDE HELIX WAVE';
+  });
+
+  btnCamFront.addEventListener('click', () => {
+    clearCamActive();
+    btnCamFront.classList.add('active');
+    targetYaw = 0.0; // 태양 정면에서 바라본 고전적인 원형 공전 뷰
+    targetPitch = 0.0;
+    valCam.textContent = 'FRONT ORBITAL';
+  });
+
+  // 슬라이더 이벤트
+  driftRange.addEventListener('input', (e) => {
+    const val = parseInt(e.target.value, 10);
+    sunDriftSpeed = val / 10;
+    valVel.textContent = `${Math.round((val / 28) * 220)} km/s`;
+  });
+
+  orbitRange.addEventListener('input', (e) => {
+    orbitSpeedScale = parseInt(e.target.value, 10) / 20;
+  });
+
+  tiltRange.addEventListener('input', (e) => {
+    eclipticTiltDeg = parseInt(e.target.value, 10);
+    valTilt.textContent = `${eclipticTiltDeg.toFixed(1)}°`;
+  });
+
+  btnPlane.addEventListener('click', () => {
+    showEclipticRings = !showEclipticRings;
+    btnPlane.classList.toggle('active', showEclipticRings);
+  });
+
+  btnPause.addEventListener('click', () => {
+    isRunning = !isRunning;
+    btnPause.textContent = isRunning ? '❚❚ 정지' : '▶ 재생';
+    btnPause.classList.toggle('active', !isRunning);
+  });
+
+  // --- 마우스 및 터치 3D 궤도 회전 조작 ---
+  let isDragging = false;
+  let lastMouse = { x: 0, y: 0 };
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastMouse = { x: e.clientX, y: e.clientY };
+    clearCamActive();
+    valCam.textContent = 'FREE ORBIT';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastMouse.x;
+    const dy = e.clientY - lastMouse.y;
+    targetYaw += dx * 0.007;
+    targetPitch = Math.max(-1.4, Math.min(1.4, targetPitch + dy * 0.007));
+    lastMouse = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    camZoom = Math.max(0.45, Math.min(2.8, camZoom * factor));
+  }, { passive: false });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      clearCamActive();
+      valCam.textContent = 'FREE ORBIT';
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - lastMouse.x;
+      const dy = e.touches[0].clientY - lastMouse.y;
+      targetYaw += dx * 0.007;
+      targetPitch = Math.max(-1.4, Math.min(1.4, targetPitch + dy * 0.007));
+      lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  // 초기 실행
+  warmupTrails();
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
