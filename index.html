@@ -119,6 +119,52 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             animation: fadeIn 0.2s ease;
         }
+
+        /* 전체 목록 서랍 */
+        .tool-drawer-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: none;
+            border: none;
+            padding: 2px 0;
+            margin: 2px 0 0;
+            color: #71717a;
+            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+
+        .tool-drawer-toggle:hover {
+            color: #a1a1aa;
+        }
+
+        .tool-drawer-toggle .drawer-chevron {
+            display: inline-block;
+            transition: transform 0.2s ease;
+            font-size: 0.65rem;
+        }
+
+        .tool-drawer.is-open .drawer-chevron {
+            transform: rotate(90deg);
+        }
+
+        .tool-drawer-body {
+            display: none;
+            margin-top: 6px;
+        }
+
+        .tool-drawer.is-open .tool-drawer-body {
+            display: block;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .tool-drawer.is-searching .tool-drawer-body,
+        .tool-drawer.is-searching .tool-drawer-toggle {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -196,7 +242,12 @@
                 <span class="fav-badge">★</span> · <span id="favList"></span>
             </p>
 
-            <div id="toolRows" class="space-y-1.5">
+            <div id="toolDrawer" class="tool-drawer">
+                <button type="button" id="toolDrawerToggle" class="tool-drawer-toggle" aria-expanded="false" aria-controls="toolRows">
+                    <span class="drawer-chevron" aria-hidden="true">▸</span>
+                    <span>all · <span id="toolCount">0</span></span>
+                </button>
+            <div id="toolRows" class="tool-drawer-body space-y-1.5">
                 <!-- write -->
                 <p>
                     <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수 계산기 (한국어·일본어·영어 모드)">syllable</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
@@ -277,6 +328,7 @@
                     <span class="tool-item" data-id="snake"><a href="snake.html" data-desc="네온 벡터 그리드와 사이버 신스 FX 기반의 레트로 스네이크 아케이드">snake</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
             </div>
+            </div>
         </div>
 
         <!-- 하단 각주 1줄 설명 -->
@@ -311,15 +363,32 @@
    <script>
     (function() {
         const STORAGE_KEY = 'marsko_fav_tools_v1';
+        const DRAWER_KEY = 'marsko_tools_drawer_v1';
         const favRow = document.getElementById('favRow');
         const favList = document.getElementById('favList');
         const searchRow = document.getElementById('searchRow');
         const searchList = document.getElementById('searchList');
+        const toolDrawer = document.getElementById('toolDrawer');
+        const toolDrawerToggle = document.getElementById('toolDrawerToggle');
         const toolRows = document.getElementById('toolRows');
+        const toolCount = document.getElementById('toolCount');
         const toolSearch = document.getElementById('toolSearch');
         const clearSearch = document.getElementById('clearSearch');
         const descBox = document.getElementById('toolDesc');
         const descText = descBox ? descBox.querySelector('.desc-text') : null;
+
+        function isDrawerOpen() {
+            return !!(toolDrawer && toolDrawer.classList.contains('is-open'));
+        }
+
+        function setDrawerOpen(open) {
+            if (!toolDrawer || !toolDrawerToggle) return;
+            toolDrawer.classList.toggle('is-open', open);
+            toolDrawerToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            try {
+                localStorage.setItem(DRAWER_KEY, open ? '1' : '0');
+            } catch (e) {}
+        }
 
         // 1. 즐겨찾기 스토리지 헬퍼
         function getFavorites() {
@@ -366,8 +435,7 @@
 
             if (!favRow || !favList) return;
 
-            // 검색 중일 때는 즐겨찾기 줄을 임시로 숨김
-            if (favs.length === 0 || (toolSearch && toolSearch.value.trim() !== '')) {
+            if (favs.length === 0) {
                 favRow.style.display = 'none';
                 favList.innerHTML = '';
                 return;
@@ -440,7 +508,7 @@
             }
         });
 
-        // 4. 실시간 검색: id · 표시명 · 설명
+        // 4. 실시간 검색: id · 표시명 · 설명 (즐겨찾기는 유지, 서랍 목록만 가림)
         function filterTools(query) {
             const kw = query.trim().toLowerCase();
 
@@ -451,13 +519,12 @@
             if (!kw) {
                 searchRow.style.display = 'none';
                 searchList.innerHTML = '';
-                toolRows.style.display = 'block';
+                if (toolDrawer) toolDrawer.classList.remove('is-searching');
                 renderFavorites();
                 return;
             }
 
-            toolRows.style.display = 'none';
-            if (favRow) favRow.style.display = 'none';
+            if (toolDrawer) toolDrawer.classList.add('is-searching');
             searchRow.style.display = 'block';
             searchList.innerHTML = '';
 
@@ -536,6 +603,22 @@
         }
 
         // 초기화
+        if (toolCount && toolRows) {
+            toolCount.textContent = String(toolRows.querySelectorAll('.tool-item').length);
+        }
+
+        let drawerPref = false;
+        try {
+            drawerPref = localStorage.getItem(DRAWER_KEY) === '1';
+        } catch (e) {}
+        setDrawerOpen(drawerPref);
+
+        if (toolDrawerToggle) {
+            toolDrawerToggle.addEventListener('click', () => {
+                setDrawerOpen(!isDrawerOpen());
+            });
+        }
+
         document.querySelectorAll('.tools-list a').forEach(bindDescEvents);
         renderFavorites();
     })();
