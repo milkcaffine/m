@@ -24,8 +24,8 @@ Then open `http://localhost:8080`.
 | `assets/favicon.svg` | Site icon |
 | `images/` | Hero + localized archive/walks media |
 
-## Tools (by category on the home page)
+## Tools
 
-글 · 사진 · 이미지 · 공감각 · 우주 · 생명 · 놀이 — open `index.html` for the live list (favorites stored in `localStorage`).
+Self-contained browser-side experiments across writing, darkroom optics, sound, space dynamics, generative life, and arcade — open `index.html` for the live list (filter search, drawer toggle, random jump, and favorites stored in `localStorage`).
 
-Notable space tools: `orrery.html`, `lagrange.html`, `earth-orbit.html` (LEO/GEO + Moon + Lagrange).
+Notable space tools: `orrery.html`, `lagrange.html`, `earth-orbit.html` (LEO/GEO + Moon + Lagrange), `vortex.html`.
