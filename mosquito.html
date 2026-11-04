@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Marsko lab tool — mosquito. Web Audio 고주파 모기 퇴치음 발생기 & 가청 주파수 귀 나이 테스트.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#030407">
+  <title>Mosquito Tone // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+    #field { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+    header {
+      position: absolute; top: 14px; left: 16px; z-index: 10;
+      display: flex; flex-direction: column; gap: 3px; pointer-events: none;
+    }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; font-weight: 700;
+      letter-spacing: 1px; color: #f8fafc; text-shadow: 0 0 12px rgba(250, 204, 21, 0.3);
+    }
+    .telemetry-card strong { color: #facc15; }
+
+    /* 중앙 주파수 표시 */
+    .readout {
+      position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
+      text-align: center; pointer-events: none; z-index: 5;
+    }
+    .freq {
+      font-family: 'IBM Plex Mono', monospace; font-weight: 600;
+      font-size: clamp(2.6rem, 11vw, 5.2rem); color: #f8fafc; letter-spacing: -1px;
+      text-shadow: 0 0 24px rgba(250, 204, 21, 0.25);
+      font-variant-numeric: tabular-nums;
+    }
+    .freq small { font-size: 0.35em; color: #94a3b8; margin-left: 4px; letter-spacing: 1px; }
+    .sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: #64748b; margin-top: 4px; }
+    .sub b { color: #facc15; font-weight: 600; }
+
+    /* 하단 독 */
+    .dock {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+      width: min(94%, 620px); z-index: 10;
+      background: rgba(10, 15, 26, 0.88); border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px; padding: 12px 14px; backdrop-filter: blur(10px);
+      display: flex; flex-direction: column; gap: 10px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem;
+    }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .row label { color: #64748b; min-width: 44px; }
+    .row .val { color: #e2e8f0; min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
+    input[type=range] { flex: 1; min-width: 120px; accent-color: #facc15; height: 22px; }
+    .chip {
+      background: rgba(15, 23, 42, 0.8); color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px;
+      padding: 5px 9px; font: inherit; cursor: pointer; transition: all 0.12s;
+    }
+    .chip:hover { color: #f8fafc; border-color: rgba(250, 204, 21, 0.4); }
+    .chip.on { color: #020306; background: #facc15; border-color: #facc15; font-weight: 600; }
+    .big {
+      flex: 1; padding: 11px 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 1px;
+      border-radius: 10px;
+    }
+    .big.play.on { background: #ef4444; border-color: #ef4444; color: #fff; }
+    .sep { width: 1px; height: 18px; background: rgba(255,255,255,0.1); }
+
+    /* 귀 나이 테스트 패널 */
+    .modal {
+      position: absolute; inset: 0; z-index: 30; display: none;
+      align-items: center; justify-content: center; background: rgba(2, 3, 6, 0.7);
+      backdrop-filter: blur(4px);
+    }
+    .modal.show { display: flex; }
+    .panel {
+      width: min(92%, 400px); background: rgba(10, 15, 26, 0.96);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 18px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.74rem; line-height: 1.7; color: #94a3b8;
+    }
+    .panel h2 { color: #f8fafc; font-size: 0.9rem; margin-bottom: 8px; }
+    .panel .bigfreq { font-size: 2.2rem; color: #facc15; text-align: center; margin: 10px 0; font-variant-numeric: tabular-nums; }
+    .panel .result { color: #e2e8f0; text-align: center; min-height: 1.4em; }
+    .panel .btns { display: flex; gap: 8px; margin-top: 12px; }
+    .panel p + p { margin-top: 6px; }
+    .warn { color: #fca5a5; }
+
+    @media (max-width: 520px) {
+      .telemetry-card { display: none; }
+      .readout { top: 34%; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="field"></canvas>
+
+  <header>
+    <a class="home-link" href="index.html">← marsko</a>
+    <h1>MOSQUITO TONE</h1>
+    <div class="hud-meta">고주파 퇴치음 · 귀 나이 테스트 · 모기 잡기</div>
+  </header>
+
+  <div class="telemetry-card">
+    STATUS <strong id="tStatus">IDLE</strong><br>
+    SAMPLE <span id="tRate">—</span><br>
+    LIMIT <span id="tLimit">—</span><br>
+    SWAT <strong id="tSwat">0</strong>
+  </div>
+
+  <div class="readout">
+    <div class="freq"><span id="fNum">17.4</span><small>kHz</small></div>
+    <div class="sub" id="fSub">화면의 모기를 클릭해서 잡을 수도 있어요</div>
+  </div>
+
+  <div class="dock">
+    <div class="row">
+      <label>FREQ</label>
+      <input type="range" id="freq" min="0" max="1000" step="1">
+      <span class="val" id="freqVal">17400 Hz</span>
+    </div>
+    <div class="row" id="presets">
+      <button class="chip" data-f="8000">8k</button>
+      <button class="chip" data-f="12000">12k</button>
+      <button class="chip" data-f="15000">15k</button>
+      <button class="chip" data-f="17400">17.4k</button>
+      <button class="chip" data-f="19000">19k</button>
+      <button class="chip" data-f="21000">21k</button>
+    </div>
+    <div class="row" id="modes">
+      <label>MODE</label>
+      <button class="chip on" data-m="steady">고정</button>
+      <button class="chip" data-m="sweep">스윕</button>
+      <button class="chip" data-m="pulse">펄스</button>
+      <button class="chip" data-m="hop">랜덤</button>
+      <span class="sep"></span>
+      <button class="chip on" data-w="sine" id="wSine">sine</button>
+      <button class="chip" data-w="square" id="wSquare">square</button>
+    </div>
+    <div class="row">
+      <label>VOL</label>
+      <input type="range" id="vol" min="0" max="100" step="1" value="35">
+      <span class="val" id="volVal">35%</span>
+    </div>
+    <div class="row" id="timers">
+      <label>TIMER</label>
+      <button class="chip on" data-t="0">∞</button>
+      <button class="chip" data-t="15">15m</button>
+      <button class="chip" data-t="30">30m</button>
+      <button class="chip" data-t="60">1h</button>
+      <button class="chip" data-t="120">2h</button>
+      <span class="val" id="timerVal" style="flex:1"></span>
+    </div>
+    <div class="row">
+      <button class="chip big play" id="play">▶ START</button>
+      <button class="chip big" id="testBtn" style="flex:0 0 auto; padding: 11px 14px;">👂 귀 나이</button>
+      <button class="chip big" id="infoBtn" style="flex:0 0 auto; padding: 11px 14px;">?</button>
+    </div>
+  </div>
+
+  <!-- 귀 나이 테스트 -->
+  <div class="modal" id="testModal">
+    <div class="panel">
+      <h2>👂 가청 주파수 테스트</h2>
+      <p>소리가 낮은 음에서 점점 높아집니다. <b style="color:#f8fafc">더 이상 안 들리는 순간</b> 버튼을 누르세요. 이어폰 권장, 볼륨은 작게 시작하세요.</p>
+      <div class="bigfreq" id="testFreq">— Hz</div>
+      <div class="result" id="testResult"></div>
+      <div class="btns">
+        <button class="chip big" id="testGo">시작</button>
+        <button class="chip big" id="testStop" disabled>안 들려!</button>
+        <button class="chip big" id="testClose" style="flex:0 0 auto; padding: 11px 14px;">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 정보 -->
+  <div class="modal" id="infoModal">
+    <div class="panel">
+      <h2>이게 진짜 효과가 있나요?</h2>
+      <p>솔직히 말하면 <b style="color:#f8fafc">과학적 근거는 거의 없습니다.</b> 여러 연구에서 초음파·고주파 모기 퇴치기는 물리는 횟수를 줄이지 못했어요. 재미 + 플라시보 용도로 즐겨주세요.</p>
+      <p>• 브라우저는 샘플레이트의 절반(보통 22–24kHz)까지만 낼 수 있고, 폰·노트북 스피커는 대개 16–18kHz 이상을 제대로 재생하지 못합니다.</p>
+      <p>• 17.4kHz는 젊은 사람만 듣는 이른바 "모스키토 톤"입니다. 나이가 들수록 고음역부터 안 들려요.</p>
+      <p class="warn">• 안 들린다고 볼륨을 크게 올리지 마세요. 귀·스피커에 무리가 갈 수 있고, 강아지·고양이는 이 대역을 아주 잘 듣습니다.</p>
+      <div class="btns"><button class="chip big" id="infoClose">닫기</button></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const F_MIN = 1000;
+  let F_MAX = 22000;
+
+  // ---------- state ----------
+  const st = {
+    freq: 17400, vol: 35, mode: 'steady', wave: 'sine',
+    playing: false, timerMin: 0, endAt: 0, swats: 0,
+    curFreq: 17400, t0: 0, hopNext: 0, hopFreq: 17400,
+  };
+
+  // ---------- audio ----------
+  let ctx = null, osc = null, pulseGain = null, master = null, loopId = null, wakeLock = null;
+
+  function ensureCtx() {
+    if (ctx) return ctx;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    F_MAX = Math.min(22000, Math.floor(ctx.sampleRate / 2 - 500));
+    $('tRate').textContent = (ctx.sampleRate / 1000).toFixed(1) + ' kHz';
+    $('tLimit').textContent = (F_MAX / 1000).toFixed(1) + ' kHz';
+    syncFreqSlider();
+    return ctx;
+  }
+  const volToGain = v => Math.pow(v / 100, 2) * 0.5;
+
+  function start() {
+    ensureCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    stopNodes(true);
+    osc = ctx.createOscillator();
+    osc.type = st.wave;
+    osc.frequency.value = clampF(st.freq);
+    pulseGain = ctx.createGain(); pulseGain.gain.value = 1;
+    master = ctx.createGain(); master.gain.value = 0;
+    osc.connect(pulseGain).connect(master).connect(ctx.destination);
+    osc.start();
+    master.gain.setTargetAtTime(volToGain(st.vol), ctx.currentTime, 0.08); // 페이드 인
+    st.playing = true; st.t0 = ctx.currentTime; st.hopNext = 0;
+    st.endAt = st.timerMin ? Date.now() + st.timerMin * 60000 : 0;
+    loopId = setInterval(controlLoop, 40);
+    requestWake();
+    updateUI();
+  }
+
+  function stopNodes(immediate) {
+    if (loopId) { clearInterval(loopId); loopId = null; }
+    if (!osc) return;
+    const o = osc, m = master;
+    osc = null; master = null; pulseGain = null;
+    if (immediate) { try { o.stop(); } catch (e) {} return; }
+    m.gain.cancelScheduledValues(ctx.currentTime);
+    m.gain.setTargetAtTime(0, ctx.currentTime, 0.06); // 페이드 아웃 (클릭음 방지)
+    try { o.stop(ctx.currentTime + 0.4); } catch (e) {}
+  }
+
+  function stop() {
+    stopNodes(false);
+    st.playing = false; st.endAt = 0;
+    releaseWake();
+    updateUI();
+  }
+
+  function controlLoop() {
+    if (!osc) return;
+    const t = ctx.currentTime - st.t0;
+    const base = clampF(st.freq);
+    let f = base, g = 1;
+    switch (st.mode) {
+      case 'sweep': {
+        // base 주변 ±25% 를 4초 주기로 왕복
+        const lo = clampF(base * 0.75), hi = clampF(base * 1.25);
+        const p = (Math.sin(t * Math.PI * 2 / 4) + 1) / 2;
+        f = lo * Math.pow(hi / lo, p);
+        break;
+      }
+      case 'pulse': {
+        const ph = (t % 0.5) / 0.5;
+        g = ph < 0.55 ? 1 : 0;
+        break;
+      }
+      case 'hop': {
+        if (t >= st.hopNext) {
+          st.hopFreq = clampF(base * (0.7 + Math.random() * 0.6));
+          st.hopNext = t + 0.25 + Math.random() * 0.6;
+        }
+        f = st.hopFreq;
+        break;
+      }
+    }
+    st.curFreq = f;
+    osc.frequency.setTargetAtTime(f, ctx.currentTime, 0.015);
+    pulseGain.gain.setTargetAtTime(g, ctx.currentTime, 0.008);
+
+    if (st.endAt && Date.now() >= st.endAt) stop();
+  }
+
+  async function requestWake() {
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+  }
+  function releaseWake() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && st.playing) requestWake();
+  });
+
+  // ---------- freq slider (log scale) ----------
+  const clampF = f => Math.max(F_MIN, Math.min(F_MAX, f));
+  const sliderToF = s => Math.round(F_MIN * Math.pow(F_MAX / F_MIN, s / 1000));
+  const fToSlider = f => Math.round(1000 * Math.log(clampF(f) / F_MIN) / Math.log(F_MAX / F_MIN));
+  function syncFreqSlider() { $('freq').value = fToSlider(st.freq); }
+
+  function setFreq(f) {
+    st.freq = clampF(f);
+    st.curFreq = st.freq;
+    syncFreqSlider();
+    updateUI();
+  }
+
+  $('freq').addEventListener('input', e => setFreq(sliderToF(+e.target.value)));
+  $('presets').addEventListener('click', e => {
+    const b = e.target.closest('[data-f]'); if (b) setFreq(+b.dataset.f);
+  });
+  $('modes').addEventListener('click', e => {
+    const m = e.target.closest('[data-m]'), w = e.target.closest('[data-w]');
+    if (m) { st.mode = m.dataset.m; st.hopNext = 0; }
+    if (w) { st.wave = w.dataset.w; if (osc) osc.type = st.wave; }
+    updateUI();
+  });
+  $('vol').addEventListener('input', e => {
+    st.vol = +e.target.value;
+    if (master) master.gain.setTargetAtTime(volToGain(st.vol), ctx.currentTime, 0.05);
+    updateUI();
+  });
+  $('timers').addEventListener('click', e => {
+    const b = e.target.closest('[data-t]'); if (!b) return;
+    st.timerMin = +b.dataset.t;
+    st.endAt = st.playing && st.timerMin ? Date.now() + st.timerMin * 60000 : 0;
+    updateUI();
+  });
+  $('play').addEventListener('click', () => st.playing ? stop() : start());
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !$('testModal').classList.contains('show')) {
+      e.preventDefault(); st.playing ? stop() : start();
+    }
+  });
+
+  // ---------- UI ----------
+  function hearNote(f) {
+    if (f >= 19000) return '거의 아무도 못 듣는 대역 · 스피커가 못 낼 수도 있음';
+    if (f >= 17000) return '<b>모스키토 톤</b> · 대략 25세 이하만 들림';
+    if (f >= 15000) return '30대 초반까지 대부분 들림';
+    if (f >= 12000) return '대부분의 성인이 들을 수 있음';
+    return '누구나 잘 들리는 대역 — 꽤 거슬립니다';
+  }
+  function fmtF(f) { return f >= 10000 ? (f / 1000).toFixed(1) : (f / 1000).toFixed(2); }
+
+  function updateUI() {
+    const f = st.playing ? st.curFreq : st.freq;
+    $('fNum').textContent = fmtF(f);
+    $('freqVal').textContent = Math.round(st.freq) + ' Hz';
+    $('volVal').textContent = st.vol + '%';
+    $('fSub').innerHTML = hearNote(st.freq);
+    document.querySelectorAll('#presets [data-f]').forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.f - st.freq) < 1));
+    document.querySelectorAll('#modes [data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === st.mode));
+    document.querySelectorAll('#modes [data-w]').forEach(b => b.classList.toggle('on', b.dataset.w === st.wave));
+    document.querySelectorAll('#timers [data-t]').forEach(b => b.classList.toggle('on', +b.dataset.t === st.timerMin));
+    const pb = $('play');
+    pb.classList.toggle('on', st.playing);
+    pb.textContent = st.playing ? '■ STOP' : '▶ START';
+    $('tStatus').textContent = st.playing ? 'EMITTING' : 'IDLE';
+    $('tSwat').textContent = st.swats;
+    if (st.endAt) {
+      const ms = Math.max(0, st.endAt - Date.now());
+      const m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60;
+      $('timerVal').textContent = `${m}:${String(s).padStart(2, '0')} 후 정지`;
+    } else $('timerVal').textContent = '';
+  }
+  setInterval(() => { if (st.playing) updateUI(); }, 250);
+
+  // ---------- 귀 나이 테스트 ----------
+  const T = { running: false, osc: null, gain: null, raf: 0, start: 0, f: 0, dur: 36 };
+  const T_LO = 8000;
+  const ageTable = [
+    [19000, '~ 20세 이하 (혹은 아주 좋은 스피커)'],
+    [17400, '~ 24세'],
+    [16000, '~ 30세'],
+    [15000, '~ 40세'],
+    [14000, '~ 49세'],
+    [12000, '~ 50대'],
+    [10000, '~ 60대'],
+    [0, '60세 이상 (혹은 스피커 한계)'],
+  ];
+  function openTest() {
+    if (st.playing) stop();
+    $('testModal').classList.add('show');
+    $('testFreq').textContent = '— Hz';
+    $('testResult').textContent = '';
+  }
+  function testStart() {
+    ensureCtx(); if (ctx.state === 'suspended') ctx.resume();
+    testHalt();
+    T.osc = ctx.createOscillator(); T.osc.type = 'sine';
+    T.gain = ctx.createGain(); T.gain.gain.value = 0;
+    T.osc.connect(T.gain).connect(ctx.destination);
+    const now = ctx.currentTime;
+    T.osc.frequency.setValueAtTime(T_LO, now);
+    T.osc.frequency.exponentialRampToValueAtTime(F_MAX, now + T.dur);
+    T.gain.gain.setTargetAtTime(Math.max(0.04, volToGain(st.vol)), now, 0.1);
+    T.osc.start(); T.start = now; T.running = true;
+    $('testGo').disabled = true; $('testStop').disabled = false;
+    $('testResult').textContent = '듣는 중…';
+    const tick = () => {
+      if (!T.running) return;
+      const p = Math.min(1, (ctx.currentTime - T.start) / T.dur);
+      T.f = T_LO * Math.pow(F_MAX / T_LO, p);
+      $('testFreq').textContent = Math.round(T.f) + ' Hz';
+      if (p >= 1) { testHalt(); showResult(F_MAX, true); return; }
+      T.raf = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+  function testHalt() {
+    T.running = false; cancelAnimationFrame(T.raf);
+    if (T.osc) {
+      const o = T.osc, g = T.gain;
+      g.gain.cancelScheduledValues(ctx.currentTime);
+      g.gain.setTargetAtTime(0, ctx.currentTime, 0.04);
+      try { o.stop(ctx.currentTime + 0.3); } catch (e) {}
+      T.osc = null; T.gain = null;
+    }
+    $('testGo').disabled = false; $('testStop').disabled = true;
+    $('testGo').textContent = '다시';
+  }
+  function showResult(f, maxed) {
+    const age = ageTable.find(([th]) => f >= th)[1];
+    $('testFreq').textContent = Math.round(f) + ' Hz';
+    $('testResult').innerHTML = (maxed ? '끝까지 들렸어요! ' : '') + `귀 나이 ≈ <b style="color:#facc15">${age}</b><br><span style="color:#64748b">재미용 추정치 · 기기/볼륨에 따라 달라짐</span>`;
+    if (!maxed) setFreq(Math.min(F_MAX, f));
+  }
+  $('testBtn').addEventListener('click', openTest);
+  $('testGo').addEventListener('click', testStart);
+  $('testStop').addEventListener('click', () => { const f = T.f; testHalt(); showResult(f, false); });
+  $('testClose').addEventListener('click', () => { testHalt(); $('testModal').classList.remove('show'); });
+  $('infoBtn').addEventListener('click', () => $('infoModal').classList.add('show'));
+  $('infoClose').addEventListener('click', () => $('infoModal').classList.remove('show'));
+
+  // ---------- 모기 필드 ----------
+  const cv = $('field'), g = cv.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  addEventListener('resize', resize); resize();
+
+  const bugs = [], splats = [];
+  const N = Math.max(8, Math.min(18, Math.round(innerWidth * innerHeight / 70000)));
+  function spawn(edge) {
+    let x, y;
+    if (edge) {
+      const s = Math.floor(Math.random() * 4);
+      x = s === 0 ? -20 : s === 1 ? W + 20 : Math.random() * W;
+      y = s === 2 ? -20 : s === 3 ? H + 20 : Math.random() * H;
+    } else { x = Math.random() * W; y = Math.random() * H; }
+    return { x, y, vx: 0, vy: 0, a: Math.random() * 6.28, ph: Math.random() * 100, alive: true, size: 0.8 + Math.random() * 0.5 };
+  }
+  for (let i = 0; i < N; i++) bugs.push(spawn(false));
+
+  cv.addEventListener('pointerdown', e => {
+    let best = null, bd = 28;
+    for (const b of bugs) {
+      const d = Math.hypot(b.x - e.clientX, b.y - e.clientY);
+      if (b.alive && d < bd) { bd = d; best = b; }
+    }
+    if (best) {
+      best.alive = false;
+      splats.push({ x: best.x, y: best.y, life: 1, r: 4 + Math.random() * 3 });
+      st.swats++; $('tSwat').textContent = st.swats;
+      setTimeout(() => Object.assign(best, spawn(true)), 2500 + Math.random() * 2500);
+    }
+  });
+
+  let rings = [], ringAcc = 0, last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    g.fillStyle = 'rgba(2, 3, 6, 0.35)';
+    g.fillRect(0, 0, W, H);
+
+    const cx = W / 2, cy = H * 0.42;
+    const power = st.playing ? (0.25 + st.vol / 100) * (st.mode === 'pulse' ? 0.85 : 1) : 0;
+
+    // 음파 링
+    if (st.playing) {
+      ringAcc += dt * (1.2 + st.curFreq / 6000);
+      while (ringAcc > 1) { ringAcc -= 1; rings.push({ r: 30, a: 0.5 }); }
+    }
+    for (const r of rings) {
+      r.r += dt * (120 + st.curFreq / 60); r.a -= dt * 0.28;
+      if (r.a <= 0) continue;
+      g.beginPath();
+      // 고주파일수록 링이 촘촘하게 떨림
+      const wob = Math.min(6, st.curFreq / 4000);
+      for (let i = 0; i <= 96; i++) {
+        const th = i / 96 * Math.PI * 2;
+        const rr = r.r + Math.sin(th * Math.round(st.curFreq / 1000) + now / 90) * wob;
+        const x = cx + Math.cos(th) * rr, y = cy + Math.sin(th) * rr;
+        i ? g.lineTo(x, y) : g.moveTo(x, y);
+      }
+      g.strokeStyle = `rgba(250, 204, 21, ${r.a * 0.5})`;
+      g.lineWidth = 1;
+      g.stroke();
+    }
+    rings = rings.filter(r => r.a > 0);
+
+    // 얼룩
+    for (const s of splats) {
+      s.life -= dt * 0.08;
+      g.fillStyle = `rgba(185, 28, 28, ${Math.max(0, s.life) * 0.6})`;
+      g.beginPath(); g.arc(s.x, s.y, s.r, 0, 6.28); g.fill();
+      g.fillStyle = `rgba(30, 30, 30, ${Math.max(0, s.life) * 0.8})`;
+      g.fillRect(s.x - 3, s.y - 0.5, 6, 1);
+    }
+    for (let i = splats.length - 1; i >= 0; i--) if (splats[i].life <= 0) splats.splice(i, 1);
+
+    // 모기
+    for (const b of bugs) {
+      if (!b.alive) continue;
+      b.ph += dt;
+      b.a += (Math.sin(b.ph * 1.7) + Math.sin(b.ph * 3.1 + 2)) * dt * 2.2;
+      const sp = 60;
+      b.vx += Math.cos(b.a) * sp * dt * 3;
+      b.vy += Math.sin(b.a) * sp * dt * 3;
+
+      const dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy) + 1;
+      if (power > 0) {
+        // 퇴치음: 중심에서 밀려남 (플라시보 시각화)
+        const f = power * 9000 / (d * 0.6 + 60);
+        b.vx += dx / d * f * dt * 10;
+        b.vy += dy / d * f * dt * 10;
+        b.vx += (Math.random() - 0.5) * 300 * power * dt;
+        b.vy += (Math.random() - 0.5) * 300 * power * dt;
+      } else {
+        // 조용하면 슬금슬금 사람(중심) 쪽으로
+        b.vx -= dx / d * 14 * dt;
+        b.vy -= dy / d * 14 * dt;
+        // 화면 밖이면 복귀
+        if (b.x < 10) b.vx += 80 * dt; if (b.x > W - 10) b.vx -= 80 * dt;
+        if (b.y < 10) b.vy += 80 * dt; if (b.y > H - 10) b.vy -= 80 * dt;
+      }
+      b.vx *= Math.pow(0.12, dt); b.vy *= Math.pow(0.12, dt);
+      b.x += b.vx * dt; b.y += b.vy * dt;
+
+      // 그리기
+      const ang = Math.atan2(b.vy, b.vx), s = b.size;
+      g.save(); g.translate(b.x, b.y); g.rotate(ang);
+      const flap = Math.sin(now / 9 + b.ph * 50) * 0.6;
+      g.fillStyle = 'rgba(203, 213, 225, 0.22)';
+      g.beginPath(); g.ellipse(-1 * s, -3.2 * s, 4 * s, 1.6 * s, -0.5 + flap, 0, 6.28); g.fill();
+      g.beginPath(); g.ellipse(-1 * s, 3.2 * s, 4 * s, 1.6 * s, 0.5 - flap, 0, 6.28); g.fill();
+      g.strokeStyle = 'rgba(148, 163, 184, 0.75)';
+      g.lineWidth = 0.6;
+      for (const k of [-1, 1]) for (const j of [-2, 0, 2]) {
+        g.beginPath(); g.moveTo(j * s, 0); g.lineTo((j - 2.5) * s, k * 5 * s); g.stroke();
+      }
+      g.fillStyle = '#e2e8f0';
+      g.beginPath(); g.ellipse(-2.5 * s, 0, 4.2 * s, 1.1 * s, 0, 0, 6.28); g.fill();
+      g.beginPath(); g.arc(2.4 * s, 0, 1.3 * s, 0, 6.28); g.fill();
+      g.strokeStyle = '#e2e8f0'; g.lineWidth = 0.5;
+      g.beginPath(); g.moveTo(3.5 * s, 0); g.lineTo(7 * s, 0); g.stroke();
+      g.restore();
+    }
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  syncFreqSlider();
+  updateUI();
+})();
+</script>
+</body>
+</html>
