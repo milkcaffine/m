@@ -229,6 +229,7 @@
                     <span class="drawer-chevron" aria-hidden="true">▸</span>
                     <span>all · <span id="toolCount">0</span></span>
                 </button>
+                <button type="button" id="toolRandom" class="tool-drawer-toggle" title="랜덤 도구" aria-label="랜덤 도구">rnd</button>
                 <div class="flex items-center gap-1.5">
                     <label for="toolSearch" class="sr-only">도구 검색</label>
                     <input type="text" id="toolSearch" placeholder="filter..." autocomplete="off" spellcheck="false"
@@ -371,12 +372,14 @@
         const searchList = document.getElementById('searchList');
         const toolDrawer = document.getElementById('toolDrawer');
         const toolDrawerToggle = document.getElementById('toolDrawerToggle');
+        const toolRandom = document.getElementById('toolRandom');
         const toolRows = document.getElementById('toolRows');
         const toolCount = document.getElementById('toolCount');
         const toolSearch = document.getElementById('toolSearch');
         const clearSearch = document.getElementById('clearSearch');
         const descBox = document.getElementById('toolDesc');
         const descText = descBox ? descBox.querySelector('.desc-text') : null;
+        let lastRandomId = '';
 
         function isDrawerOpen() {
             return !!(toolDrawer && toolDrawer.classList.contains('is-open'));
@@ -618,6 +621,27 @@
         if (toolDrawerToggle) {
             toolDrawerToggle.addEventListener('click', () => {
                 setDrawerOpen(!isDrawerOpen());
+            });
+        }
+
+        if (toolRandom && toolRows) {
+            toolRandom.addEventListener('click', () => {
+                const items = Array.from(toolRows.querySelectorAll('.tool-item'));
+                if (!items.length) return;
+
+                let pick = items[Math.floor(Math.random() * items.length)];
+                if (items.length > 1) {
+                    let guard = 0;
+                    while (pick.getAttribute('data-id') === lastRandomId && guard < 8) {
+                        pick = items[Math.floor(Math.random() * items.length)];
+                        guard += 1;
+                    }
+                }
+
+                const link = pick.querySelector('a');
+                if (!link || !link.href) return;
+                lastRandomId = pick.getAttribute('data-id') || '';
+                window.location.href = link.href;
             });
         }
 
