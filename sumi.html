@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>수묵 & 덩굴 인터랙티브 캔버스 // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta name="description" content="화선지 위로 번지는 수묵 잉크와 자라나는 덩굴 줄기 생성 인터랙티브 캔버스.">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background-color: #f4efe6; /* 따뜻한 화선지 톤 */
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      cursor: crosshair;
+    }
+    .back-home {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 20;
+      font-size: 13px;
+      text-decoration: none;
+      color: #555;
+      padding: 7px 14px;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    }
+    .back-home:hover {
+      background: #222;
+      color: #fff;
+    }
+    /* 미니멀 플로팅 컨트롤 바 */
+    .controls {
+      position: fixed;
+      bottom: 24px;
+      display: flex;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(12px);
+      padding: 8px 16px;
+      border-radius: 30px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      z-index: 10;
+    }
+    button, select {
+      border: none;
+      background: #fdfdfd;
+      color: #333;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    button:hover, select:hover {
+      background: #222;
+      color: #fff;
+    }
+    .hint {
+      position: fixed;
+      top: 24px;
+      color: #887d72;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="index.html" class="back-home">← marsko</a>
+  <div class="hint">화면을 툭툭 클릭하거나 길게 드래그해 보세요</div>
+  <canvas id="canvas"></canvas>
+
+  <div class="controls">
+    <select id="paletteSelect">
+      <option value="sumi">묵혼 (Sumi Black)</option>
+      <option value="indigo">남색 (Deep Indigo)</option>
+      <option value="sepia">빈티지 세피아 (Sepia)</option>
+      <option value="forest">이끼 녹음 (Moss Green)</option>
+    </select>
+    <button id="clearBtn">🧹 비우기</button>
+    <button id="saveBtn">💾 투명 PNG로 저장</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const paletteSelect = document.getElementById('paletteSelect');
+    const clearBtn = document.getElementById('clearBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    // 팔레트 색상 정의 (투명도와 미세한 색조 변화)
+    const palettes = {
+      sumi: { main: [25, 25, 28], accent: [60, 60, 65] },
+      indigo: { main: [28, 44, 76], accent: [70, 95, 140] },
+      sepia: { main: [64, 43, 31], accent: [120, 85, 60] },
+      forest: { main: [34, 48, 38], accent: [75, 105, 80] }
+    };
+
+    let activeParticles = [];
+    let activeVines = [];
+
+    // 1. 수묵 번짐 입자 (Paper Bleed Particle)
+    class InkDrop {
+      constructor(x, y, palette) {
+        this.x = x;
+        this.y = y;
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = Math.random() * 2.5 + 0.5;
+        this.decay = 0.95 + Math.random() * 0.03;
+        this.radius = Math.random() * 12 + 6;
+        this.alpha = Math.random() * 0.08 + 0.04; // 얇게 겹치며 번지는 수채 느낌
+        this.color = palette.main;
+        this.life = 0;
+        this.maxLife = Math.random() * 40 + 30;
+      }
+
+      update() {
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+        this.speed *= this.decay;
+        this.radius *= 0.98;
+        this.alpha *= 0.97;
+        this.life++;
+        // 약간의 유기적인 비틀림
+        this.angle += (Math.random() - 0.5) * 0.4;
+      }
+
+      draw() {
+        if (this.alpha <= 0.005) return;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, Math.max(0.5, this.radius), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${this.alpha})`;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // 2. 덩굴 줄기 생성 에이전트 (Vine Growth)
+    class VineNode {
+      constructor(x, y, angle, thickness, depth, palette) {
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.thickness = thickness;
+        this.depth = depth;
+        this.palette = palette;
+        this.speed = Math.random() * 2.0 + 1.2;
+        this.alive = true;
+        this.stepCount = 0;
+        this.maxSteps = Math.random() * 35 + 25;
+      }
+
+      update() {
+        if (!this.alive) return;
+
+        const prevX = this.x;
+        const prevY = this.y;
+
+        // 부드러운 사인 곡선과 난수를 섞어 자연스러운 줄기 곡선 형성
+        this.angle += (Math.random() - 0.5) * 0.35;
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+
+        this.thickness *= 0.975;
+        this.stepCount++;
+
+        // 캔버스에 선 긋기
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(this.x, this.y);
+        ctx.strokeStyle = `rgba(${this.palette.accent[0]}, ${this.palette.accent[1]}, ${this.palette.accent[2]}, ${0.45 - this.depth * 0.08})`;
+        ctx.lineWidth = Math.max(0.4, this.thickness);
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.restore();
+
+        // 곁가지 분기 (Branching)
+        if (this.depth < 3 && Math.random() < 0.045 && this.stepCount > 10) {
+          const branchAngle = this.angle + (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.6);
+          activeVines.push(
+            new VineNode(this.x, this.y, branchAngle, this.thickness * 0.75, this.depth + 1, this.palette)
+          );
+        }
+
+        // 끝자락 작은 잎/열매 방울 맺힘
+        if (this.stepCount >= this.maxSteps || this.thickness < 0.5) {
+          this.alive = false;
+          if (Math.random() < 0.4) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, Math.random() * 2.5 + 1.2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${this.palette.accent[0]}, ${this.palette.accent[1]}, ${this.palette.accent[2]}, 0.6)`;
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    // 클릭 시 씨앗 뿌리기
+    function plantSeed(x, y) {
+      const palette = palettes[paletteSelect.value];
+
+      // 중심부 잉크 뭉침 및 번짐 입자 생성
+      for (let i = 0; i < 45; i++) {
+        activeParticles.push(new InkDrop(x, y, palette));
+      }
+
+      // 사방으로 뻗는 주요 덩굴 줄기 가지치기 (4~7가닥)
+      const vineCount = Math.floor(Math.random() * 3) + 4;
+      for (let i = 0; i < vineCount; i++) {
+        const baseAngle = (Math.PI * 2 / vineCount) * i + (Math.random() - 0.5) * 0.8;
+        activeVines.push(new VineNode(x, y, baseAngle, Math.random() * 2.5 + 2.0, 0, palette));
+      }
+    }
+
+    // 애니메이션 루프
+    function animate() {
+      // 잉크 입자 업데이트
+      for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        p.update();
+        p.draw();
+        if (p.life >= p.maxLife || p.alpha <= 0.005) {
+          activeParticles.splice(i, 1);
+        }
+      }
+
+      // 덩굴 줄기 업데이트
+      for (let i = activeVines.length - 1; i >= 0; i--) {
+        const v = activeVines[i];
+        v.update();
+        if (!v.alive) {
+          activeVines.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // 인터랙션 이벤트
+    let isMouseDown = false;
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.controls') || e.target.closest('.back-home')) return;
+      isMouseDown = true;
+      plantSeed(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isMouseDown && Math.random() < 0.15) { // 드래그 시 드문드문 줄기 생성
+        plantSeed(e.clientX, e.clientY);
+      }
+    });
+
+    window.addEventListener('mouseup', () => (isMouseDown = false));
+
+    // 터치 지원 (모바일/태블릿)
+    window.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.controls') || e.target.closest('.back-home')) return;
+      const touch = e.touches[0];
+      plantSeed(touch.clientX, touch.clientY);
+    });
+
+    // 캔버스 클리어
+    clearBtn.addEventListener('click', () => {
+      activeParticles = [];
+      activeVines = [];
+      ctx.clearRect(0, 0, width, height);
+    });
+
+    // 투명 배경 PNG 다운로드
+    saveBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = `ink_art_${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+</body>
+</html>
