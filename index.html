@@ -120,7 +120,7 @@
             animation: fadeIn 0.2s ease;
         }
 
-        /* 전체 목록 서랍 */
+        /* 전체 목록 서랍 토글 (Tools 헤더 · filter 왼쪽) */
         .tool-drawer-toggle {
             display: inline-flex;
             align-items: center;
@@ -128,13 +128,14 @@
             background: none;
             border: none;
             padding: 2px 0;
-            margin: 2px 0 0;
+            margin: 0;
             color: #71717a;
             font-size: 0.75rem;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             letter-spacing: 0.04em;
             cursor: pointer;
             transition: color 0.15s ease;
+            flex-shrink: 0;
         }
 
         .tool-drawer-toggle:hover {
@@ -147,13 +148,12 @@
             font-size: 0.65rem;
         }
 
-        .tool-drawer.is-open .drawer-chevron {
+        .tool-drawer-toggle.is-open .drawer-chevron {
             transform: rotate(90deg);
         }
 
         .tool-drawer-body {
             display: none;
-            margin-top: 6px;
         }
 
         .tool-drawer.is-open .tool-drawer-body {
@@ -161,8 +161,7 @@
             animation: fadeIn 0.25s ease;
         }
 
-        .tool-drawer.is-searching .tool-drawer-body,
-        .tool-drawer.is-searching .tool-drawer-toggle {
+        .tool-drawer.is-searching .tool-drawer-body {
             display: none;
         }
     </style>
@@ -223,13 +222,19 @@
 
      <!-- Tools 섹션: 카테고리 없이 비슷한 것끼리만 줄 나눔 -->
     <section class="max-w-2xl mx-auto px-6 pb-16">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between gap-3 mb-4">
             <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500">Tools</h2>
-            <div class="flex items-center gap-1.5">
-                <label for="toolSearch" class="sr-only">도구 검색</label>
-                <input type="text" id="toolSearch" placeholder="filter..." autocomplete="off" spellcheck="false"
-                       class="bg-transparent text-xs text-zinc-300 placeholder-zinc-700 border-b border-zinc-800/80 focus:border-zinc-500 focus:outline-none px-1 py-0.5 w-24 focus:w-36 transition-all duration-200 font-mono">
-                <button type="button" id="clearSearch" class="hidden text-zinc-600 hover:text-zinc-400 text-xs font-mono leading-none" title="검색 지우기" aria-label="검색 지우기">✕</button>
+            <div class="flex items-center gap-3 min-w-0">
+                <button type="button" id="toolDrawerToggle" class="tool-drawer-toggle" aria-expanded="false" aria-controls="toolRows">
+                    <span class="drawer-chevron" aria-hidden="true">▸</span>
+                    <span>all · <span id="toolCount">0</span></span>
+                </button>
+                <div class="flex items-center gap-1.5">
+                    <label for="toolSearch" class="sr-only">도구 검색</label>
+                    <input type="text" id="toolSearch" placeholder="filter..." autocomplete="off" spellcheck="false"
+                           class="bg-transparent text-xs text-zinc-300 placeholder-zinc-700 border-b border-zinc-800/80 focus:border-zinc-500 focus:outline-none px-1 py-0.5 w-24 focus:w-36 transition-all duration-200 font-mono">
+                    <button type="button" id="clearSearch" class="hidden text-zinc-600 hover:text-zinc-400 text-xs font-mono leading-none" title="검색 지우기" aria-label="검색 지우기">✕</button>
+                </div>
             </div>
         </div>
 
@@ -243,10 +248,6 @@
             </p>
 
             <div id="toolDrawer" class="tool-drawer">
-                <button type="button" id="toolDrawerToggle" class="tool-drawer-toggle" aria-expanded="false" aria-controls="toolRows">
-                    <span class="drawer-chevron" aria-hidden="true">▸</span>
-                    <span>all · <span id="toolCount">0</span></span>
-                </button>
             <div id="toolRows" class="tool-drawer-body space-y-1.5">
                 <!-- write -->
                 <p>
@@ -384,6 +385,7 @@
         function setDrawerOpen(open) {
             if (!toolDrawer || !toolDrawerToggle) return;
             toolDrawer.classList.toggle('is-open', open);
+            toolDrawerToggle.classList.toggle('is-open', open);
             toolDrawerToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
             try {
                 localStorage.setItem(DRAWER_KEY, open ? '1' : '0');
