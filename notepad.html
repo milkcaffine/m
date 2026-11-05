@@ -67,16 +67,25 @@
       border: 1px solid #2f3442;
       color: #e4e7eb;
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: 6px 12px;
       font-size: 0.78rem;
       cursor: pointer;
       font-weight: 600;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      gap: 5px;
       text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .btn-icon:hover { background: #2c3240; }
+
+    #toggleSidebarBtn {
+      padding: 6px 14px;
+      gap: 6px;
+      min-width: 68px;
+    }
 
     .note-list {
       flex: 1;
@@ -204,9 +213,10 @@
       text-decoration: none;
       font-family: 'IBM Plex Mono', monospace;
       white-space: nowrap;
-      padding: 4px 6px;
+      padding: 4px 8px;
       border-radius: 6px;
       background: #1c2027;
+      flex-shrink: 0;
     }
     .home-link:hover { color: #00f0ff; }
 
@@ -217,6 +227,7 @@
       font-size: 0.95rem;
       font-weight: 700;
       width: 100%;
+      min-width: 100px;
       outline: none;
     }
 
@@ -255,6 +266,28 @@
       display: flex;
       overflow: hidden;
       position: relative;
+    }
+    .drag-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(18, 19, 22, 0.9);
+      border: 2px dashed #00f0ff;
+      border-radius: 8px;
+      margin: 12px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #00f0ff;
+      z-index: 50;
+      pointer-events: none;
+      text-align: center;
+      padding: 20px;
+    }
+    .drag-overlay.active {
+      display: flex;
     }
     #editor {
       width: 100%;
@@ -470,6 +503,11 @@
     .eink-mode .workspace {
       background: #fcfcfb;
     }
+    .eink-mode .drag-overlay {
+      background: rgba(245, 245, 243, 0.95);
+      border: 2px dashed #111111;
+      color: #111111;
+    }
     .eink-mode #editor {
       background: #fcfcfb;
       color: #000000;
@@ -572,12 +610,18 @@
         <button type="button" id="editTab" class="active">편집</button>
         <button type="button" id="previewTab">미리보기</button>
       </div>
-      <button class="btn-icon" id="exportBtn" title=".md 파일로 내보내기">⬇ MD</button>
+      <input type="file" id="fileInput" accept=".md,.markdown,.txt,text/plain,text/markdown" style="display: none;">
+      <button class="btn-icon" id="importBtn" title=".md 또는 .txt 파일 불러오기">📂 열기</button>
+      <button class="btn-icon" id="exportMdBtn" title=".md 파일로 내보내기">⬇ MD</button>
+      <button class="btn-icon" id="exportTxtBtn" title=".txt 파일로 내보내기">⬇ TXT</button>
       <button class="btn-icon" id="deleteBtn" style="color:#ff4466;" title="삭제">✕</button>
     </div>
   </div>
 
   <div class="workspace">
+    <div class="drag-overlay" id="dragOverlay">
+      <span>📂 파일을 놓으면 새 메모로 불러옵니다 (.md, .txt)</span>
+    </div>
     <textarea id="editor" placeholder="여기에 생각을 자유롭게 기록하세요...&#10;&#10;* 외부 서버 통신 없이 브라우저 내부에 실시간 자동 저장됩니다.&#10;* 상단의 [미리보기] 탭을 누르면 마크다운 서식이 렌더링됩니다."></textarea>
     <div id="preview"></div>
   </div>
@@ -600,7 +644,11 @@
   const saveStatus = document.getElementById('saveStatus');
   const editTab = document.getElementById('editTab');
   const previewTab = document.getElementById('previewTab');
-  const exportBtn = document.getElementById('exportBtn');
+  const exportMdBtn = document.getElementById('exportMdBtn');
+  const exportTxtBtn = document.getElementById('exportTxtBtn');
+  const importBtn = document.getElementById('importBtn');
+  const fileInput = document.getElementById('fileInput');
+  const dragOverlay = document.getElementById('dragOverlay');
   const deleteBtn = document.getElementById('deleteBtn');
 
   // 데이터 로드
@@ -782,14 +830,79 @@
     }
   }
 
-  // .md 내보내기
-  exportBtn.addEventListener('click', () => {
+  // 파일 내보내기 (.md, .txt)
+  function exportFile(extension, mimeType) {
     const title = (titleInput.value.trim() || 'untitled').replace(/[/\\?%*:|"<>]/g, '-');
-    const blob = new Blob([editor.value], { type: 'text/markdown;charset=utf-8' });
+    const blob = new Blob([editor.value], { type: `${mimeType};charset=utf-8` });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${title}.md`;
+    link.download = `${title}.${extension}`;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  exportMdBtn.addEventListener('click', () => exportFile('md', 'text/markdown'));
+  exportTxtBtn.addEventListener('click', () => exportFile('txt', 'text/plain'));
+
+  // 파일 불러오기 (.md, .txt)
+  function loadFileContent(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result || '';
+      const cleanTitle = file.name.replace(/\.(md|markdown|txt)$/i, '').trim();
+      createNewNote(cleanTitle || '불러온 메모', content);
+      editTab.click();
+      editor.focus();
+    };
+    reader.onerror = () => {
+      alert('파일을 읽는 중 오류가 발생했습니다.');
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  importBtn.addEventListener('click', () => {
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      loadFileContent(file);
+    }
+  });
+
+  // 화면 드래그 앤 드롭 파일 로더
+  let dragCounter = 0;
+  window.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    dragCounter++;
+    if (dragOverlay) dragOverlay.classList.add('active');
+  });
+
+  window.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      if (dragOverlay) dragOverlay.classList.remove('active');
+    }
+  });
+
+  window.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    if (dragOverlay) dragOverlay.classList.remove('active');
+
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) {
+      loadFileContent(file);
+    }
   });
 
   function escapeHtml(str) {
@@ -845,7 +958,7 @@
   // 앱 시작 초기화
   loadAllNotesFromStorage();
   if (notes.length === 0) {
-    createNewNote('시작하기', `# 나만의 오프라인 마크다운 메모장\n\n이 메모장은 외부 서버 통신 없이 브라우저 내부에 실시간 안전하게 저장됩니다.\n\n- 타이핑을 멈추면 **0.3초 만에 자동 저장**됩니다.\n- 상단의 **[미리보기]** 탭을 누르면 마크다운 서식이 깔끔하게 렌더링됩니다.\n- **[⬇ MD]** 버튼으로 언제든 마크다운 파일로 다운로드할 수 있습니다.`);
+    createNewNote('시작하기', `# 나만의 오프라인 마크다운 메모장\n\n이 메모장은 외부 서버 통신 없이 브라우저 내부에 실시간 안전하게 저장됩니다.\n\n- 타이핑을 멈추면 **0.3초 만에 자동 저장**됩니다.\n- 상단의 **[미리보기]** 탭을 누르면 마크다운 서식이 깔끔하게 렌더링됩니다.\n- **[⬇ MD]** 및 **[⬇ TXT]** 버튼으로 언제든 원하는 형식으로 다운로드할 수 있습니다.\n- **[📂 열기]** 버튼 또는 파일을 화면에 **드래그 앤 드롭**하여 기존 문서를 바로 불러와 이어서 편집할 수 있습니다.`);
   } else {
     renderSidebarList();
     selectNote(notes[0].id);
