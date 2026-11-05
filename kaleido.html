@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Marsko lab tool — kaleido. 사진을 거울로 접어 돌리는 실시간 만화경.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#09090b">
+  <title>만화경 // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #e4e4e7;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      min-height: 100vh;
+    }
+    .container {
+      background: #18181b;
+      border: 1px solid #27272a;
+      max-width: 680px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 20px 16px 18px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .back { text-align: center; margin-bottom: 12px; }
+    .back a {
+      color: #64748b;
+      text-decoration: none;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.8rem;
+    }
+    .back a:hover { color: #c4b5fd; }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 0.04em;
+      color: #f5f3ff;
+    }
+    p.sub {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      text-align: center;
+      margin: 6px 0 16px;
+    }
+    .dropzone {
+      border: 2px dashed #6d28d9;
+      background: #120c1c;
+      border-radius: 14px;
+      padding: 16px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #c4b5fd;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .dropzone.compact { padding: 10px 12px; font-size: 0.85rem; }
+    .dropzone:hover, .dropzone.hot { background: #1c1230; border-color: #c4b5fd; }
+    .dropzone small { font-size: 0.72rem; color: #a78bfa; font-weight: 500; }
+    input[type="file"] { display: none; }
+
+    #stage { margin-top: 14px; }
+    .canvas-wrap {
+      width: 100%;
+      background:
+        radial-gradient(circle at 50% 45%, #1c1430 0%, #09090b 72%);
+      border: 1px solid #27272a;
+      border-radius: 16px;
+      overflow: hidden;
+      line-height: 0;
+      touch-action: none;
+      cursor: grab;
+    }
+    .canvas-wrap:active { cursor: grabbing; }
+    #view { width: 100%; height: auto; display: block; }
+
+    .hint {
+      margin-top: 8px;
+      text-align: center;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.68rem;
+      color: #71717a;
+    }
+
+    .panel {
+      margin-top: 12px;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.86rem;
+      font-weight: 650;
+      color: #d4d4d8;
+    }
+    .slider-box { display: flex; align-items: center; gap: 8px; }
+    .slider-box input[type="range"] { width: 132px; accent-color: #a78bfa; }
+    .slider-box span {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      width: 36px;
+      text-align: right;
+      font-weight: 500;
+    }
+    .toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tog, .mini {
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #d4d4d8;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tog.active {
+      border-color: #c4b5fd;
+      background: rgba(167, 139, 250, 0.16);
+      color: #ddd6fe;
+    }
+    .tog:hover, .mini:hover { border-color: #52525b; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn {
+      flex: 1;
+      min-height: 46px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      background: #6d28d9;
+      color: #fff;
+    }
+    .btn:hover { background: #5b21b6; }
+    .btn.ghost { background: #27272a; color: #e4e4e7; border: 1px solid #3f3f46; }
+    .btn.ghost:hover { background: #3f3f46; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="back"><a href="index.html">← marsko</a></div>
+  <h1>만화경</h1>
+  <p class="sub">사진을 거울로 접고, 끌고, 돌린다</p>
+
+  <label class="dropzone" id="drop" for="file">
+    사진 놓기 · 클릭 · 붙여넣기
+    <small>브라우저 안에서만 접습니다. 업로드 없음</small>
+    <input id="file" type="file" accept="image/*">
+  </label>
+
+  <div id="stage" hidden>
+    <div class="canvas-wrap" id="wrap">
+      <canvas id="view" width="800" height="800"></canvas>
+    </div>
+    <p class="hint">드래그로 창 이동 · 휠·핀치로 확대 · 스페이스로 회전</p>
+
+    <div class="panel">
+      <div class="row">
+        <label for="slices">조각</label>
+        <div class="slider-box">
+          <input id="slices" type="range" min="2" max="24" step="1" value="8">
+          <span id="slicesVal">8</span>
+        </div>
+      </div>
+      <div class="row">
+        <label for="zoom">확대</label>
+        <div class="slider-box">
+          <input id="zoom" type="range" min="30" max="280" step="1" value="100">
+          <span id="zoomVal">1.0</span>
+        </div>
+      </div>
+      <div class="row">
+        <label for="speed">속도</label>
+        <div class="slider-box">
+          <input id="speed" type="range" min="0" max="100" step="1" value="28">
+          <span id="speedVal">28</span>
+        </div>
+      </div>
+      <div class="row">
+        <label for="twist">어긋남</label>
+        <div class="slider-box">
+          <input id="twist" type="range" min="0" max="80" step="1" value="0">
+          <span id="twistVal">0</span>
+        </div>
+      </div>
+      <div class="toggles">
+        <button type="button" class="tog active" id="mirrorBtn">거울</button>
+        <button type="button" class="tog active" id="spinBtn">회전</button>
+        <button type="button" class="tog" id="stainBtn">스테인드</button>
+        <button type="button" class="mini" id="shuffleBtn">아무 접기</button>
+        <button type="button" class="mini" id="sampleBtn">산책 사진</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn ghost" id="resetBtn">창 리셋</button>
+      <button type="button" class="btn" id="saveBtn">PNG 저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const canvas = document.getElementById("view");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const stage = document.getElementById("stage");
+  const drop = document.getElementById("drop");
+  const fileInput = document.getElementById("file");
+
+  const slicesInput = document.getElementById("slices");
+  const zoomInput = document.getElementById("zoom");
+  const speedInput = document.getElementById("speed");
+  const twistInput = document.getElementById("twist");
+
+  const state = {
+    img: null,
+    slices: 8,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    rot: 0,
+    spin: true,
+    speed: 0.006,
+    twist: 0,
+    mirror: true,
+    stain: false,
+    dragging: false
+  };
+
+  let url = null;
+  let raf = 0;
+  const pointers = new Map();
+  let pinchDist = 0;
+
+  function readNum(el, fallback) {
+    const n = Number(el.value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function syncLabels() {
+    state.slices = readNum(slicesInput, 8);
+    state.zoom = readNum(zoomInput, 100) / 100;
+    state.twist = readNum(twistInput, 0);
+    const speedUi = readNum(speedInput, 28);
+    state.speed = (speedUi / 100) * 0.02;
+    document.getElementById("slicesVal").textContent = String(state.slices);
+    document.getElementById("zoomVal").textContent = state.zoom.toFixed(1);
+    document.getElementById("speedVal").textContent = String(speedUi);
+    document.getElementById("twistVal").textContent = String(state.twist);
+  }
+
+  function fitCanvas() {
+    const css = Math.max(280, Math.round(canvas.parentElement.clientWidth));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const px = Math.round(css * dpr);
+    if (canvas.width !== px) {
+      canvas.width = px;
+      canvas.height = px;
+    }
+  }
+
+  function coverScale(size) {
+    const img = state.img;
+    if (!img) return 1;
+    return (size * 0.92) / Math.min(img.width, img.height);
+  }
+
+  function paint(target, size) {
+    const img = state.img;
+    const c = target;
+    c.fillStyle = "#07060b";
+    c.fillRect(0, 0, size, size);
+    if (!img) return;
+
+    const slices = Math.max(2, state.slices | 0);
+    const wedge = (Math.PI * 2) / slices;
+    const half = wedge / 2;
+    const overlap = 0.02;
+    const radius = size;
+    const scale = coverScale(size) * state.zoom;
+    const cx = size / 2;
+    const cy = size / 2;
+
+    for (let i = 0; i < slices; i++) {
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(state.rot + i * wedge);
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.arc(0, 0, radius, -half - overlap, half + overlap);
+      c.closePath();
+      c.clip();
+      if (state.mirror && i % 2 === 1) c.scale(1, -1);
+      const shift = state.twist * (size / 800);
+      c.translate(state.panX + Math.cos(i * 1.7) * shift, state.panY + Math.sin(i * 1.3) * shift);
+      if (state.stain) {
+        c.filter = "hue-rotate(" + Math.round((i * 360) / slices) + "deg) saturate(1.35)";
+      }
+      c.scale(scale, scale);
+      c.imageSmoothingEnabled = true;
+      c.imageSmoothingQuality = "high";
+      c.drawImage(img, -img.width / 2, -img.height / 2);
+      c.restore();
+      c.filter = "none";
+    }
+
+    const g = c.createRadialGradient(cx, cy, size * 0.22, cx, cy, size * 0.72);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.38)");
+    c.fillStyle = g;
+    c.fillRect(0, 0, size, size);
+
+    c.fillStyle = "rgba(245,243,255,0.9)";
+    c.beginPath();
+    c.arc(cx, cy, Math.max(1.5, size * 0.0045), 0, Math.PI * 2);
+    c.fill();
+  }
+
+  function frame() {
+    raf = 0;
+    fitCanvas();
+    if (state.spin && !state.dragging && state.speed > 0) state.rot += state.speed;
+    paint(ctx, canvas.width);
+    if (state.img && (state.spin || state.dragging)) loop();
+  }
+
+  function loop() {
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+
+  function kick() {
+    syncLabels();
+    stage.hidden = !state.img;
+    drop.classList.toggle("compact", !!state.img);
+    loop();
+    if (!state.spin) frame();
+  }
+
+  function loadImage(src, revoke) {
+    const image = new Image();
+    image.onload = function () {
+      if (url && url !== src) URL.revokeObjectURL(url);
+      if (revoke) url = src;
+      state.img = image;
+      state.panX = 0;
+      state.panY = 0;
+      state.rot = 0;
+      kick();
+    };
+    image.onerror = function () {
+      if (revoke) URL.revokeObjectURL(src);
+    };
+    image.src = src;
+  }
+
+  function loadFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    loadImage(URL.createObjectURL(file), true);
+  }
+
+  fileInput.addEventListener("change", function () {
+    const file = fileInput.files && fileInput.files[0];
+    loadFile(file);
+    fileInput.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach(function (name) {
+    drop.addEventListener(name, function (e) {
+      e.preventDefault();
+      drop.classList.add("hot");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (name) {
+    drop.addEventListener(name, function (e) {
+      e.preventDefault();
+      drop.classList.remove("hot");
+    });
+  });
+  drop.addEventListener("drop", function (e) {
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    loadFile(file);
+  });
+  document.addEventListener("paste", function (e) {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        loadFile(items[i].getAsFile());
+        break;
+      }
+    }
+  });
+
+  document.getElementById("sampleBtn").addEventListener("click", function () {
+    loadImage("images/walks/HUcF0LjaUAAlrim.jpg", false);
+  });
+
+  [slicesInput, zoomInput, speedInput, twistInput].forEach(function (el) {
+    el.addEventListener("input", kick);
+  });
+
+  document.getElementById("mirrorBtn").addEventListener("click", function () {
+    state.mirror = !state.mirror;
+    this.classList.toggle("active", state.mirror);
+    kick();
+  });
+  document.getElementById("spinBtn").addEventListener("click", function () {
+    state.spin = !state.spin;
+    this.classList.toggle("active", state.spin);
+    kick();
+  });
+  document.getElementById("stainBtn").addEventListener("click", function () {
+    state.stain = !state.stain;
+    this.classList.toggle("active", state.stain);
+    kick();
+  });
+  document.getElementById("shuffleBtn").addEventListener("click", function () {
+    const even = 2 + Math.floor(Math.random() * 10) * 2;
+    slicesInput.value = String(even);
+    zoomInput.value = String(60 + Math.floor(Math.random() * 140));
+    twistInput.value = String(Math.floor(Math.random() * 55));
+    speedInput.value = String(10 + Math.floor(Math.random() * 50));
+    state.panX = (Math.random() - 0.5) * 180;
+    state.panY = (Math.random() - 0.5) * 180;
+    state.rot = Math.random() * Math.PI * 2;
+    state.stain = Math.random() > 0.55;
+    state.mirror = Math.random() > 0.2;
+    document.getElementById("stainBtn").classList.toggle("active", state.stain);
+    document.getElementById("mirrorBtn").classList.toggle("active", state.mirror);
+    kick();
+  });
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    state.panX = 0;
+    state.panY = 0;
+    state.rot = 0;
+    zoomInput.value = "100";
+    twistInput.value = "0";
+    kick();
+  });
+
+  document.getElementById("saveBtn").addEventListener("click", function () {
+    if (!state.img) return;
+    const size = 1600;
+    const out = document.createElement("canvas");
+    out.width = size;
+    out.height = size;
+    const octx = out.getContext("2d", { alpha: false });
+    const prev = state.spin;
+    paint(octx, size);
+    state.spin = prev;
+    out.toBlob(function (blob) {
+      if (!blob) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "kaleido.png";
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+    }, "image/png");
+  });
+
+  function canvasPointDelta(e, last) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    return {
+      x: (e.clientX - last.x) * sx,
+      y: (e.clientY - last.y) * sy
+    };
+  }
+
+  const wrap = document.getElementById("wrap");
+  wrap.addEventListener("pointerdown", function (e) {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    state.dragging = true;
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
+    if (pointers.size === 2) {
+      const pts = Array.from(pointers.values());
+      pinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    }
+  });
+  wrap.addEventListener("pointermove", function (e) {
+    const prev = pointers.get(e.pointerId);
+    if (!prev) return;
+    if (pointers.size >= 2) {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const pts = Array.from(pointers.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (pinchDist > 0) {
+        const next = Math.min(280, Math.max(30, Math.round(readNum(zoomInput, 100) * (dist / pinchDist))));
+        zoomInput.value = String(next);
+      }
+      pinchDist = dist;
+      kick();
+      return;
+    }
+    const d = canvasPointDelta(e, prev);
+    state.panX += d.x;
+    state.panY += d.y;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    kick();
+  });
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinchDist = 0;
+    if (pointers.size === 0) state.dragging = false;
+    kick();
+  }
+  wrap.addEventListener("pointerup", endPointer);
+  wrap.addEventListener("pointercancel", endPointer);
+  wrap.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    const next = Math.min(280, Math.max(30, readNum(zoomInput, 100) + (e.deltaY < 0 ? 8 : -8)));
+    zoomInput.value = String(next);
+    kick();
+  }, { passive: false });
+
+  window.addEventListener("keydown", function (e) {
+    if (e.code === "Space" && e.target === document.body) {
+      e.preventDefault();
+      document.getElementById("spinBtn").click();
+    }
+  });
+  window.addEventListener("resize", kick);
+
+  loadImage("images/walks/HUcF0LjaUAAlrim.jpg", false);
+})();
+</script>
+</body>
+</html>
