@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Marsko lab tool — cybernetic telemetry memory dump card renderer.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#0c0e14">
+  <title>CYBER TELEMETRY RENDERER // marsko</title>
+  <!-- 고정폭 모노스페이스 및 본문 웹폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0c0e14;
+      --card-bg: #151921;
+      --border: #262c38;
+      --text-dim: #798294;
+      --cyan: #00f0ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg-main);
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Noto Sans KR", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+      gap: 16px;
+    }
+    .top-nav {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      justify-content: flex-start;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      padding: 4px 8px;
+      background: rgba(21, 25, 33, 0.8);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      transition: all 0.15s ease;
+    }
+    .home-link:hover {
+      color: #00f0ff;
+      border-color: rgba(0, 240, 255, 0.4);
+    }
+    .header {
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 1.25rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #00f0ff;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 700;
+    }
+    .header p {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+      word-break: keep-all;
+    }
+    .input-box {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .user-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .user-field label {
+      font-size: 0.78rem;
+      color: #00f0ff;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .input-nick {
+      flex: 1;
+      background: var(--card-bg);
+      color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-family: 'IBM Plex Mono', monospace;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-nick:focus { border-color: #00f0ff; }
+    .textarea-wrap {
+      position: relative;
+    }
+    textarea {
+      width: 100%;
+      height: 90px;
+      background: var(--card-bg);
+      color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      resize: none;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    textarea:focus { border-color: #00f0ff; }
+    .char-count {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      width: 100%;
+      max-width: 580px;
+    }
+    .mode-group, .effect-group {
+      display: flex;
+      gap: 6px;
+      background: var(--card-bg);
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    button.tool-btn {
+      padding: 6px 12px;
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+    button.tool-btn:hover { color: #fff; }
+    button.tool-btn.active {
+      background: #1e293b;
+      color: #00f0ff;
+      border-color: rgba(0, 240, 255, 0.3);
+    }
+    button.tool-btn.toggle-on {
+      background: #3b1820;
+      color: #ff5f7e;
+      border-color: rgba(255, 95, 126, 0.4);
+    }
+    .canvas-wrap {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+      border: 1px solid #1e2430;
+      width: 100%;
+      max-width: 580px;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 580 / 360;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+      width: 100%;
+      max-width: 580px;
+      justify-content: center;
+    }
+    .btn-action {
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      flex: 1 1 200px;
+      font-family: 'IBM Plex Mono', monospace;
+      transition: all 0.15s ease;
+    }
+    .btn-download {
+      background: #0284c7;
+      color: #fff;
+    }
+    .btn-download:hover { background: #0369a1; }
+    .btn-copy {
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .btn-copy:hover { background: #334155; }
+    .toast {
+      font-size: 0.75rem;
+      color: #4ade80;
+      min-height: 18px;
+      font-family: 'IBM Plex Mono', monospace;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-nav">
+    <a href="index.html" class="home-link">← marsko</a>
+  </div>
+
+  <div class="header">
+    <h1>SYS://MEMORY_DUMP</h1>
+    <p>일상 넋두리를 사이버네틱 텔레메트리 덤프로 렌더링합니다</p>
+  </div>
+
+  <div class="input-box">
+    <div class="user-field">
+      <label for="nickInput">NODE_IDENTIFIER &gt;</label>
+      <input type="text" id="nickInput" class="input-nick" maxlength="20" placeholder="유닛명 (기본: Marsko, UNIT-09)">
+    </div>
+    <div class="textarea-wrap">
+      <textarea id="rawInput" maxlength="140" placeholder="아무 헛소리나 적어보세요...">비도 오고 편의점 나가기도 귀찮은데 라면이나 끓여먹을까</textarea>
+      <div class="char-count"><span id="charNum">0</span>/140</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="mode-group">
+      <button type="button" class="tool-btn active" data-mode="GREEN">SEC_UNIT</button>
+      <button type="button" class="tool-btn" data-mode="AMBER">AMBER_CRT</button>
+      <button type="button" class="tool-btn" data-mode="CYAN_JSON">JSON_HUD</button>
+      <button type="button" class="tool-btn" data-mode="FAULT">SYS_FAULT</button>
+    </div>
+    <div class="effect-group">
+      <button type="button" id="btnGlitch" class="tool-btn toggle-on">⚡ GLITCH</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="renderCanvas" width="1160" height="720"></canvas>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn-action btn-copy" id="copyBtn">📋 클립보드 복사 (Ctrl+V)</button>
+    <button type="button" class="btn-action btn-download" id="downloadBtn">💾 PNG 다운로드</button>
+  </div>
+  <div class="toast" id="toastMsg"></div>
+
+<script>
+  let currentMode = 'GREEN';
+  let enableGlitch = true;
+
+  const canvas = document.getElementById('renderCanvas');
+  const ctx = canvas.getContext('2d');
+  const input = document.getElementById('rawInput');
+  const nickInput = document.getElementById('nickInput');
+  const charNum = document.getElementById('charNum');
+  const toast = document.getElementById('toastMsg');
+  const btnGlitch = document.getElementById('btnGlitch');
+  const copyBtn = document.getElementById('copyBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  const S = 2; // Retina 2x scale
+
+  // 텍스트 기반 결정론적 FNV-1a 해시 생성
+  function hashString(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0;
+    }
+    return h;
+  }
+
+  function updateCharCount() {
+    charNum.textContent = input.value.length;
+  }
+
+  input.addEventListener('input', () => {
+    updateCharCount();
+    render();
+  });
+
+  nickInput.addEventListener('input', render);
+
+  document.querySelectorAll('.mode-group button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentMode = btn.dataset.mode;
+      document.querySelectorAll('.mode-group button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    });
+  });
+
+  btnGlitch.addEventListener('click', () => {
+    enableGlitch = !enableGlitch;
+    btnGlitch.classList.toggle('toggle-on', enableGlitch);
+    render();
+  });
+
+  // 줄바꿈(\n)을 완벽 지원하는 텍스트 래핑
+  function wrapText(context, text, maxWidth) {
+    const paragraphs = text.split('\n');
+    const allLines = [];
+
+    paragraphs.forEach(para => {
+      if (para === '') {
+        allLines.push('');
+        return;
+      }
+      let currentLine = '';
+      for (let i = 0; i < para.length; i++) {
+        const testLine = currentLine + para[i];
+        const metrics = context.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0) {
+          allLines.push(currentLine);
+          currentLine = para[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) {
+        allLines.push(currentLine);
+      }
+    });
+
+    return allLines;
+  }
+
+  function render() {
+    const raw = input.value.trim() || "(NO_SIGNAL_RECEIVED)";
+    const nick = nickInput.value.trim() || "SYS_ANON";
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+
+    // 입력 텍스트와 닉네임 기반 인터랙티브 해시 계산
+    const h = hashString(raw + nick);
+    const hexAddr = '0x' + (0x7FFF000000 + (h % 0xFFFFFF)).toString(16).toUpperCase();
+
+    // 동적 텔레메트리 센서 데이터 (길이 및 감정 해시 반응)
+    let coreTempStr = '';
+    let stressDeltaStr = '';
+    const bufferLoadStr = Math.min(100, Math.round((raw.length / 140) * 100)) + '%';
+
+    if (currentMode === 'FAULT') {
+      coreTempStr = (76.4 + (h % 180) / 10).toFixed(1) + '°C [CRITICAL_OVERHEAT]';
+      stressDeltaStr = (0.75 + (h % 25) / 100).toFixed(3);
+    } else if (raw.length > 70 || raw.includes('!') || raw.includes('?')) {
+      coreTempStr = (43.2 + (h % 65) / 10).toFixed(1) + '°C [ELEVATED]';
+      stressDeltaStr = (0.12 + (h % 90) / 1000).toFixed(3);
+    } else {
+      coreTempStr = (36.4 + (h % 24) / 10).toFixed(1) + '°C [NOMINAL]';
+      stressDeltaStr = (0.02 + (h % 40) / 1000).toFixed(3);
+    }
+
+    let bg = '#0a0d12';
+    let textMain = '#39ff14';
+    let textDim = '#1b7a0b';
+    let headerBg = '#111722';
+    let barTitle = `TTY-1 // ${nick.toUpperCase()} [ACTIVE]`;
+
+    if (currentMode === 'AMBER') {
+      bg = '#0f0a02';
+      textMain = '#ffb000';
+      textDim = '#8a5c00';
+      headerBg = '#1a1307';
+      barTitle = `NODE // ${nick.toUpperCase()}_LOG`;
+    } else if (currentMode === 'CYAN_JSON') {
+      bg = '#070b14';
+      textMain = '#00f3ff';
+      textDim = '#006570';
+      headerBg = '#0e1524';
+      barTitle = `STREAM // ${nick.toUpperCase()}_PAYLOAD`;
+    } else if (currentMode === 'FAULT') {
+      bg = '#140507';
+      textMain = '#ff4d6d';
+      textDim = '#7a1928';
+      headerBg = '#200a0e';
+      barTitle = `CRITICAL // ${nick.toUpperCase()}_HALT`;
+    }
+
+    // 1. 캔버스 배경
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. 타이틀바 (● ● ●)
+    ctx.fillStyle = headerBg;
+    ctx.fillRect(0, 0, canvas.width, 36 * S);
+
+    const dotColors = ['#ff5f56', '#ffbd2e', '#27c93f'];
+    dotColors.forEach((color, i) => {
+      ctx.beginPath();
+      ctx.arc((20 + i * 18) * S, 18 * S, 4.5 * S, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    });
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = `600 ${10.5 * S}px "IBM Plex Mono", SFMono-Regular, Menlo, monospace`;
+    ctx.fillText(barTitle, 80 * S, 22 * S);
+
+    ctx.fillStyle = '#475569';
+    ctx.fillText(hexAddr, canvas.width - (145 * S), 22 * S);
+
+    // 3. 본문 텍스트 렌더링
+    let y = 68 * S;
+    const paddingX = 26 * S;
+    const maxWidth = canvas.width - (paddingX * 2);
+
+    // 줄 수에 따른 동적 라인 높이 조절 (140자 넘침 방지)
+    let fontSize = 12 * S;
+    let lineHeight = 21 * S;
+    ctx.font = `${fontSize}px "IBM Plex Mono", "Noto Sans KR", monospace`;
+
+    if (currentMode === 'CYAN_JSON') {
+      const jsonHeader = [
+        '{',
+        `  "node_id": "${nick}",`,
+        `  "timestamp": "${timeStr}",`,
+        `  "telemetry": { "stress_delta": ${stressDeltaStr}, "buffer": "${bufferLoadStr}" },`,
+        `  "internal_monologue": "`
+      ];
+
+      ctx.fillStyle = textDim;
+      jsonHeader.forEach(l => {
+        ctx.fillText(l, paddingX, y);
+        y += lineHeight;
+      });
+
+      ctx.fillStyle = '#ffffff';
+      const monologueLines = wrapText(ctx, raw, maxWidth - (30 * S));
+      monologueLines.forEach((l, idx) => {
+        const isLast = idx === monologueLines.length - 1;
+        ctx.fillText(`    ${l}${isLast ? '"' : ''}`, paddingX, y);
+        y += lineHeight;
+      });
+
+      ctx.fillStyle = textDim;
+      ctx.fillText('}', paddingX, y);
+
+    } else if (currentMode === 'FAULT') {
+      ctx.fillStyle = textMain;
+      ctx.fillText(`[FATAL] EXCEPTION IN THREAD [${nick}]`, paddingX, y);
+      y += lineHeight;
+      ctx.fillStyle = textDim;
+      ctx.fillText(`CORE_TEMP: ${coreTempStr} // SYSTIME: ${timeStr}`, paddingX, y);
+      y += lineHeight;
+      ctx.fillText('------------------------------------------------------------', paddingX, y);
+      y += lineHeight * 1.1;
+
+      ctx.fillStyle = '#fff';
+      const faultLines = wrapText(ctx, `UNHANDLED_INPUT: "${raw}"`, maxWidth);
+      faultLines.forEach(l => {
+        ctx.fillText(l, paddingX, y);
+        y += lineHeight;
+      });
+
+      y += lineHeight * 0.4;
+      ctx.fillStyle = textMain;
+      ctx.fillText(`> RECOVERY ROUTINE FAILED. CONSCIOUSNESS DUMP COMMITTED.`, paddingX, y);
+
+    } else {
+      // SEC_UNIT 또는 AMBER
+      ctx.fillStyle = textDim;
+      ctx.fillText(`[${timeStr}] [SEC_FEED] OPERATOR: ${nick} | LINK NOMINAL`, paddingX, y);
+      y += lineHeight;
+      ctx.fillText(`[${timeStr}] [SENSOR] CORE_TEMP: ${coreTempStr} | BUFFER: ${bufferLoadStr}`, paddingX, y);
+      y += lineHeight;
+      ctx.fillText('------------------------------------------------------------', paddingX, y);
+      y += lineHeight * 1.1;
+
+      ctx.fillStyle = textMain;
+      ctx.fillText(`[THOUGHT_STREAM] >`, paddingX, y);
+      y += lineHeight;
+
+      ctx.fillStyle = '#ffffff';
+      const bodyLines = wrapText(ctx, raw, maxWidth);
+      bodyLines.forEach(l => {
+        ctx.fillText(`  ${l}`, paddingX, y);
+        y += lineHeight;
+      });
+
+      y += lineHeight * 0.5;
+      ctx.fillStyle = textDim;
+      ctx.fillText(`[STATUS] > PURGE_FLAG: FALSE | ARCHIVE_COMMITTED`, paddingX, y);
+    }
+
+    // 워터마크 태그 (우측 하단)
+    ctx.fillStyle = textDim;
+    ctx.font = `${8.5 * S}px "IBM Plex Mono", monospace`;
+    ctx.fillText('MARSKO.ART // SYS_TELEMETRY', canvas.width - (185 * S), canvas.height - (12 * S));
+
+    // 4. CRT 스캔라인
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    for (let sy = 36 * S; sy < canvas.height; sy += 3 * S) {
+      ctx.fillRect(0, sy, canvas.width, 1.2 * S);
+    }
+
+    // 5. 글리치 노이즈 슬라이스
+    if (enableGlitch) {
+      for (let g = 0; g < 3; g++) {
+        const sliceY = (45 + Math.random() * 240) * S;
+        const sliceH = (4 + Math.random() * 12) * S;
+        const shiftX = (Math.random() - 0.5) * 16 * S;
+        ctx.drawImage(canvas, 0, sliceY, canvas.width, sliceH, shiftX, sliceY, canvas.width, sliceH);
+      }
+    }
+  }
+
+  async function copyToClipboard() {
+    canvas.toBlob(async (blob) => {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        showToast('✓ 클립보드에 복사 완료! 원하는 곳에 Ctrl+V 하세요.');
+      } catch (err) {
+        showToast('클립보드 권한이 필요합니다. 이미지 다운로드를 이용해주세요.');
+      }
+    });
+  }
+
+  function downloadImage() {
+    const nick = (nickInput.value.trim() || 'log').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+    const link = document.createElement('a');
+    link.download = `telemetry-${nick}-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('✓ 이미지 파일 다운로드 완료.');
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    setTimeout(() => { toast.textContent = ''; }, 3500);
+  }
+
+  copyBtn.addEventListener('click', copyToClipboard);
+  downloadBtn.addEventListener('click', downloadImage);
+
+  // 초기화
+  updateCharCount();
+  render();
+</script>
+</body>
+</html>
