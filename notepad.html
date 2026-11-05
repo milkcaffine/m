@@ -6,7 +6,7 @@
     <meta name="description" content="Marsko lab tool — notepad.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/marsko-hud.css">
-<meta name="theme-color" content="#121316">
+<meta name="theme-color" id="themeColorMeta" content="#121316">
   <title>오프라인 마크다운 메모장 // marsko</title>
   <!-- 정상 작동하는 최신 Marked UMD 공식 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
@@ -14,6 +14,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    try {
+      const savedMode = localStorage.getItem('marsko_notepad_theme_mode') || localStorage.getItem('marsko_keystroke_theme_mode');
+      if (savedMode === 'eink') {
+        document.documentElement.classList.add('eink-mode');
+      }
+    } catch (e) {}
+  </script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -125,7 +134,69 @@
       flex-shrink: 0;
     }
     .tool-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px; }
-    .tool-right { display: flex; align-items: center; gap: 6px; }
+    .tool-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+    /* 모드 전환기 (지금 모드 / E-Ink 모드) */
+    .mode-switch-group {
+      display: inline-flex;
+      background: #1c2027;
+      border: 1px solid #282f3c;
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .mode-switch-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #7d8799;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mode-switch-btn:hover {
+      color: #e4e7eb;
+    }
+    .mode-switch-btn.active {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: rgba(0, 240, 255, 0.4);
+      color: #00f0ff;
+    }
+
+    /* 스크롤바 */
+    #editor::-webkit-scrollbar,
+    #preview::-webkit-scrollbar,
+    .note-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    #editor::-webkit-scrollbar-track,
+    #preview::-webkit-scrollbar-track,
+    .note-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #editor::-webkit-scrollbar-thumb,
+    #preview::-webkit-scrollbar-thumb,
+    .note-list::-webkit-scrollbar-thumb {
+      background: #232834;
+      border-radius: 3px;
+    }
+    #editor::-webkit-scrollbar-thumb:hover,
+    #preview::-webkit-scrollbar-thumb:hover,
+    .note-list::-webkit-scrollbar-thumb:hover {
+      background: #363d4f;
+    }
+
+    ::selection {
+      background: rgba(0, 240, 255, 0.25);
+      color: #ffffff;
+    }
 
     .home-link {
       color: #8b949e;
@@ -255,6 +326,217 @@
         transform: translateX(0);
         box-shadow: 10px 0 30px rgba(0,0,0,0.7);
       }
+      .toolbar {
+        padding: 6px 10px;
+        gap: 6px;
+      }
+      .tool-left {
+        min-width: 160px;
+      }
+    }
+
+    /* =========================================
+       E-INK (전자잉크) 모드 스타일
+       종이 질감 흑백, 플랫 라인, 무잔상(No Transition)
+       ========================================= */
+    html.eink-mode,
+    body.eink-mode {
+      background: #f5f5f3 !important;
+      color: #111111 !important;
+    }
+    .eink-mode * {
+      transition: none !important;
+      animation-duration: 0s !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+    .eink-mode ::selection {
+      background: #111111;
+      color: #ffffff;
+    }
+    .eink-mode .sidebar {
+      background: #ffffff;
+      border-right: 2px solid #111111;
+    }
+    .eink-mode .sidebar-header {
+      border-bottom: 2px solid #111111;
+    }
+    .eink-mode .brand {
+      color: #000000;
+      font-weight: 700;
+    }
+    .eink-mode .brand-sub {
+      color: #555555;
+    }
+    .eink-mode .btn-icon {
+      background: #ffffff;
+      border: 1.5px solid #111111;
+      color: #111111;
+      font-weight: 600;
+    }
+    .eink-mode .btn-icon:hover {
+      background: #111111;
+      color: #ffffff;
+    }
+    .eink-mode #deleteBtn {
+      color: #111111 !important;
+      border-color: #111111 !important;
+    }
+    .eink-mode #deleteBtn:hover {
+      background: #111111 !important;
+      color: #ffffff !important;
+    }
+    .eink-mode .note-item {
+      border: 1px solid #e2e2de;
+      background: #ffffff;
+    }
+    .eink-mode .note-item:hover {
+      background: #f0f0ee;
+    }
+    .eink-mode .note-item.active {
+      background: #111111 !important;
+      border-left: 4px solid #111111;
+    }
+    .eink-mode .note-item.active .note-title {
+      color: #ffffff;
+    }
+    .eink-mode .note-item.active .note-date {
+      color: #d1d5db;
+    }
+    .eink-mode .note-title {
+      color: #111111;
+      font-weight: 700;
+    }
+    .eink-mode .note-date {
+      color: #666666;
+    }
+    .eink-mode .toolbar {
+      background: #ffffff;
+      border-bottom: 2px solid #111111;
+    }
+    .eink-mode .home-link {
+      background: #ffffff;
+      border: 1.5px solid #111111;
+      color: #111111;
+      font-weight: 600;
+    }
+    .eink-mode .home-link:hover {
+      background: #111111;
+      color: #ffffff;
+    }
+    .eink-mode #titleInput {
+      color: #000000;
+      caret-color: #000000;
+    }
+    .eink-mode #titleInput::placeholder {
+      color: #777777;
+    }
+    .eink-mode #saveStatus {
+      color: #666666;
+    }
+    .eink-mode #saveStatus.saved {
+      color: #000000;
+      font-weight: 700;
+    }
+    .eink-mode .view-segmented {
+      background: #ffffff;
+      border: 1.5px solid #111111;
+    }
+    .eink-mode .view-segmented button {
+      color: #666666;
+    }
+    .eink-mode .view-segmented button:hover {
+      color: #000000;
+    }
+    .eink-mode .view-segmented button.active {
+      background: #111111;
+      color: #ffffff;
+    }
+    .eink-mode .mode-switch-group {
+      background: #ffffff;
+      border: 1.5px solid #111111;
+    }
+    .eink-mode .mode-switch-btn {
+      color: #666666;
+    }
+    .eink-mode .mode-switch-btn:hover {
+      color: #000000;
+    }
+    .eink-mode .mode-switch-btn.active {
+      background: #111111;
+      border-color: #111111;
+      color: #ffffff;
+    }
+    .eink-mode .workspace {
+      background: #fcfcfb;
+    }
+    .eink-mode #editor {
+      background: #fcfcfb;
+      color: #000000;
+      caret-color: #000000;
+      font-weight: 500;
+    }
+    .eink-mode #editor::placeholder {
+      color: #767676;
+    }
+    .eink-mode #preview {
+      background: #fcfcfb;
+      color: #000000;
+    }
+    .eink-mode #preview h1,
+    .eink-mode #preview h2,
+    .eink-mode #preview h3 {
+      color: #000000;
+    }
+    .eink-mode #preview h1 {
+      border-bottom: 2px solid #111111;
+    }
+    .eink-mode #preview blockquote {
+      border-left: 3px solid #111111;
+      color: #333333;
+    }
+    .eink-mode #preview code {
+      background: #e5e5e2;
+      color: #000000;
+      border: 1px solid #d0d0cc;
+    }
+    .eink-mode #preview pre {
+      background: #f0f0ee;
+      border: 1.5px solid #111111;
+    }
+    .eink-mode #preview pre code {
+      background: none;
+      border: none;
+      color: #000000;
+    }
+    .eink-mode #preview hr {
+      border: none;
+      border-top: 1.5px solid #111111;
+    }
+    .eink-mode #preview table,
+    .eink-mode #preview th,
+    .eink-mode #preview td {
+      border: 1px solid #111111;
+    }
+    .eink-mode #preview th {
+      background: #e8e8e5;
+      color: #000000;
+    }
+    .eink-mode #editor::-webkit-scrollbar,
+    .eink-mode #preview::-webkit-scrollbar,
+    .eink-mode .note-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .eink-mode #editor::-webkit-scrollbar-thumb,
+    .eink-mode #preview::-webkit-scrollbar-thumb,
+    .eink-mode .note-list::-webkit-scrollbar-thumb {
+      background: #aaaaaa;
+      border-radius: 3px;
+    }
+    .eink-mode #editor::-webkit-scrollbar-thumb:hover,
+    .eink-mode #preview::-webkit-scrollbar-thumb:hover,
+    .eink-mode .note-list::-webkit-scrollbar-thumb:hover {
+      background: #666666;
     }
   </style>
 </head>
@@ -281,6 +563,10 @@
       <input type="text" id="titleInput" placeholder="제목 없는 메모" value="">
     </div>
     <div class="tool-right">
+      <div class="mode-switch-group" id="modeSwitchGroup" role="group" aria-label="화면 모드 전환">
+        <button type="button" class="mode-switch-btn active" data-mode="default" id="modeDefaultBtn" title="기본 다크 모드">지금 모드</button>
+        <button type="button" class="mode-switch-btn" data-mode="eink" id="modeEinkBtn" title="전자잉크 고대비 모드">E-Ink 모드</button>
+      </div>
       <span id="saveStatus">저장됨</span>
       <div class="view-segmented">
         <button type="button" id="editTab" class="active">편집</button>
@@ -509,6 +795,51 @@
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // --- 테마 모드 전환 (지금 모드 / E-Ink 모드) ---
+  const THEME_STORAGE_KEY = 'marsko_notepad_theme_mode';
+  const modeDefaultBtn = document.getElementById('modeDefaultBtn');
+  const modeEinkBtn = document.getElementById('modeEinkBtn');
+  const themeColorMeta = document.getElementById('themeColorMeta');
+
+  function setMode(mode) {
+    const isEink = (mode === 'eink');
+    document.documentElement.classList.toggle('eink-mode', isEink);
+    document.body.classList.toggle('eink-mode', isEink);
+
+    if (modeDefaultBtn && modeEinkBtn) {
+      modeDefaultBtn.classList.toggle('active', !isEink);
+      modeEinkBtn.classList.toggle('active', isEink);
+    }
+
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', isEink ? '#f5f5f3' : '#121316');
+    }
+
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, mode);
+      localStorage.setItem('marsko_keystroke_theme_mode', mode); // 도구 간 일관성 유지
+    } catch (e) {}
+  }
+
+  if (modeDefaultBtn) {
+    modeDefaultBtn.addEventListener('click', () => setMode('default'));
+  }
+  if (modeEinkBtn) {
+    modeEinkBtn.addEventListener('click', () => setMode('eink'));
+  }
+
+  // 초기 모드 동기화
+  try {
+    const savedMode = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem('marsko_keystroke_theme_mode');
+    if (savedMode === 'eink') {
+      setMode('eink');
+    } else {
+      setMode('default');
+    }
+  } catch (e) {
+    setMode('default');
   }
 
   // 앱 시작 초기화
