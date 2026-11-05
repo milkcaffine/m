@@ -143,9 +143,9 @@
       color: #ddd6fe;
     }
     .tog:hover, .mini:hover { border-color: #52525b; }
-    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .btn {
-      flex: 1;
+      flex: 1 1 30%;
       min-height: 46px;
       border: none;
       border-radius: 12px;
@@ -177,7 +177,7 @@
     <div class="canvas-wrap" id="wrap">
       <canvas id="view" width="800" height="800"></canvas>
     </div>
-    <p class="hint">드래그로 창 이동 · 휠·핀치로 확대 · 스페이스로 회전</p>
+    <p class="hint">드래그로 창 이동 · 휠·핀치로 확대 · GIF는 한 바퀴를 반복</p>
 
     <div class="panel">
       <div class="row">
@@ -220,6 +220,7 @@
     <div class="actions">
       <button type="button" class="btn ghost" id="resetBtn">창 리셋</button>
       <button type="button" class="btn" id="saveBtn">PNG 저장</button>
+      <button type="button" class="btn" id="gifBtn">GIF 저장</button>
     </div>
   </div>
 </div>
@@ -290,9 +291,10 @@
     return (size * 0.92) / Math.min(img.width, img.height);
   }
 
-  function paint(target, size) {
+  function paint(target, size, rot) {
     const img = state.img;
     const c = target;
+    const angle = rot == null ? state.rot : rot;
     c.fillStyle = "#07060b";
     c.fillRect(0, 0, size, size);
     if (!img) return;
@@ -305,11 +307,12 @@
     const scale = coverScale(size) * state.zoom;
     const cx = size / 2;
     const cy = size / 2;
+    const panScale = size / (canvas.width || size);
 
     for (let i = 0; i < slices; i++) {
       c.save();
       c.translate(cx, cy);
-      c.rotate(state.rot + i * wedge);
+      c.rotate(angle + i * wedge);
       c.beginPath();
       c.moveTo(0, 0);
       c.arc(0, 0, radius, -half - overlap, half + overlap);
@@ -317,7 +320,7 @@
       c.clip();
       if (state.mirror && i % 2 === 1) c.scale(1, -1);
       const shift = state.twist * (size / 800);
-      c.translate(state.panX + Math.cos(i * 1.7) * shift, state.panY + Math.sin(i * 1.3) * shift);
+      c.translate(state.panX * panScale + Math.cos(i * 1.7) * shift, state.panY * panScale + Math.sin(i * 1.3) * shift);
       if (state.stain) {
         c.filter = "hue-rotate(" + Math.round((i * 360) / slices) + "deg) saturate(1.35)";
       }
@@ -463,24 +466,389 @@
     kick();
   });
 
-  document.getElementById("saveBtn").addEventListener("click", function () {
-    if (!state.img) return;
-    const size = 1600;
+  function footerHeight(art) {
+    return Math.max(36, Math.round(art * 0.062));
+  }
+
+  function drawMark(c, art, footer) {
+    c.fillStyle = "#09090b";
+    c.fillRect(0, art, art, footer);
+    c.fillStyle = "#e4e4e7";
+    c.font = "600 " + Math.round(footer * 0.46) + "px \"IBM Plex Mono\", ui-monospace, monospace";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    if ("letterSpacing" in c) c.letterSpacing = "0.16em";
+    c.fillText("marsko.art", art / 2, art + footer / 2 + 0.5);
+    if ("letterSpacing" in c) c.letterSpacing = "0px";
+  }
+
+  function makeExportCanvas(art) {
+    const footer = footerHeight(art);
     const out = document.createElement("canvas");
-    out.width = size;
-    out.height = size;
-    const octx = out.getContext("2d", { alpha: false });
-    const prev = state.spin;
-    paint(octx, size);
-    state.spin = prev;
-    out.toBlob(function (blob) {
-      if (!blob) return;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "kaleido.png";
-      a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-    }, "image/png");
+    out.width = art;
+    out.height = art + footer;
+    const octx = out.getContext("2d", { alpha: false, willReadFrequently: true });
+    return { out: out, octx: octx, art: art, footer: footer };
+  }
+
+  function renderCard(card, rot) {
+    paint(card.octx, card.art, rot);
+    drawMark(card.octx, card.art, card.footer);
+  }
+
+  function downloadBlob(blob, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2500);
+  }
+
+  async function ensureMarkFont() {
+    if (document.fonts && document.fonts.load) {
+      try { await document.fonts.load("600 28px \"IBM Plex Mono\""); } catch (err) {}
+    }
+  }
+
+  function ByteBuf() {
+    this.a = new Uint8Array(4096);
+    this.n = 0;
+  }
+  ByteBuf.prototype.need = function (extra) {
+    if (this.n + extra <= this.a.length) return;
+    let cap = this.a.length;
+    while (this.n + extra > cap) cap *= 2;
+    const next = new Uint8Array(cap);
+    next.set(this.a.subarray(0, this.n));
+    this.a = next;
+  };
+  ByteBuf.prototype.u8 = function (v) {
+    this.need(1);
+    this.a[this.n++] = v & 255;
+  };
+  ByteBuf.prototype.u16 = function (v) {
+    this.need(2);
+    this.a[this.n++] = v & 255;
+    this.a[this.n++] = (v >> 8) & 255;
+  };
+  ByteBuf.prototype.bytes = function (list) {
+    this.need(list.length);
+    this.a.set(list, this.n);
+    this.n += list.length;
+  };
+  ByteBuf.prototype.ascii = function (s) {
+    for (let i = 0; i < s.length; i++) this.u8(s.charCodeAt(i));
+  };
+  ByteBuf.prototype.finish = function () {
+    return this.a.slice(0, this.n);
+  };
+
+  function quantize(rgba) {
+    const pixelCount = rgba.length >>> 2;
+    const paletteSize = 256;
+    const imageColors = 96;
+    const sampleCount = Math.min(pixelCount, 20000);
+    const sampleStep = Math.max(1, Math.floor(pixelCount / sampleCount));
+    const sampled = [];
+    for (let i = 0; i < pixelCount; i += sampleStep) sampled.push(i);
+    const order = new Uint32Array(sampled);
+    const boxes = [{ lo: 0, hi: order.length }];
+
+    function biggest() {
+      let pick = -1;
+      let best = 0;
+      let channel = 0;
+      for (let b = 0; b < boxes.length; b++) {
+        const box = boxes[b];
+        const len = box.hi - box.lo;
+        if (len < 2) continue;
+        let r0 = 255, r1 = 0, g0 = 255, g1 = 0, b0 = 255, b1 = 0;
+        for (let i = box.lo; i < box.hi; i++) {
+          const p = order[i] << 2;
+          const r = rgba[p], g = rgba[p + 1], bl = rgba[p + 2];
+          if (r < r0) r0 = r;
+          if (r > r1) r1 = r;
+          if (g < g0) g0 = g;
+          if (g > g1) g1 = g;
+          if (bl < b0) b0 = bl;
+          if (bl > b1) b1 = bl;
+        }
+        const rd = r1 - r0, gd = g1 - g0, bd = b1 - b0;
+        let ch = 0, range = rd;
+        if (gd > range) { ch = 1; range = gd; }
+        if (bd > range) { ch = 2; range = bd; }
+        const score = range * len;
+        if (score > best) { best = score; pick = b; channel = ch; }
+      }
+      return { pick: pick, channel: channel };
+    }
+
+    while (boxes.length < imageColors) {
+      const found = biggest();
+      if (found.pick < 0) break;
+      const box = boxes[found.pick];
+      const slice = order.subarray(box.lo, box.hi);
+      const ch = found.channel;
+      slice.sort(function (a, b) {
+        return rgba[(a << 2) + ch] - rgba[(b << 2) + ch];
+      });
+      const mid = box.lo + ((box.hi - box.lo) >> 1);
+      boxes.splice(found.pick, 1, { lo: box.lo, hi: mid }, { lo: mid, hi: box.hi });
+    }
+
+    const palette = new Uint8Array(paletteSize * 3);
+    palette[0] = 9; palette[1] = 9; palette[2] = 11;
+    palette[3] = 228; palette[4] = 228; palette[5] = 231;
+    const centers = new Uint8Array(boxes.length * 3);
+    for (let b = 0; b < boxes.length; b++) {
+      const box = boxes[b];
+      let r = 0, g = 0, bl = 0;
+      const n = box.hi - box.lo || 1;
+      for (let i = box.lo; i < box.hi; i++) {
+        const p = order[i] << 2;
+        r += rgba[p];
+        g += rgba[p + 1];
+        bl += rgba[p + 2];
+      }
+      const o = b * 3;
+      centers[o] = palette[(b + 2) * 3] = Math.round(r / n);
+      centers[o + 1] = palette[(b + 2) * 3 + 1] = Math.round(g / n);
+      centers[o + 2] = palette[(b + 2) * 3 + 2] = Math.round(bl / n);
+    }
+
+    const lut = new Uint8Array(32768);
+    const nColors = boxes.length;
+    for (let r = 0; r < 32; r++) {
+      const rr = r << 3;
+      for (let g = 0; g < 32; g++) {
+        const gg = g << 3;
+        const base = (r << 10) | (g << 5);
+        for (let b = 0; b < 32; b++) {
+          const bb = b << 3;
+          let best = 0;
+          let bestD = 1e9;
+          for (let c = 0; c < nColors; c++) {
+            const o = c * 3;
+            const dr = rr - centers[o];
+            const dg = gg - centers[o + 1];
+            const db = bb - centers[o + 2];
+            const d = dr * dr + dg * dg + db * db;
+            if (d < bestD) { bestD = d; best = c; }
+          }
+          lut[base | b] = best + 2;
+        }
+      }
+    }
+
+    const indexed = new Uint8Array(pixelCount);
+    for (let i = 0; i < pixelCount; i++) {
+      const p = i << 2;
+      indexed[i] = lut[((rgba[p] >> 3) << 10) | ((rgba[p + 1] >> 3) << 5) | (rgba[p + 2] >> 3)];
+    }
+    return { palette: palette, indexed: indexed };
+  }
+
+  function stampMark(indexed, rgba, width, height, art) {
+    for (let y = art; y < height; y++) {
+      const row = y * width;
+      for (let x = 0; x < width; x++) {
+        const i = row + x;
+        const p = i << 2;
+        indexed[i] = (rgba[p] + rgba[p + 1] + rgba[p + 2]) > 420 ? 1 : 0;
+      }
+    }
+  }
+
+  function lzwEncode(buf, pixels) {
+    const initCodeSize = 8;
+    const BITS = 12;
+    const hsize = 5003;
+    const htab = new Int32Array(hsize);
+    const codetab = new Int32Array(hsize);
+    htab.fill(-1);
+    const accum = new Uint8Array(256);
+    const MASKS = [0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535];
+    let curAccum = 0;
+    let curBits = 0;
+    const gInitBits = initCodeSize + 1;
+    let clearFlag = false;
+    let nBits = gInitBits;
+    let maxcode = (1 << nBits) - 1;
+    const clearCode = 1 << initCodeSize;
+    const eofCode = clearCode + 1;
+    let freeEnt = clearCode + 2;
+    let packet = 0;
+
+    let hshift = 0;
+    for (let fcode = hsize; fcode < 65536; fcode *= 2) hshift++;
+    hshift = 8 - hshift;
+
+    function emitByte(value) {
+      accum[packet++] = value & 255;
+      if (packet >= 254) {
+        buf.u8(packet);
+        buf.bytes(accum.subarray(0, packet));
+        packet = 0;
+      }
+    }
+
+    function output(code) {
+      curAccum &= MASKS[curBits];
+      if (curBits > 0) curAccum |= code << curBits;
+      else curAccum = code;
+      curBits += nBits;
+      while (curBits >= 8) {
+        emitByte(curAccum);
+        curAccum >>= 8;
+        curBits -= 8;
+      }
+      if (freeEnt > maxcode || clearFlag) {
+        if (clearFlag) {
+          nBits = gInitBits;
+          maxcode = (1 << nBits) - 1;
+          clearFlag = false;
+        } else {
+          nBits++;
+          maxcode = nBits === BITS ? (1 << nBits) : (1 << nBits) - 1;
+        }
+      }
+      if (code === eofCode) {
+        while (curBits > 0) {
+          emitByte(curAccum);
+          curAccum >>= 8;
+          curBits -= 8;
+        }
+        if (packet > 0) {
+          buf.u8(packet);
+          buf.bytes(accum.subarray(0, packet));
+          packet = 0;
+        }
+        buf.u8(0);
+      }
+    }
+
+    buf.u8(initCodeSize);
+    output(clearCode);
+    let ent = pixels[0];
+    for (let idx = 1; idx < pixels.length; idx++) {
+      const c = pixels[idx];
+      const fcode = (c << BITS) + ent;
+      let i = (c << hshift) ^ ent;
+      if (htab[i] === fcode) {
+        ent = codetab[i];
+        continue;
+      }
+      const disp = i === 0 ? 1 : hsize - i;
+      let found = false;
+      while (htab[i] >= 0) {
+        i -= disp;
+        if (i < 0) i += hsize;
+        if (htab[i] === fcode) {
+          ent = codetab[i];
+          found = true;
+          break;
+        }
+      }
+      if (found) continue;
+      output(ent);
+      ent = c;
+      if (freeEnt < (1 << BITS)) {
+        codetab[i] = freeEnt++;
+        htab[i] = fcode;
+      } else {
+        htab.fill(-1);
+        freeEnt = clearCode + 2;
+        clearFlag = true;
+        output(clearCode);
+      }
+    }
+    output(ent);
+    output(eofCode);
+  }
+
+  function writeGifFrame(buf, indexed, palette, width, height, delayCs) {
+    buf.u8(0x21); buf.u8(0xf9); buf.u8(0x04);
+    buf.u8(0x04);
+    buf.u16(delayCs);
+    buf.u8(0);
+    buf.u8(0);
+    buf.u8(0x2c);
+    buf.u16(0); buf.u16(0);
+    buf.u16(width); buf.u16(height);
+    buf.u8(0x87);
+    buf.bytes(palette);
+    lzwEncode(buf, indexed);
+  }
+
+  function gifHeader(buf, width, height) {
+    buf.ascii("GIF89a");
+    buf.u16(width);
+    buf.u16(height);
+    buf.u8(0);
+    buf.u8(0);
+    buf.u8(0);
+    buf.u8(0x21); buf.u8(0xff); buf.u8(11);
+    buf.ascii("NETSCAPE2.0");
+    buf.u8(3); buf.u8(1);
+    buf.u16(0);
+    buf.u8(0);
+  }
+
+  let exporting = false;
+
+  document.getElementById("saveBtn").addEventListener("click", async function () {
+    if (!state.img || exporting) return;
+    exporting = true;
+    const btn = this;
+    btn.disabled = true;
+    try {
+      await ensureMarkFont();
+      const card = makeExportCanvas(1600);
+      renderCard(card, state.rot);
+      const blob = await new Promise(function (resolve) { card.out.toBlob(resolve, "image/png"); });
+      if (blob) downloadBlob(blob, "kaleido.png");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      exporting = false;
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("gifBtn").addEventListener("click", async function () {
+    if (!state.img || exporting) return;
+    exporting = true;
+    const btn = this;
+    const pngBtn = document.getElementById("saveBtn");
+    btn.disabled = true;
+    pngBtn.disabled = true;
+    const frames = 16;
+    const delayCs = 10;
+    try {
+      await ensureMarkFont();
+      const card = makeExportCanvas(512);
+      const buf = new ByteBuf();
+      gifHeader(buf, card.out.width, card.out.height);
+      const base = state.rot;
+      for (let i = 0; i < frames; i++) {
+        btn.textContent = "GIF " + (i + 1) + "/" + frames;
+        renderCard(card, base + (i / frames) * Math.PI * 2);
+        const pixels = card.octx.getImageData(0, 0, card.out.width, card.out.height).data;
+        const q = quantize(pixels);
+        stampMark(q.indexed, pixels, card.out.width, card.out.height, card.art);
+        writeGifFrame(buf, q.indexed, q.palette, card.out.width, card.out.height, delayCs);
+        await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      }
+      buf.u8(0x3b);
+      downloadBlob(new Blob([buf.finish()], { type: "image/gif" }), "kaleido.gif");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      exporting = false;
+      btn.disabled = false;
+      pngBtn.disabled = false;
+      btn.textContent = "GIF 저장";
+    }
   });
 
   function canvasPointDelta(e, last) {
