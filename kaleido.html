@@ -177,7 +177,7 @@
     <div class="canvas-wrap" id="wrap">
       <canvas id="view" width="800" height="800"></canvas>
     </div>
-    <p class="hint">드래그로 창 이동 · 휠·핀치로 확대 · GIF는 한 바퀴를 반복</p>
+    <p class="hint">드래그로 창 이동 · 휠·핀치로 확대 · GIF는 화면 속도 그대로 반복</p>
 
     <div class="panel">
       <div class="row">
@@ -467,17 +467,17 @@
   });
 
   function footerHeight(art) {
-    return Math.max(36, Math.round(art * 0.062));
+    return Math.max(26, Math.round(art * 0.042));
   }
 
   function drawMark(c, art, footer) {
     c.fillStyle = "#09090b";
     c.fillRect(0, art, art, footer);
     c.fillStyle = "#e4e4e7";
-    c.font = "600 " + Math.round(footer * 0.46) + "px \"IBM Plex Mono\", ui-monospace, monospace";
+    c.font = "600 " + Math.round(footer * 0.4) + "px \"IBM Plex Mono\", ui-monospace, monospace";
     c.textAlign = "center";
     c.textBaseline = "middle";
-    if ("letterSpacing" in c) c.letterSpacing = "0.16em";
+    if ("letterSpacing" in c) c.letterSpacing = "0.1em";
     c.fillText("marsko.art", art / 2, art + footer / 2 + 0.5);
     if ("letterSpacing" in c) c.letterSpacing = "0px";
   }
@@ -822,8 +822,18 @@
     const pngBtn = document.getElementById("saveBtn");
     btn.disabled = true;
     pngBtn.disabled = true;
-    const frames = 16;
-    const delayCs = 10;
+    // 화면과 같은 속도로, 패턴이 정확히 반복되는 각도만큼만 돌려 이음매 없는 루프를 만든다.
+    const wedge = (Math.PI * 2) / Math.max(2, state.slices | 0);
+    const symmetric = state.twist === 0 && !state.stain;
+    let period = Math.PI * 2;
+    if (symmetric) {
+      if (!state.mirror) period = wedge;
+      else if ((state.slices | 0) % 2 === 0) period = wedge * 2;
+    }
+    const radPerSec = (state.speed > 0 ? state.speed : 0.0056) * 60;
+    const seconds = period / radPerSec;
+    const frames = Math.max(12, Math.min(48, Math.round(seconds * 20)));
+    const delayCs = Math.max(2, Math.round((seconds * 100) / frames));
     try {
       await ensureMarkFont();
       const card = makeExportCanvas(512);
@@ -832,7 +842,7 @@
       const base = state.rot;
       for (let i = 0; i < frames; i++) {
         btn.textContent = "GIF " + (i + 1) + "/" + frames;
-        renderCard(card, base + (i / frames) * Math.PI * 2);
+        renderCard(card, base + (i / frames) * period);
         const pixels = card.octx.getImageData(0, 0, card.out.width, card.out.height).data;
         const q = quantize(pixels);
         stampMark(q.indexed, pixels, card.out.width, card.out.height, card.art);
