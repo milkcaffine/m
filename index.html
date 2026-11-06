@@ -48,11 +48,12 @@
             background: none;
             border: none;
             color: #71717a;
-            font-size: 0.68rem;
-            padding: 0 1px 0 2px;
+            font-size: 0.8rem;
+            padding: 4px 4px;
+            margin: -4px 0;
             cursor: pointer;
             line-height: 1;
-            opacity: 0.35;
+            opacity: 0.5;
             transition: opacity 0.15s ease, color 0.15s ease;
             vertical-align: middle;
         }
@@ -75,10 +76,32 @@
         }
 
         @media (hover: none) {
-            .star-btn { opacity: 0.55; }
-            .tool-desc-caption {
-                min-height: 2.4em;
-            }
+            .star-btn { opacity: 0.6; }
+            /* 터치에선 탭하면 바로 이동하므로 hover 설명 줄은 숨김 */
+            .tool-desc-caption { display: none; }
+        }
+
+        .star-btn:focus-visible,
+        .tool-drawer-toggle:focus-visible {
+            outline: 1px solid #a1a1aa;
+            outline-offset: 2px;
+        }
+
+        /* 랜덤 이동 토스트 */
+        .rnd-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%);
+            background: #18181b;
+            border: 1px solid #3f3f46;
+            color: #e4e4e7;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.8rem;
+            padding: 8px 14px;
+            border-radius: 999px;
+            z-index: 50;
+            animation: fadeIn 0.15s ease;
         }
 
         /* 상단 즐겨찾기 줄 */
@@ -169,7 +192,7 @@
 <body class="bg-zinc-950 text-zinc-200">
 
     <!-- 헤더 -->
-    <header class="relative min-h-[88vh] overflow-hidden">
+    <header class="relative min-h-[88svh] overflow-hidden">
         <img src="images/cone.jpg" alt="Wet plaza, white trellis, one cone" class="hero-img absolute inset-0 h-full w-full object-cover">
         <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-zinc-950/55"></div>
         
@@ -186,7 +209,7 @@
             </div>
         </nav>
 
-        <div class="relative z-10 flex min-h-[88vh] flex-col justify-end max-w-2xl mx-auto px-6 pb-14">
+        <div class="relative z-10 flex min-h-[88svh] flex-col justify-end max-w-2xl mx-auto px-6 pb-14">
             <p class="text-xs tracking-[0.28em] uppercase text-zinc-300/80 mb-3">Tokyo, after rain</p>
             <h1 class="text-5xl font-bold mb-3">Marsko</h1>
             <p class="text-lg text-zinc-200 max-w-md leading-relaxed">
@@ -475,6 +498,7 @@
                 removeBtn.className = 'star-btn';
                 removeBtn.textContent = '★';
                 removeBtn.title = '즐겨찾기 해제';
+                removeBtn.setAttribute('aria-label', '즐겨찾기 해제');
                 removeBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -573,6 +597,19 @@
                     toolSearch.value = '';
                     filterTools('');
                     toolSearch.blur();
+                } else if (e.key === 'Enter') {
+                    const first = searchList.querySelector('a');
+                    if (first) window.location.href = first.href;
+                }
+            });
+
+            // "/" 로 검색창 포커스
+            document.addEventListener('keydown', (e) => {
+                const t = e.target;
+                const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+                if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    toolSearch.focus();
                 }
             });
         }
@@ -607,7 +644,6 @@
             link.addEventListener('mouseleave', hide);
             link.addEventListener('focus', show);
             link.addEventListener('blur', hide);
-            link.addEventListener('touchstart', show, { passive: true });
         }
 
         // 초기화
@@ -615,9 +651,10 @@
             toolCount.textContent = String(toolRows.querySelectorAll('.tool-item').length);
         }
 
-        let drawerPref = false;
+        // 저장된 선택이 없는 첫 방문은 열린 상태로 시작
+        let drawerPref = true;
         try {
-            drawerPref = localStorage.getItem(DRAWER_KEY) === '1';
+            drawerPref = localStorage.getItem(DRAWER_KEY) !== '0';
         } catch (e) {}
         setDrawerOpen(drawerPref);
 
@@ -644,7 +681,13 @@
                 const link = pick.querySelector('a');
                 if (!link || !link.href) return;
                 lastRandomId = pick.getAttribute('data-id') || '';
-                window.location.href = link.href;
+                const toast = document.createElement('div');
+                toast.className = 'rnd-toast';
+                toast.setAttribute('role', 'status');
+                toast.textContent = '→ ' + link.textContent;
+                document.body.appendChild(toast);
+                const href = link.href;
+                setTimeout(() => { window.location.href = href; }, 450);
             });
         }
 
