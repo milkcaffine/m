@@ -271,6 +271,11 @@
                 <span class="fav-badge">★</span> · <span id="favList"></span>
             </p>
 
+            <p class="teaser-row text-zinc-400" id="teaserRow" style="display: none;">
+                <span id="teaserList"></span>
+                <button type="button" id="teaserMore" class="tool-drawer-toggle ml-1" aria-controls="toolRows"></button>
+            </p>
+
             <div id="toolDrawer" class="tool-drawer">
             <div id="toolRows" class="tool-drawer-body space-y-1.5">
                 <!-- write -->
@@ -405,7 +410,48 @@
         const clearSearch = document.getElementById('clearSearch');
         const descBox = document.getElementById('toolDesc');
         const descText = descBox ? descBox.querySelector('.desc-text') : null;
+        const teaserRow = document.getElementById('teaserRow');
+        const teaserList = document.getElementById('teaserList');
+        const teaserMore = document.getElementById('teaserMore');
+        const TEASER_COUNT = 6;
         let lastRandomId = '';
+
+        // 서랍이 닫혀 있고 검색 중이 아닐 때만 맛보기 줄 표시
+        function syncTeaser() {
+            if (!teaserRow) return;
+            const searching = !!(toolSearch && toolSearch.value.trim() !== '');
+            teaserRow.style.display = (!isDrawerOpen() && !searching) ? 'block' : 'none';
+        }
+
+        // 방문할 때마다 바뀌는 무작위 도구 몇 개 (즐겨찾기는 위 줄에 있으니 제외)
+        function renderTeaser() {
+            if (!teaserList || !toolRows) return;
+            const favs = getFavorites();
+            const items = Array.from(toolRows.querySelectorAll('.tool-item'))
+                .filter(item => !favs.includes(item.getAttribute('data-id')));
+            for (let i = items.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const tmp = items[i]; items[i] = items[j]; items[j] = tmp;
+            }
+            const picks = items.slice(0, TEASER_COUNT);
+            teaserList.innerHTML = '';
+            picks.forEach((item, idx) => {
+                const orig = item.querySelector('a');
+                if (!orig) return;
+                if (idx > 0) teaserList.appendChild(document.createTextNode(' · '));
+                const a = document.createElement('a');
+                a.href = orig.getAttribute('href');
+                a.textContent = orig.textContent;
+                a.setAttribute('data-desc', orig.getAttribute('data-desc') || '');
+                teaserList.appendChild(a);
+                bindDescEvents(a);
+            });
+            const total = toolRows.querySelectorAll('.tool-item').length;
+            if (teaserMore) {
+                teaserMore.textContent = '+' + Math.max(0, total - picks.length) + ' more ▸';
+                teaserMore.setAttribute('aria-label', '전체 도구 목록 열기');
+            }
+        }
 
         function isDrawerOpen() {
             return !!(toolDrawer && toolDrawer.classList.contains('is-open'));
@@ -416,6 +462,7 @@
             toolDrawer.classList.toggle('is-open', open);
             toolDrawerToggle.classList.toggle('is-open', open);
             toolDrawerToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            syncTeaser();
             try {
                 localStorage.setItem(DRAWER_KEY, open ? '1' : '0');
             } catch (e) {}
@@ -543,6 +590,7 @@
         // 4. 실시간 검색: id · 표시명 · 설명 (즐겨찾기는 유지, 서랍 목록만 가림)
         function filterTools(query) {
             const kw = query.trim().toLowerCase();
+            syncTeaser();
 
             if (clearSearch) {
                 clearSearch.classList.toggle('hidden', kw.length === 0);
@@ -651,12 +699,16 @@
             toolCount.textContent = String(toolRows.querySelectorAll('.tool-item').length);
         }
 
-        // 저장된 선택이 없는 첫 방문은 열린 상태로 시작
-        let drawerPref = true;
+        // 저장된 선택이 없는 첫 방문은 닫힌 상태 (맛보기 줄만 표시)
+        let drawerPref = false;
         try {
-            drawerPref = localStorage.getItem(DRAWER_KEY) !== '0';
+            drawerPref = localStorage.getItem(DRAWER_KEY) === '1';
         } catch (e) {}
         setDrawerOpen(drawerPref);
+
+        if (teaserMore) {
+            teaserMore.addEventListener('click', () => setDrawerOpen(true));
+        }
 
         if (toolDrawerToggle) {
             toolDrawerToggle.addEventListener('click', () => {
@@ -693,6 +745,8 @@
 
         document.querySelectorAll('.tools-list a').forEach(bindDescEvents);
         renderFavorites();
+        renderTeaser();
+        syncTeaser();
     })();
     </script>
     <script>
