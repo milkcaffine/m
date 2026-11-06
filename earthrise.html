@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#020306">
+  <meta name="description" content="Marsko lab tool — earthrise. 월면 좌표 기반 지구돋이(Earthrise)·지구 위상 및 칭동·개기월식 실시간 관측소.">
+  <title>Lunar Earthrise Observatory // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #obsCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #obsCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 천문 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(8, 12, 22, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.65;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .eclipse { color: #f43f5e !important; text-shadow: 0 0 8px rgba(244, 63, 94, 0.6); }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 12, 22, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 58px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+
+    @media (max-width: 720px) {
+      .telemetry-card {
+        display: none;
+      }
+      header h1 {
+        font-size: 0.85rem;
+      }
+      .control-dock {
+        bottom: 10px;
+        padding: 6px 10px;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>LUNAR EARTHRISE OBSERVATORY</h1>
+  <div class="hud-meta">SELENOGRAPHIC HORIZON · ORTHOGRAPHIC GLOBE</div>
+</header>
+
+<div class="telemetry-card">
+  <div>SITE: <strong id="hudSite">EARTHRISE LIMB</strong></div>
+  <div>LUNAR COORD: <strong id="hudCoord">12.0°N, 82.0°E</strong></div>
+  <div>EARTH ALTITUDE: <strong id="hudAlt">+7.2°</strong></div>
+  <div>EARTH PHASE: <strong id="hudPhase">WAXING GIBBOUS (74%)</strong></div>
+  <div>LIBRATION: <strong id="hudLib">ACTIVE</strong></div>
+</div>
+
+<canvas id="obsCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnLimb">지구돋이 능선 (82°E)</button>
+  <button type="button" class="dock-btn" id="btnApollo">고요의 바다 (아폴로 11)</button>
+  <button type="button" class="dock-btn" id="btnShackleton">남극 섀클턴 (89°S)</button>
+  <button type="button" class="dock-btn" id="btnEclipse">개기월식 (붉은 반지)</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>월면 경도</span>
+    <input type="range" id="lonRange" min="-95" max="95" value="82">
+  </div>
+  <div class="slider-group">
+    <span>월면 위도</span>
+    <input type="range" id="latRange" min="-90" max="90" value="12">
+  </div>
+  <div class="slider-group">
+    <span>지구 위상</span>
+    <input type="range" id="phaseRange" min="0" max="360" value="65">
+  </div>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn active" id="btnSpin">자전 재생</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('obsCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const hudSite = document.getElementById('hudSite');
+  const hudCoord = document.getElementById('hudCoord');
+  const hudAlt = document.getElementById('hudAlt');
+  const hudPhase = document.getElementById('hudPhase');
+
+  const btnLimb = document.getElementById('btnLimb');
+  const btnApollo = document.getElementById('btnApollo');
+  const btnShackleton = document.getElementById('btnShackleton');
+  const btnEclipse = document.getElementById('btnEclipse');
+  const btnSpin = document.getElementById('btnSpin');
+
+  const lonRange = document.getElementById('lonRange');
+  const latRange = document.getElementById('latRange');
+  const phaseRange = document.getElementById('phaseRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // --- 관측 파라미터 ---
+  let lunarLat = 12;   // 달 위도 (-90 ~ 90)
+  let lunarLon = 82;   // 달 경도 (-95 ~ 95)
+  let sunPhaseDeg = 65; // 태양 위상각 (0=보름지구, 180=삭/개기월식)
+  let earthRotLon = -135; // 지구 자전 중심 경도 (동아시아/도쿄가 잘 보이도록 초기 설정)
+  let isSpinning = true;
+  let timeTick = 0;
+
+  // 별 배경
+  let stars = [];
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 160; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: Math.random() * 1.3 + 0.3,
+        alpha: Math.random() * 0.7 + 0.2
+      });
+    }
+  }
+
+  // 절차적 달 크레이터 능선 데이터
+  let ridgeLines = [];
+  function initLunarTerrain() {
+    ridgeLines = [];
+    const layers = 4;
+    for (let l = 0; l < layers; l++) {
+      const pts = [];
+      const segments = 48;
+      for (let i = 0; i <= segments; i++) {
+        const u = i / segments;
+        const hNoise = Math.sin(u * 12 + l * 2.1) * 14 + Math.cos(u * 27 - l) * 6;
+        pts.push({ u, hNoise });
+      }
+      ridgeLines.push(pts);
+    }
+  }
+
+  // 간소화된 전 세계 주요 대륙 폴리곤 (위도, 경도 배열) 및 야간 주요 도시 좌표
+  const CONTINENTS = [
+    // 유라시아 (유럽 ~ 시베리아 ~ 동아시아 ~ 인도)
+    [[36,-9],[43,-9],[48,-4],[54,8],[60,5],[70,28],[72,70],[70,130],[65,170],[55,160],[50,140],[38,120],[22,114],[9,105],[22,88],[8,77],[25,67],[13,45],[30,32],[38,24],[45,12],[36,-9]],
+    // 일본 열도 (혼슈·규슈·홋카이도 디테일)
+    [[31,130],[34,131],[35,136],[35.6,140],[39,142],[41,141],[44,145],[43,140],[37,137],[34,132],[31,130]],
+    // 한반도
+    [[34.5,126],[38,126],[42,130],[38,129],[35,129],[34.5,126]],
+    // 아프리카
+    [[35,-6],[37,10],[32,32],[12,51],[-2,41],[-25,35],[-34,18],[-18,12],[5,9],[5,-8],[15,-17],[35,-6]],
+    // 북아메리카
+    [[70,-160],[72,-120],[60,-64],[45,-60],[25,-80],[19,-96],[8,-78],[16,-100],[32,-117],[48,-124],[60,-140],[70,-160]],
+    // 남아메리카
+    [[10,-75],[5,-52],[-6,-35],[-23,-43],[-54,-68],[-40,-73],[-18,-71],[-5,-81],[10,-75]],
+    // 오스트레일리아
+    [[-12,131],[-12,142],[-28,153],[-38,145],[-34,115],[-22,114],[-12,131]]
+  ];
+
+  // 밤 반구에서 빛나는 주요 메가시티 (위도, 경도, 크기, 이름)
+  const CITIES = [
+    { lat: 35.68, lon: 139.76, size: 2.6, name: 'TOKYO', highlight: true },
+    { lat: 37.56, lon: 126.97, size: 2.2, name: 'SEOUL', highlight: true },
+    { lat: 35.87, lon: 128.60, size: 1.8, name: 'DAEGU', highlight: true },
+    { lat: 31.23, lon: 121.47, size: 2.0 }, // 상하이
+    { lat: 39.90, lon: 116.40, size: 1.9 }, // 베이징
+    { lat: 22.31, lon: 114.16, size: 1.8 }, // 홍콩
+    { lat: 1.35,  lon: 103.81, size: 1.7 }, // 싱가포르
+    { lat: 28.61, lon: 77.20,  size: 1.9 }, // 델리
+    { lat: 51.50, lon: -0.12,  size: 2.0 }, // 런던
+    { lat: 48.85, lon: 2.35,   size: 1.9 }, // 파리
+    { lat: 55.75, lon: 37.61,  size: 1.8 }, // 모스크바
+    { lat: 30.04, lon: 31.23,  size: 1.8 }, // 카이로
+    { lat: 40.71, lon: -74.00, size: 2.2 }, // 뉴욕
+    { lat: 34.05, lon: -118.24,size: 2.0 }, // LA
+    { lat: -23.55,lon: -46.63, size: 1.8 }, // 상파울루
+    { lat: -33.86,lon: 151.20, size: 1.7 }  // 시드니
+  ];
+
+  // 구면 좌표 (lat, lon) -> 3D 직교 벡터 (x, y, z)
+  // 관찰자 정면이 +Z, 동쪽이 +X, 북쪽이 +Y
+  function latLonTo3D(latDeg, lonDeg, centerLatDeg, centerLonDeg) {
+    const phi = (latDeg * Math.PI) / 180;
+    const lam = ((lonDeg - centerLonDeg) * Math.PI) / 180;
+    const phi0 = (centerLatDeg * Math.PI) / 180;
+
+    const x = Math.cos(phi) * Math.sin(lam);
+    const y = Math.cos(phi0) * Math.sin(phi) - Math.sin(phi0) * Math.cos(phi) * Math.cos(lam);
+    const z = Math.sin(phi0) * Math.sin(phi) + Math.cos(phi0) * Math.cos(phi) * Math.cos(lam);
+    return { x, y, z };
+  }
+
+  function clearPresetActives() {
+    [btnLimb, btnApollo, btnShackleton, btnEclipse].forEach(b => b.classList.remove('active'));
+  }
+
+  function applyPreset(name) {
+    clearPresetActives();
+
+    if (name === 'limb') {
+      btnLimb.classList.add('active');
+      lunarLat = 12; lunarLon = 82; sunPhaseDeg = 65;
+      hudSite.textContent = 'EARTHRISE LIMB';
+    } else if (name === 'apollo') {
+      btnApollo.classList.add('active');
+      lunarLat = 0.67; lunarLon = 23.47; sunPhaseDeg = 45;
+      hudSite.textContent = 'MARE TRANQUILLITATIS';
+    } else if (name === 'shackleton') {
+      btnShackleton.classList.add('active');
+      lunarLat = -88.5; lunarLon = 0; sunPhaseDeg = 95;
+      hudSite.textContent = 'SHACKLETON SOUTH POLE';
+    } else if (name === 'eclipse') {
+      btnEclipse.classList.add('active');
+      lunarLat = 10; lunarLon = 76; sunPhaseDeg = 180;
+      hudSite.textContent = 'TOTAL LUNAR ECLIPSE';
+    }
+
+    lonRange.value = Math.round(lunarLon);
+    latRange.value = Math.round(lunarLat);
+    phaseRange.value = Math.round(sunPhaseDeg);
+  }
+
+  // --- 메인 렌더링 루프 ---
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    timeTick += 0.015;
+    if (isSpinning) {
+      earthRotLon = (earthRotLon + 0.18) % 360;
+    }
+
+    // 1. 칭동(Libration) 미세 흔들림 반영한 지구 고도 계산
+    // 달에서 지구의 고도 angle ≈ arccos(cos(lat)*cos(lon))
+    const librationLon = Math.sin(timeTick * 0.5) * 3.2;
+    const librationLat = Math.cos(timeTick * 0.35) * 2.1;
+
+    const effLatRad = ((lunarLat + librationLat) * Math.PI) / 180;
+    const effLonRad = ((lunarLon + librationLon) * Math.PI) / 180;
+
+    // 천정거리(Zenith Angle)의 코사인
+    const cosZ = Math.cos(effLatRad) * Math.cos(effLonRad);
+    const altitudeDeg = (Math.asin(Math.max(-1, Math.min(1, cosZ))) * 180) / Math.PI;
+
+    // 화면상의 달 지평선 기준 높이 (하단 26% 지점)
+    const horizonBaseY = height * 0.74;
+
+    // 고도(Altitude)에 따른 지구의 화면 Y 위치 매핑
+    // 고도 0도일 때 지평선에 걸치고, 고도가 높을수록 화면 상단으로 이동
+    const degToPx = (height * 0.52) / 90;
+    const earthCenterX = width * 0.5 + Math.sin(effLonRad) * (width * 0.12);
+    const earthCenterY = horizonBaseY - altitudeDeg * degToPx;
+    const earthRadius = Math.min(width, height) * 0.21;
+
+    // 태양 조명 단위 벡터 (sunPhaseDeg: 0=정면 보름지구, 90=반달지구, 180=삭/개기월식)
+    const sunRad = (sunPhaseDeg * Math.PI) / 180;
+    const sunVec = {
+      x: Math.sin(sunRad),
+      y: 0.12,
+      z: Math.cos(sunRad)
+    };
+    const sLen = Math.hypot(sunVec.x, sunVec.y, sunVec.z);
+    sunVec.x /= sLen; sunVec.y /= sLen; sunVec.z /= sLen;
+
+    const isEclipse = Math.abs(sunPhaseDeg - 180) < 16;
+
+    // 2. 별빛 배경 렌더링
+    ctx.fillStyle = '#f8fafc';
+    stars.forEach(s => {
+      if (s.y < horizonBaseY + 20) {
+        ctx.globalAlpha = s.alpha;
+        ctx.fillRect(s.x, s.y, s.r, s.r);
+      }
+    });
+    ctx.globalAlpha = 1.0;
+
+    // 3. 지구 본체 렌더링 (지평선보다 먼저 그려서 지평선 능선 뒤에 자연스럽게 가려지도록 함)
+    ctx.save();
+
+    // 3-1. 대기권 산란 후광 (Atmospheric Limb Glow)
+    // 개기월식(180도 부근)일 때는 지구 대기를 통과한 붉은 태양빛(Blood Ring)이 강렬하게 빛남
+    const glowRadius = earthRadius * (isEclipse ? 1.25 : 1.15);
+    const atmoGrad = ctx.createRadialGradient(
+      earthCenterX, earthCenterY, earthRadius * 0.92,
+      earthCenterX, earthCenterY, glowRadius
+    );
+    if (isEclipse) {
+      atmoGrad.addColorStop(0, '#f43f5e');
+      atmoGrad.addColorStop(0.35, 'rgba(244, 63, 94, 0.65)');
+      atmoGrad.addColorStop(1, 'transparent');
+    } else {
+      atmoGrad.addColorStop(0, '#38bdf8');
+      atmoGrad.addColorStop(0.4, 'rgba(56, 189, 248, 0.35)');
+      atmoGrad.addColorStop(1, 'transparent');
+    }
+    ctx.fillStyle = atmoGrad;
+    ctx.beginPath();
+    ctx.arc(earthCenterX, earthCenterY, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 지구 원반 클리핑 마스크
+    ctx.beginPath();
+    ctx.arc(earthCenterX, earthCenterY, earthRadius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // 3-2. 해양 기저색 (Deep Ocean)
+    ctx.fillStyle = '#041022';
+    ctx.fillRect(earthCenterX - earthRadius, earthCenterY - earthRadius, earthRadius * 2, earthRadius * 2);
+
+    // 3-3. 구면 경위도 그리드 (Graticule)
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+    ctx.lineWidth = 0.8;
+    const viewCenterLat = -lunarLat * 0.3; // 관찰 시점 위도 기울기
+
+    // 경도선
+    for (let lon = -180; lon < 180; lon += 30) {
+      ctx.beginPath();
+      let started = false;
+      for (let lat = -80; lat <= 80; lat += 8) {
+        const p = latLonTo3D(lat, lon, viewCenterLat, earthRotLon);
+        if (p.z > 0) {
+          const sx = earthCenterX + p.x * earthRadius;
+          const sy = earthCenterY - p.y * earthRadius;
+          if (!started) { ctx.moveTo(sx, sy); started = true; }
+          else ctx.lineTo(sx, sy);
+        } else {
+          started = false;
+        }
+      }
+      ctx.stroke();
+    }
+
+    // 위도선
+    for (let lat = -60; lat <= 60; lat += 30) {
+      ctx.beginPath();
+      let started = false;
+      for (let lon = -180; lon <= 180; lon += 8) {
+        const p = latLonTo3D(lat, lon, viewCenterLat, earthRotLon);
+        if (p.z > 0) {
+          const sx = earthCenterX + p.x * earthRadius;
+          const sy = earthCenterY - p.y * earthRadius;
+          if (!started) { ctx.moveTo(sx, sy); started = true; }
+          else ctx.lineTo(sx, sy);
+        } else {
+          started = false;
+        }
+      }
+      ctx.stroke();
+    }
+
+    // 3-4. 세계 대륙 폴리곤 렌더링 (태양 조명에 따라 낮/밤 색조 자동 분리)
+    CONTINENTS.forEach(poly => {
+      ctx.beginPath();
+      let validPts = 0;
+      poly.forEach(([lat, lon]) => {
+        const p = latLonTo3D(lat, lon, viewCenterLat, earthRotLon);
+        // 앞면 반구만 투영
+        if (p.z > -0.15) {
+          const normLen = Math.hypot(p.x, p.y) || 1;
+          const px = p.z > 0 ? p.x : (p.x / normLen);
+          const py = p.z > 0 ? p.y : (p.y / normLen);
+
+          const sx = earthCenterX + px * earthRadius;
+          const sy = earthCenterY - py * earthRadius;
+          if (validPts === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+          validPts++;
+        }
+      });
+      if (validPts > 2) {
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(14, 116, 144, 0.48)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+      }
+    });
+
+    // 3-5. 구면 셰이딩 (낮 반구 하이라이트 & 밤 반구 그림자 터미네이터)
+    const lightX = earthCenterX + sunVec.x * earthRadius * 0.85;
+    const lightY = earthCenterY - sunVec.y * earthRadius * 0.85;
+
+    if (sunPhaseDeg < 165 || sunPhaseDeg > 195) {
+      // 태양빛 받는 낮 영역 시안/화이트 반사광
+      const dayGrad = ctx.createRadialGradient(
+        lightX, lightY, earthRadius * 0.05,
+        lightX, lightY, earthRadius * 1.45
+      );
+      dayGrad.addColorStop(0, 'rgba(186, 230, 253, 0.42)');
+      dayGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.15)');
+      dayGrad.addColorStop(1, 'rgba(2, 3, 6, 0.92)');
+
+      ctx.fillStyle = dayGrad;
+      ctx.fillRect(earthCenterX - earthRadius, earthCenterY - earthRadius, earthRadius * 2, earthRadius * 2);
+    }
+
+    // 밤 영역 암흑 그림자 차폐 (Terminator Shadow)
+    const darkX = earthCenterX - sunVec.x * earthRadius * 1.1;
+    const darkY = earthCenterY + sunVec.y * earthRadius * 1.1;
+    const nightRadius = earthRadius * (1.25 + (1 - sunVec.z) * 0.55);
+
+    const nightGrad = ctx.createRadialGradient(
+      darkX, darkY, earthRadius * 0.2,
+      darkX, darkY, nightRadius
+    );
+    nightGrad.addColorStop(0, 'rgba(2, 3, 6, 0.96)');
+    nightGrad.addColorStop(0.65, 'rgba(2, 3, 6, 0.82)');
+    nightGrad.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = nightGrad;
+    ctx.fillRect(earthCenterX - earthRadius, earthCenterY - earthRadius, earthRadius * 2, earthRadius * 2);
+
+    // 3-6. 밤(Night-side)에 들어간 도시들의 황금빛 야경 불빛 점등!
+    CITIES.forEach(city => {
+      const p = latLonTo3D(city.lat, city.lon, viewCenterLat, earthRotLon);
+      if (p.z > 0.08) {
+        // 태양 벡터와의 내적(Dot Product)이 음수이면 지구의 '밤' 지역
+        const sunDot = p.x * sunVec.x + p.y * sunVec.y + p.z * sunVec.z;
+        if (sunDot < 0.12) {
+          const sx = earthCenterX + p.x * earthRadius;
+          const sy = earthCenterY - p.y * earthRadius;
+          const nightIntensity = Math.min(1.0, (0.12 - sunDot) * 3.0);
+
+          ctx.fillStyle = city.highlight ? `rgba(251, 191, 36, ${nightIntensity})` : `rgba(254, 240, 138, ${nightIntensity * 0.75})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, city.size, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 도쿄·서울·대구는 얇은 콜아웃 마커 표시
+          if (city.highlight && city.name === 'TOKYO' && nightIntensity > 0.4) {
+            ctx.font = '600 9px "IBM Plex Mono", monospace';
+            ctx.fillStyle = `rgba(251, 191, 36, ${nightIntensity * 0.9})`;
+            ctx.fillText('TOKYO', sx + 5, sy + 3);
+          }
+        }
+      }
+    });
+
+    // 3-7. 구면 가장자리 대기 림 라이트 (Rim Border)
+    ctx.strokeStyle = isEclipse ? 'rgba(244, 63, 94, 0.85)' : 'rgba(125, 211, 252, 0.55)';
+    ctx.lineWidth = isEclipse ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.arc(earthCenterX, earthCenterY, earthRadius - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore(); // 지구 클리핑 해제
+
+    // 4. 전경 달 표면 크레이터 지평선 (Lunar Horizon Ridges)
+    ridgeLines.forEach((pts, idx) => {
+      const layerY = horizonBaseY + idx * 24;
+      ctx.fillStyle = idx === 0 ? '#070a12' : (idx === 1 ? '#05070e' : '#030408');
+      ctx.strokeStyle = idx === 0 ? '#475569' : 'rgba(71, 85, 105, 0.45)';
+      ctx.lineWidth = idx === 0 ? 1.6 : 1.0;
+
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+      pts.forEach(pt => {
+        const px = pt.u * width;
+        const py = layerY + pt.hNoise;
+        ctx.lineTo(px, py);
+      });
+      ctx.lineTo(width, height);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    // 지평선 방위각 눈금자 (Azimuth Compass Ticks)
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    for (let x = 60; x < width; x += 120) {
+      ctx.beginPath();
+      ctx.moveTo(x, height - 12);
+      ctx.lineTo(x, height - 4);
+      ctx.stroke();
+    }
+
+    // 5. 텔레메트리 HUD 업데이트
+    const latStr = `${Math.abs(lunarLat).toFixed(1)}°${lunarLat >= 0 ? 'N' : 'S'}`;
+    const lonStr = `${Math.abs(lunarLon).toFixed(1)}°${lunarLon >= 0 ? 'E' : 'W'}`;
+    hudCoord.textContent = `${latStr}, ${lonStr}`;
+
+    hudAlt.textContent = `${altitudeDeg >= 0 ? '+' : ''}${altitudeDeg.toFixed(1)}°`;
+    hudAlt.className = altitudeDeg < 0 ? 'eclipse' : '';
+
+    const illumPct = Math.round(((1 + Math.cos(sunRad)) / 2) * 100);
+    if (isEclipse) {
+      hudPhase.textContent = `SOLAR ECLIPSE RING (${illumPct}%)`;
+      hudPhase.className = 'eclipse';
+    } else {
+      let pName = illumPct > 85 ? 'FULL EARTH' : (illumPct < 15 ? 'NEW EARTH' : (illumPct > 50 ? 'GIBBOUS' : 'CRESCENT'));
+      hudPhase.textContent = `${pName} (${illumPct}%)`;
+      hudPhase.className = '';
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  // --- 마우스 / 터치로 지구 직접 돌려보기 ---
+  let isDragging = false;
+  let lastX = 0;
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastX = e.clientX;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX;
+    lastX = e.clientX;
+    earthRotLon = (earthRotLon - dx * 0.4) % 360;
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastX = e.touches[0].clientX;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - lastX;
+    lastX = e.touches[0].clientX;
+    earthRotLon = (earthRotLon - dx * 0.4) % 360;
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  // UI 컨트롤 이벤트
+  btnLimb.addEventListener('click', () => applyPreset('limb'));
+  btnApollo.addEventListener('click', () => applyPreset('apollo'));
+  btnShackleton.addEventListener('click', () => applyPreset('shackleton'));
+  btnEclipse.addEventListener('click', () => applyPreset('eclipse'));
+
+  lonRange.addEventListener('input', (e) => {
+    clearPresetActives();
+    lunarLon = parseFloat(e.target.value);
+    hudSite.textContent = 'CUSTOM SELENOGRAPHIC';
+  });
+
+  latRange.addEventListener('input', (e) => {
+    clearPresetActives();
+    lunarLat = parseFloat(e.target.value);
+    hudSite.textContent = 'CUSTOM SELENOGRAPHIC';
+  });
+
+  phaseRange.addEventListener('input', (e) => {
+    clearPresetActives();
+    sunPhaseDeg = parseFloat(e.target.value);
+  });
+
+  btnSpin.addEventListener('click', () => {
+    isSpinning = !isSpinning;
+    btnSpin.classList.toggle('active', isSpinning);
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    initStars();
+  });
+
+  // 초기화 및 시작
+  initStars();
+  initLunarTerrain();
+  applyPreset('limb');
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>

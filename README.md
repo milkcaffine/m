@@ -46,4 +46,4 @@ If a new page uses Tailwind, add it to `content` in `tailwind.config.js` and lin
 
 Self-contained browser-side experiments across writing, darkroom optics, sound, space dynamics, generative life, and arcade — open `index.html` for the live list (filter search, drawer toggle, random jump, and favorites stored in `localStorage`).
 
-Notable space tools: `orrery.html`, `lagrange.html`, `earth-orbit.html` (LEO/GEO + Moon + Lagrange), `vortex.html`.
+Notable space tools: `orrery.html`, `lagrange.html`, `earth-orbit.html` (LEO/GEO + Moon + Lagrange), `earthrise.html`, `vortex.html`.
