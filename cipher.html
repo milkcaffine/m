@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Marsko lab tool — cryptographic cipher & codec terminal.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#020306">
+  <title>Cryptographic Codec Terminal // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* 상단 헤더 */
+    header {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(8, 12, 22, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+    .telemetry-inline {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      display: flex;
+      gap: 14px;
+    }
+    .telemetry-inline strong { color: #38bdf8; }
+
+    /* 메인 컨테이너 */
+    .container {
+      flex: 1;
+      max-width: 960px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* 암호화 모드 선택 바 */
+    .mode-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px;
+    }
+    .mode-btn {
+      background: #141d2e;
+      border: 1px solid #26334d;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .mode-btn:hover { color: #f8fafc; border-color: #475569; }
+    .mode-btn.active {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+    /* 옵션 서브 바 (시프트 키 / 스텔스 커버 문구 / 글리치 강도) */
+    .sub-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 8px 12px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+    .opt-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .opt-input {
+      background: #090d16;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      outline: none;
+    }
+    .opt-input:focus { border-color: #38bdf8; }
+
+    /* 듀얼 에디터 그리드 */
+    .dual-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      flex: 1;
+    }
+    @media (min-width: 768px) {
+      .dual-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      background: rgba(8, 12, 22, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      min-height: 240px;
+    }
+    .panel-header {
+      padding: 8px 12px;
+      background: rgba(15, 23, 42, 0.65);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+    }
+    .panel-title {
+      font-weight: 600;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot-indicator {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 6px #38bdf8;
+    }
+    .dot-indicator.amber {
+      background: #fbbf24;
+      box-shadow: 0 0 6px #fbbf24;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .act-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.66rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .act-btn:hover { background: #334155; color: #38bdf8; }
+    .act-btn.accent {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: rgba(52, 211, 153, 0.4);
+      color: #34d399;
+    }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: #f8fafc;
+      padding: 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.84rem;
+      line-height: 1.65;
+      resize: none;
+      outline: none;
+    }
+    textarea::placeholder { color: #475569; }
+    #cipherInput { color: #38bdf8; }
+
+    /* 하단 스펙트럼 & 상태 바 */
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(8, 12, 22, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+    #statusMsg { color: #34d399; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="index.html" class="home-link">← marsko</a>
+    <h1>CRYPTOGRAPHIC CODEC TERMINAL</h1>
+  </div>
+  <div class="telemetry-inline">
+    <div>ENTROPY: <strong id="hudEntropy">0.00</strong> bits</div>
+    <div>BYTES: <strong id="hudBytes">0</strong> B</div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- 8종 코덱 선택 탭 -->
+  <div class="mode-bar">
+    <button type="button" class="mode-btn active" data-mode="binary">0101 이진수 (Binary)</button>
+    <button type="button" class="mode-btn" data-mode="morse">모스 부호 (한/영/숫자)</button>
+    <button type="button" class="mode-btn" data-mode="hex">16진수 덤프 (HEX)</button>
+    <button type="button" class="mode-btn" data-mode="stealth">투명 스텔스 은닉 (Zero-Width)</button>
+    <button type="button" class="mode-btn" data-mode="zalgo">글리치 오염 (Zalgo)</button>
+    <button type="button" class="mode-btn" data-mode="arecibo">우주 전파 펄스 (░▓)</button>
+    <button type="button" class="mode-btn" data-mode="shift">카이사르 시프트 (Cipher)</button>
+    <button type="button" class="mode-btn" data-mode="base64">Base64 패킷</button>
+  </div>
+
+  <!-- 모드별 부가 설정 줄 -->
+  <div class="sub-options">
+    <div id="modeDesc">UTF-8 바이트 스트림을 8비트 0과 1의 기계어 이진수로 양방향 변환합니다.</div>
+
+    <!-- 카이사르 시프트 키 설정 -->
+    <div class="opt-group" id="optShift" style="display: none;">
+      <span>SHIFT KEY:</span>
+      <input type="number" id="shiftKeyInput" class="opt-input" value="7" min="1" max="50" style="width: 55px;">
+    </div>
+
+    <!-- 투명 스텔스 위장 문구 설정 -->
+    <div class="opt-group" id="optStealth" style="display: none;">
+      <span>겉표지 위장 문구:</span>
+      <input type="text" id="stealthCoverInput" class="opt-input" value="Tokyo, after rain." style="width: 170px;">
+    </div>
+
+    <!-- 글리치 오염 밀도 설정 -->
+    <div class="opt-group" id="optZalgo" style="display: none;">
+      <span>오염 강도:</span>
+      <input type="range" id="zalgoLevelInput" min="1" max="12" value="4" style="accent-color:#38bdf8;">
+    </div>
+  </div>
+
+  <!-- 양방향 에디터 패널 -->
+  <div class="dual-grid">
+    <!-- 좌측: 평문 (Plaintext) -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot-indicator"></span>
+          <span>PLAINTEXT (원문 입력)</span>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="act-btn" id="btnSample">샘플 문장</button>
+          <button type="button" class="act-btn" id="btnCopyPlain">원문 복사</button>
+          <button type="button" class="act-btn" id="btnClear">지우기</button>
+        </div>
+      </div>
+      <textarea id="plainInput" placeholder="여기에 평문(한글, 영어, 일본어 등)을 입력하면 오른쪽에 실시간 암호화됩니다..."></textarea>
+    </div>
+
+    <!-- 우측: 암호문 (Ciphertext / Encoded) -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot-indicator amber"></span>
+          <span id="cipherTitle">CIPHERTEXT (BINARY STREAM)</span>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="act-btn accent" id="btnAutoDetect" title="암호 종류를 자동으로 분석해 원문으로 해독합니다">🔍 자동 해독</button>
+          <button type="button" class="act-btn" id="btnPlayModem" title="암호 패킷을 모뎀 주파수 소리로 재생합니다">🔊 모뎀음 송출</button>
+          <button type="button" class="act-btn" id="btnCopyCipher">암호 복사</button>
+        </div>
+      </div>
+      <textarea id="cipherInput" placeholder="여기에 암호문(0101, 모스 부호, 16진수, 투명 스텔스 문장 등)을 붙여넣으면 왼쪽으로 즉시 복호화(Decode)됩니다..."></textarea>
+    </div>
+  </div>
+
+  <!-- 하단 상태 표시줄 -->
+  <div class="footer-bar">
+    <span>BI-DIRECTIONAL REALTIME CODEC // UTF-8 & KOREAN MORSE SUPPORTED</span>
+    <span id="statusMsg">READY</span>
+  </div>
+</div>
+
+<script>
+  const plainInput = document.getElementById('plainInput');
+  const cipherInput = document.getElementById('cipherInput');
+  const cipherTitle = document.getElementById('cipherTitle');
+  const modeDesc = document.getElementById('modeDesc');
+  const statusMsg = document.getElementById('statusMsg');
+  const hudEntropy = document.getElementById('hudEntropy');
+  const hudBytes = document.getElementById('hudBytes');
+
+  const optShift = document.getElementById('optShift');
+  const optStealth = document.getElementById('optStealth');
+  const optZalgo = document.getElementById('optZalgo');
+
+  const shiftKeyInput = document.getElementById('shiftKeyInput');
+  const stealthCoverInput = document.getElementById('stealthCoverInput');
+  const zalgoLevelInput = document.getElementById('zalgoLevelInput');
+
+  let currentMode = 'binary';
+
+  // 모드 설명 사전
+  const MODE_INFO = {
+    binary:  { title: 'BINARY STREAM (0101)', desc: 'UTF-8 바이트 스트림을 8비트 0과 1의 기계어 이진수로 양방향 변환합니다.' },
+    morse:   { title: 'MORSE CODE (· -)', desc: '국제 모스 부호 및 한글 자모(초·중·종성) 분해 규격으로 변환/해독합니다.' },
+    hex:     { title: 'HEXADECIMAL DUMP', desc: '메모리 코어 덤프 스타일의 16진수(00~FF) 바이트 배열로 변환합니다.' },
+    stealth: { title: 'ZERO-WIDTH STEALTH', desc: '겉표지 문장 속에 눈에 보이지 않는 투명 유니코드 비트(U+200B)로 비밀 문장을 숨깁니다.' },
+    zalgo:   { title: 'ZALGO GLITCH CORRUPTION', desc: '글자 위아래에 노이즈 기호를 증식시켜 깨진 텍스트로 오염시키고, 디코드 시 깨끗하게 정화합니다.' },
+    arecibo: { title: 'ARECIBO RADIO PULSE', desc: '아레시보 전파 망원경 성간 메시지 스타일의 펄스 블록(░, ▓)으로 변환합니다.' },
+    shift:   { title: 'CAESAR / UNICODE SHIFT', desc: '모든 문자의 유니코드 위상을 지정한 키(Key)만큼 회전시켜 암호화합니다.' },
+    base64:  { title: 'BASE64 DATA PACKET', desc: '다국어 UTF-8 문자열을 손실 없는 표준 Base64 통신 패킷으로 인코딩합니다.' }
+  };
+
+  // --- 한글 자모 분해 및 모스 부호 테이블 ---
+  const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+  const JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+
+  const MORSE_MAP = {
+    'A':'.-', 'B':'-...', 'C':'-.-.', 'D':'-..', 'E':'.', 'F':'..-.', 'G':'--.', 'H':'....',
+    'I':'..', 'J':'.---', 'K':'-.-', 'L':'.-..', 'M':'--', 'N':'-.', 'O':'---', 'P':'.--.',
+    'Q':'--.-', 'R':'.-.', 'S':'...', 'T':'-', 'U':'..-', 'V':'...-', 'W':'.--', 'X':'-..-',
+    'Y':'-.--', 'Z':'--..',
+    '1':'.----', '2':'..---', '3':'...--', '4':'....-', '5':'.....',
+    '6':'-....', '7':'--...', '8':'---..', '9':'----.', '0':'-----',
+    '.':'.-.-.-', ',':'--..--', '?':'..--..', '!':'-.-.--', '/':'-..-.',
+    // 한글 자모 모스 (SK표준 + 확장 합성모음)
+    'ㄱ':'.-..', 'ㄴ':'..-.', 'ㄷ':'-...', 'ㄹ':'...-', 'ㅁ':'--', 'ㅂ':'.--', 'ㅅ':'--.',
+    'ㅇ':'-.-', 'ㅈ':'.--.', 'ㅊ':'-.-.', 'ㅋ':'-..-', 'ㅌ':'--..', 'ㅍ':'---', 'ㅎ':'.---',
+    'ㄲ':'.-....-..', 'ㄸ':'-...-...', 'ㅃ':'.--.--', 'ㅆ':'--.--.', 'ㅉ':'.--..--.',
+    'ㅏ':'.', 'ㅑ':'..', 'ㅓ':'-', 'ㅕ':'...', 'ㅗ':'.-', 'ㅛ':'-.', 'ㅜ':'....', 'ㅠ':'.-.',
+    'ㅡ':'-..', 'ㅣ':'..-', 'ㅐ':'--.-', 'ㅔ':'-.--', 'ㅒ':'..--.-', 'ㅖ':'...-.--',
+    'ㅘ':'.-.', 'ㅙ':'.---.-', 'ㅚ':'.-..-', 'ㅝ':'....-', 'ㅞ':'....-.--', 'ㅟ':'......-', 'ㅢ':'-....-'
+  };
+
+  const MORSE_REV = {};
+  Object.keys(MORSE_MAP).forEach(k => { MORSE_REV[MORSE_MAP[k]] = k; });
+
+  // 한글 음절 -> 자모 분해
+  function decomposeHangul(str) {
+    let result = '';
+    for (let ch of str) {
+      const code = ch.charCodeAt(0);
+      if (code >= 0xAC00 && code <= 0xD7A3) {
+        const offset = code - 0xAC00;
+        const c = Math.floor(offset / 588);
+        const j = Math.floor((offset % 588) / 28);
+        const k = offset % 28;
+        result += CHO[c] + JUNG[j] + (JONG[k] || '');
+      } else {
+        result += ch;
+      }
+    }
+    return result;
+  }
+
+  // --- 코덱 변환 엔진 ---
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  function textToBytes(str) {
+    return Array.from(encoder.encode(str));
+  }
+
+  function bytesToText(bytes) {
+    try {
+      return decoder.decode(new Uint8Array(bytes));
+    } catch (e) {
+      return '[디코딩 오류: 손상된 바이트 스트림]';
+    }
+  }
+
+  // Zero-Width 투명 스텔스 문자 상수
+  const ZW_ZERO = '\u200B'; // Zero-Width Space (0)
+  const ZW_ONE  = '\u200C'; // Zero-Width Non-Joiner (1)
+  const ZW_SEP  = '\u200D'; // Zero-Width Joiner (구분자)
+
+  // Zalgo 결합 문자 영역 (0x0300 ~ 0x036F)
+  function isZalgoMark(code) {
+    return code >= 0x0300 && code <= 0x036F;
+  }
+
+  // 1. 인코딩 (Plain -> Cipher)
+  function encodeText(plain) {
+    if (!plain) return '';
+
+    switch (currentMode) {
+      case 'binary': {
+        return textToBytes(plain).map(b => b.toString(2).padStart(8, '0')).join(' ');
+      }
+      case 'hex': {
+        return textToBytes(plain).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      }
+      case 'arecibo': {
+        return textToBytes(plain)
+          .map(b => b.toString(2).padStart(8, '0').replace(/0/g, '░').replace(/1/g, '▓'))
+          .join(' ');
+      }
+      case 'morse': {
+        const decomposed = decomposeHangul(plain.toUpperCase());
+        const tokens = [];
+        for (let ch of decomposed) {
+          if (ch === ' ' || ch === '\n') {
+            tokens.push('/');
+          } else if (MORSE_MAP[ch]) {
+            tokens.push(MORSE_MAP[ch]);
+          }
+        }
+        return tokens.join(' ');
+      }
+      case 'stealth': {
+        const cover = stealthCoverInput.value || 'Tokyo, after rain.';
+        const bitStream = textToBytes(plain)
+          .map(b => b.toString(2).padStart(8, '0').split('').map(bit => bit === '1' ? ZW_ONE : ZW_ZERO).join(''))
+          .join(ZW_SEP);
+        // 겉표지 문장의 첫 글자 바로 뒤에 투명 비트열 삽입
+        return cover.slice(0, 1) + bitStream + cover.slice(1);
+      }
+      case 'zalgo': {
+        const level = parseInt(zalgoLevelInput.value, 10) || 4;
+        let out = '';
+        for (let ch of plain) {
+          out += ch;
+          if (ch !== ' ' && ch !== '\n') {
+            for (let i = 0; i < level; i++) {
+              const mark = 0x0300 + Math.floor(Math.random() * 0x70);
+              out += String.fromCharCode(mark);
+            }
+          }
+        }
+        return out;
+      }
+      case 'shift': {
+        const key = parseInt(shiftKeyInput.value, 10) || 7;
+        return Array.from(plain).map(ch => {
+          if (ch === ' ' || ch === '\n') return ch;
+          return String.fromCodePoint(ch.codePointAt(0) + key);
+        }).join('');
+      }
+      case 'base64': {
+        const bytes = textToBytes(plain);
+        let binStr = '';
+        bytes.forEach(b => { binStr += String.fromCharCode(b); });
+        return btoa(binStr);
+      }
+    }
+    return '';
+  }
+
+  // 2. 디코딩 (Cipher -> Plain)
+  function decodeText(cipher) {
+    if (!cipher) return '';
+
+    switch (currentMode) {
+      case 'binary': {
+        const cleaned = cipher.replace(/[^01]/g, '');
+        const bytes = [];
+        for (let i = 0; i + 8 <= cleaned.length; i += 8) {
+          bytes.push(parseInt(cleaned.slice(i, i + 8), 2));
+        }
+        return bytesToText(bytes);
+      }
+      case 'hex': {
+        const cleaned = cipher.replace(/[^0-9A-Fa-f]/g, '');
+        const bytes = [];
+        for (let i = 0; i + 2 <= cleaned.length; i += 2) {
+          bytes.push(parseInt(cleaned.slice(i, i + 2), 16));
+        }
+        return bytesToText(bytes);
+      }
+      case 'arecibo': {
+        const bin = cipher.replace(/░/g, '0').replace(/▓/g, '1').replace(/[^01]/g, '');
+        const bytes = [];
+        for (let i = 0; i + 8 <= bin.length; i += 8) {
+          bytes.push(parseInt(bin.slice(i, i + 8), 2));
+        }
+        return bytesToText(bytes);
+      }
+      case 'morse': {
+        return cipher.trim().split(/\s+/).map(token => {
+          if (token === '/') return ' ';
+          return MORSE_REV[token] || '';
+        }).join('');
+      }
+      case 'stealth': {
+        // 문자열에서 보이지 않는 유니코드만 추출해 복호화
+        const hiddenChars = Array.from(cipher).filter(c => c === ZW_ZERO || c === ZW_ONE || c === ZW_SEP).join('');
+        if (!hiddenChars) return '[숨겨진 스텔스 데이터가 없습니다]';
+        const byteStrings = hiddenChars.split(ZW_SEP);
+        const bytes = byteStrings.map(bStr => {
+          const bin = Array.from(bStr).map(c => c === ZW_ONE ? '1' : '0').join('');
+          return parseInt(bin, 2);
+        }).filter(n => !isNaN(n));
+        return bytesToText(bytes);
+      }
+      case 'zalgo': {
+        // 오염된 발음 기호(0x0300~0x036F)만 싹 제거해 원문 정화
+        return Array.from(cipher).filter(ch => !isZalgoMark(ch.charCodeAt(0))).join('');
+      }
+      case 'shift': {
+        const key = parseInt(shiftKeyInput.value, 10) || 7;
+        return Array.from(cipher).map(ch => {
+          if (ch === ' ' || ch === '\n') return ch;
+          return String.fromCodePoint(Math.max(0, ch.codePointAt(0) - key));
+        }).join('');
+      }
+      case 'base64': {
+        try {
+          const binStr = atob(cipher.trim());
+          const bytes = Array.from(binStr).map(c => c.charCodeAt(0));
+          return bytesToText(bytes);
+        } catch (e) {
+          return '[유효하지 않은 Base64 패킷]';
+        }
+      }
+    }
+    return '';
+  }
+
+  // --- 섀넌 엔트로피(Shannon Entropy) 및 바이트 계산 ---
+  function updateTelemetry(str) {
+    const bytes = textToBytes(str);
+    hudBytes.textContent = bytes.length.toLocaleString();
+
+    if (bytes.length === 0) {
+      hudEntropy.textContent = '0.00';
+      return;
+    }
+    const freq = {};
+    bytes.forEach(b => { freq[b] = (freq[b] || 0) + 1; });
+    let entropy = 0;
+    const len = bytes.length;
+    Object.values(freq).forEach(count => {
+      const p = count / len;
+      entropy -= p * Math.log2(p);
+    });
+    hudEntropy.textContent = entropy.toFixed(2);
+  }
+
+  // --- 스마트 자동 감지 해독기 (Auto-Detect) ---
+  function autoDetectAndDecode() {
+    const raw = cipherInput.value.trim();
+    if (!raw) return;
+
+    // 1. 투명 스텔스 문자 포함 여부 검사
+    if (raw.includes(ZW_ZERO) || raw.includes(ZW_ONE)) {
+      setMode('stealth', false);
+      plainInput.value = decodeText(raw);
+      showToast('투명 스텔스(Zero-Width) 은닉 데이터를 감지해 해독했습니다!');
+      return;
+    }
+    // 2. Zalgo 오염 문자 검사
+    if (Array.from(raw).some(ch => isZalgoMark(ch.charCodeAt(0)))) {
+      setMode('zalgo', false);
+      plainInput.value = decodeText(raw);
+      showToast('Zalgo 글리치 오염을 제거하고 원문을 복구했습니다!');
+      return;
+    }
+    // 3. 아레시보 전파 기호 검사
+    if (raw.includes('░') || raw.includes('▓')) {
+      setMode('arecibo', false);
+      plainInput.value = decodeText(raw);
+      showToast('아레시보 전파 펄스를 감지해 해독했습니다!');
+      return;
+    }
+    // 4. 이진수(0101) 검사
+    if (/^[01\s]+$/.test(raw) && raw.replace(/\s/g, '').length >= 8) {
+      setMode('binary', false);
+      plainInput.value = decodeText(raw);
+      showToast('8비트 이진수 스트림을 감지해 해독했습니다!');
+      return;
+    }
+    // 5. 모스 부호 검사
+    if (/^[.\-\/\s]+$/.test(raw)) {
+      setMode('morse', false);
+      plainInput.value = decodeText(raw);
+      showToast('모스 부호 신호를 감지해 해독했습니다!');
+      return;
+    }
+    // 6. 16진수 덤프 검사
+    if (/^[0-9a-fA-F\s]+$/.test(raw) && raw.length >= 4) {
+      setMode('hex', false);
+      plainInput.value = decodeText(raw);
+      showToast('16진수 HEX 덤프를 감지해 해독했습니다!');
+      return;
+    }
+
+    // 7. 기본 Base64 시도
+    setMode('base64', false);
+    plainInput.value = decodeText(raw);
+    showToast('Base64 패킷으로 해독을 시도했습니다.');
+  }
+
+  // --- Web Audio API 데이터 모뎀 사운드 송출기 (FSK Modem Chirp) ---
+  let audioCtx = null;
+  function playDataModemSound() {
+    const text = plainInput.value || 'marsko';
+    const bytes = textToBytes(text).slice(0, 24); // 최대 24바이트 송출
+
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'square';
+    gain.gain.setValueAtTime(0.12, now);
+
+    let t = now;
+    bytes.forEach(byte => {
+      for (let bit = 7; bit >= 0; bit--) {
+        const isOne = (byte >> bit) & 1;
+        // FSK 변조: 1이면 1850Hz, 0이면 1150Hz
+        osc.frequency.setValueAtTime(isOne ? 1850 : 1150, t);
+        t += 0.018;
+      }
+    });
+
+    gain.gain.setValueAtTime(0.12, t - 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(t + 0.06);
+
+    showToast('데이터 패킷 FSK 모뎀 주파수 송출 중...');
+  }
+
+  function showToast(msg) {
+    statusMsg.textContent = msg;
+    statusMsg.style.color = '#38bdf8';
+    setTimeout(() => {
+      statusMsg.textContent = 'READY';
+      statusMsg.style.color = '#34d399';
+    }, 2600);
+  }
+
+  // 모드 전환 함수
+  function setMode(mode, reEncode = true) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+    });
+
+    cipherTitle.textContent = `CIPHERTEXT (${MODE_INFO[mode].title})`;
+    modeDesc.textContent = MODE_INFO[mode].desc;
+
+    optShift.style.display = mode === 'shift' ? 'flex' : 'none';
+    optStealth.style.display = mode === 'stealth' ? 'flex' : 'none';
+    optZalgo.style.display = mode === 'zalgo' ? 'flex' : 'none';
+
+    if (reEncode) {
+      cipherInput.value = encodeText(plainInput.value);
+      updateTelemetry(plainInput.value);
+    }
+  }
+
+  // 이벤트 리스너
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.getAttribute('data-mode'), true));
+  });
+
+  plainInput.addEventListener('input', () => {
+    cipherInput.value = encodeText(plainInput.value);
+    updateTelemetry(plainInput.value);
+  });
+
+  cipherInput.addEventListener('input', () => {
+    plainInput.value = decodeText(cipherInput.value);
+    updateTelemetry(plainInput.value);
+  });
+
+  [shiftKeyInput, stealthCoverInput, zalgoLevelInput].forEach(inp => {
+    inp.addEventListener('input', () => {
+      cipherInput.value = encodeText(plainInput.value);
+    });
+  });
+
+  document.getElementById('btnSample').addEventListener('click', () => {
+    plainInput.value = '비 내리는 도쿄의 밤, 우라이나리 카페에서 신호를 보낸다. // SYS://marsko';
+    cipherInput.value = encodeText(plainInput.value);
+    updateTelemetry(plainInput.value);
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    plainInput.value = '';
+    cipherInput.value = '';
+    updateTelemetry('');
+  });
+
+  document.getElementById('btnCopyPlain').addEventListener('click', () => {
+    navigator.clipboard.writeText(plainInput.value);
+    showToast('원문이 클립보드에 복사되었습니다.');
+  });
+
+  document.getElementById('btnCopyCipher').addEventListener('click', () => {
+    navigator.clipboard.writeText(cipherInput.value);
+    showToast(currentMode === 'stealth' ? '겉표지 문장(스텔스 암호 포함)이 복사되었습니다!' : '암호문이 클립보드에 복사되었습니다.');
+  });
+
+  document.getElementById('btnAutoDetect').addEventListener('click', autoDetectAndDecode);
+  document.getElementById('btnPlayModem').addEventListener('click', playDataModemSound);
+
+  // 초기 샘플 로드
+  plainInput.value = 'unclean vision // projected souls leak through';
+  cipherInput.value = encodeText(plainInput.value);
+  updateTelemetry(plainInput.value);
+</script>
+
+</body>
+</html>
