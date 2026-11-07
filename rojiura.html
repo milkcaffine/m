@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#030407">
+  <meta name="description" content="Marsko lab tool — rojiura. 도쿄 폭 1m 비유클리드 빗속 골목길과 숨겨진 심야 카페 [우라이나리] 탐색 텍스트-비주얼 인터랙티브.">
+  <title>Rojiura 1.0m // Café Urainari // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #alleyCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 골목 상태 텔레메트리 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(8, 12, 22, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.65;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .amber { color: #fbbf24; text-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
+
+    /* 하단 내러티브 독백 캡션 */
+    .narrative-box {
+      position: absolute;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 460px;
+      background: rgba(6, 9, 16, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-left: 3px solid #fbbf24;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: #e2e8f0;
+      line-height: 1.55;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      pointer-events: none;
+      transition: all 0.25s ease;
+    }
+    .narrative-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    /* 하단 이동 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 12, 22, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+      overflow-x: auto;
+    }
+    .nav-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.78rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .nav-btn:hover {
+      background: #334155;
+      border-color: #fbbf24;
+      color: #fbbf24;
+    }
+    .nav-btn:active {
+      transform: scale(0.96);
+    }
+    .nav-btn.coffee-btn {
+      background: rgba(251, 191, 36, 0.2);
+      border-color: #fbbf24;
+      color: #fbbf24;
+      display: none;
+    }
+
+    @media (max-width: 680px) {
+      .telemetry-card {
+        font-size: 0.6rem;
+        padding: 6px 8px;
+        min-width: 140px;
+        max-width: 48vw;
+      }
+      .narrative-box {
+        bottom: 74px;
+        font-size: 0.72rem;
+        padding: 8px 12px;
+        max-width: 92%;
+      }
+      .control-dock {
+        bottom: 10px;
+        padding: 6px 10px;
+        gap: 6px;
+      }
+      .nav-btn {
+        padding: 6px 10px;
+        font-size: 0.72rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>ROJIURA 1.0m // URAINARI</h1>
+  <div class="hud-meta">NON-EUCLIDEAN BACK ALLEY · FIND THE HIDDEN CAFÉ</div>
+</header>
+
+<div class="telemetry-card">
+  <div>ALLEY WIDTH: <strong>0.98 m</strong></div>
+  <div>SIGNAL SYNC: <strong id="hudDepth" class="amber">0 / 6</strong></div>
+  <div>STEPS TAKEN: <strong id="hudSteps">0</strong></div>
+  <div>AMBIENT: <strong id="hudWeather">RAIN · 02:14 AM</strong></div>
+</div>
+
+<canvas id="alleyCanvas"></canvas>
+
+<div class="narrative-box" id="narrativeBox">
+  <div id="narrativeText">비에 젖은 폭 1미터의 좁은 골목이다. 호박색 불빛이나 여우 석상의 시선이 가리키는 쪽을 따라가야 길을 잃지 않는다.</div>
+  <div class="narrative-sub" id="narrativeHint">CLUE: 바닥 물웅덩이나 전선, 여우 석상의 방향을 관찰하세요 [← / ↑ / →]</div>
+</div>
+
+<div class="control-dock">
+  <button type="button" class="nav-btn" id="btnLeft">← 좌측 골목</button>
+  <button type="button" class="nav-btn" id="btnForward">↑ 직진</button>
+  <button type="button" class="nav-btn" id="btnRight">우측 골목 →</button>
+  <button type="button" class="nav-btn coffee-btn" id="btnReset">☕ 다시 골목 입구로</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('alleyCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const hudDepth = document.getElementById('hudDepth');
+  const hudSteps = document.getElementById('hudSteps');
+  const narrativeText = document.getElementById('narrativeText');
+  const narrativeHint = document.getElementById('narrativeHint');
+
+  const btnLeft = document.getElementById('btnLeft');
+  const btnForward = document.getElementById('btnForward');
+  const btnRight = document.getElementById('btnRight');
+  const btnReset = document.getElementById('btnReset');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // --- Web Audio API 프로시저럴 빗소리 & 발소리 & 풍경(풍령) 소리 ---
+  let audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function playFootstepSound(isCorrect) {
+    initAudio();
+    const now = audioCtx.currentTime;
+
+    // 1. 젖은 아스팔트 웅덩이 발소리 (Filtered Noise)
+    const bufferSize = audioCtx.sampleRate * 0.09;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.025));
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = isCorrect ? 950 : 420;
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.25;
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    noise.start(now);
+
+    // 2. 올바른 길일 때 은은하게 울리는 신사 풍경/재즈 화음 공명
+    if (isCorrect) {
+      const osc = audioCtx.createOscillator();
+      const oGain = audioCtx.createGain();
+      osc.type = 'sine';
+      const notes = [523.25, 659.25, 783.99, 987.77, 1046.5, 1318.5];
+      osc.frequency.setValueAtTime(notes[Math.min(5, depth)], now + 0.05);
+      oGain.gain.setValueAtTime(0.08, now + 0.05);
+      oGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc.connect(oGain);
+      oGain.connect(audioCtx.destination);
+      osc.start(now + 0.05);
+      osc.stop(now + 0.56);
+    }
+  }
+
+  function playArrivalChord() {
+    initAudio();
+    const now = audioCtx.currentTime;
+    // 따뜻한 재즈 메이저 세븐스 코드 (Fmaj7)
+    [349.23, 440.00, 523.25, 659.25].forEach((freq, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+      gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now + idx * 0.08);
+      osc.stop(now + 2.5);
+    });
+  }
+
+  // --- 게임 상태 ---
+  const TARGET_DEPTH = 6;
+  let depth = 0;
+  let steps = 0;
+  let arrived = false;
+
+  let currentNode = {
+    answer: 'forward',
+    clueType: 'fox',
+    pipesLeft: true,
+    vendingRight: false,
+    seed: 0
+  };
+
+  let walkAnim = 0;
+  let turnDir = 0;
+  let timeTick = 0;
+  let rainDrops = [];
+
+  function initRain() {
+    rainDrops = [];
+    for (let i = 0; i < 90; i++) {
+      rainDrops.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        len: Math.random() * 18 + 10,
+        speed: Math.random() * 9 + 12
+      });
+    }
+  }
+
+  function generateNextNode() {
+    const dirs = ['left', 'forward', 'right'];
+    const clues = ['fox', 'puddle', 'wire'];
+
+    currentNode = {
+      answer: dirs[Math.floor(Math.random() * dirs.length)],
+      clueType: clues[Math.floor(Math.random() * clues.length)],
+      pipesLeft: Math.random() > 0.3,
+      vendingRight: Math.random() > 0.4,
+      seed: Math.random()
+    };
+
+    if (arrived) {
+      narrativeText.textContent = '마침내 골목 끝에서 따뜻한 커피 향과 진공관 앰프의 재즈 선율이 새어 나온다. [카페 우라이나리]에 도착했다.';
+      narrativeHint.textContent = 'ARRIVED AT CAFÉ URAINARI · TOKYO BACK ALLEY';
+      return;
+    }
+
+    const clueDesc = {
+      fox: '이끼 낀 작은 여우 석상(稲荷)의 호박색 눈동자가 한쪽 골목을 가만히 응시하고 있다.',
+      puddle: '발밑의 빗물 고인 웅덩이 위로 어디선가 새어 나온 따뜻한 호박색 네온이 한쪽에만 비친다.',
+      wire: '머리 위 좁게 얽힌 전깃줄 사이로 작은 여우불 전구 하나가 갈림길 한쪽에서 깜빡인다.'
+    };
+    narrativeText.textContent = clueDesc[currentNode.clueType];
+    narrativeHint.textContent = `SYNC LEVEL: ${depth} / ${TARGET_DEPTH} · 단서가 가리키는 방향을 선택하세요`;
+  }
+
+  function makeMove(choice) {
+    if (arrived || walkAnim > 0) return;
+
+    steps++;
+    hudSteps.textContent = steps;
+    turnDir = choice === 'left' ? -1 : (choice === 'right' ? 1 : 0);
+    walkAnim = 1.0;
+
+    const isCorrect = (choice === currentNode.answer);
+    playFootstepSound(isCorrect);
+
+    setTimeout(() => {
+      if (isCorrect) {
+        depth++;
+        if (depth >= TARGET_DEPTH) {
+          arrived = true;
+          playArrivalChord();
+          btnLeft.style.display = 'none';
+          btnForward.style.display = 'none';
+          btnRight.style.display = 'none';
+          btnReset.style.display = 'inline-block';
+        }
+      } else {
+        depth = Math.max(0, depth - 1);
+        narrativeText.textContent = '발소리가 기묘하게 메아리치더니 방금 지나온 골목으로 되돌아와 버렸다... 단서를 다시 살펴보자.';
+      }
+      hudDepth.textContent = `${depth} / ${TARGET_DEPTH}`;
+      if (!arrived && isCorrect) generateNextNode();
+      else if (!arrived && !isCorrect) {
+        setTimeout(() => generateNextNode(), 600);
+      } else if (arrived) {
+        generateNextNode();
+      }
+    }, 320);
+  }
+
+  // --- 1인칭 폭 1m 골목 와이어프레임 & 단서 렌더링 ---
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    timeTick += 0.02;
+    if (walkAnim > 0) {
+      walkAnim = Math.max(0, walkAnim - 0.06);
+    }
+
+    const bobY = Math.sin((1 - walkAnim) * Math.PI * 2) * (walkAnim > 0 ? 10 : Math.sin(timeTick * 1.5) * 2);
+    const vanishX = width * 0.5 - turnDir * (1 - walkAnim) * (walkAnim > 0 ? 45 : 0);
+    const vanishY = height * 0.44 + bobY;
+
+    const alleyHalfW = Math.min(width * 0.36, 260);
+    const leftWallX = width * 0.5 - alleyHalfW;
+    const rightWallX = width * 0.5 + alleyHalfW;
+
+    ctx.save();
+
+    const slices = 7;
+    const zoomOffset = walkAnim > 0 ? (1 - walkAnim) : 0;
+
+    for (let i = 0; i < slices; i++) {
+      const z = (i + 1 - zoomOffset) / slices;
+      const invZ = Math.pow(1 - z * 0.82, 1.4);
+
+      const xL = vanishX - alleyHalfW * invZ;
+      const xR = vanishX + alleyHalfW * invZ;
+      const yT = vanishY - (height * 0.45) * invZ;
+      const yB = vanishY + (height * 0.45) * invZ;
+
+      const alpha = (1 - z) * 0.45;
+      ctx.strokeStyle = arrived ? `rgba(251, 191, 36, ${alpha})` : `rgba(56, 189, 248, ${alpha})`;
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(xL, yT, xR - xL, yB - yT);
+
+      if (i % 2 === 0 && currentNode.pipesLeft) {
+        ctx.strokeStyle = `rgba(148, 163, 184, ${alpha * 0.8})`;
+        ctx.strokeRect(xL + 2, yB - (yB - yT) * 0.35, (xR - xL) * 0.12, (yB - yT) * 0.22);
+      }
+
+      ctx.strokeStyle = `rgba(100, 116, 139, ${alpha * 0.9})`;
+      ctx.beginPath();
+      ctx.moveTo(xL, yT + (yB - yT) * 0.12);
+      ctx.quadraticCurveTo(vanishX, yT + (yB - yT) * 0.22, xR, yT + (yB - yT) * 0.10);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(leftWallX, 0); ctx.lineTo(vanishX - alleyHalfW * 0.16, vanishY - height * 0.08);
+    ctx.moveTo(leftWallX, height * 0.9); ctx.lineTo(vanishX - alleyHalfW * 0.16, vanishY + height * 0.08);
+    ctx.moveTo(rightWallX, 0); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY - height * 0.08);
+    ctx.moveTo(rightWallX, height * 0.9); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY + height * 0.08);
+    ctx.stroke();
+
+    if (arrived) {
+      const cw = alleyHalfW * 0.55;
+      const ch = height * 0.26;
+      const cx = vanishX;
+      const cy = vanishY;
+
+      const cafeGlow = ctx.createRadialGradient(cx, cy, 5, cx, cy, cw * 1.8);
+      cafeGlow.addColorStop(0, 'rgba(251, 191, 36, 0.55)');
+      cafeGlow.addColorStop(0.5, 'rgba(245, 158, 11, 0.2)');
+      cafeGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = cafeGlow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, cw * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1c1208';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.fillRect(cx - cw * 0.5, cy - ch * 0.5, cw, ch);
+      ctx.strokeRect(cx - cw * 0.5, cy - ch * 0.5, cw, ch);
+
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.82)';
+      ctx.fillRect(cx - cw * 0.38, cy - ch * 0.35, cw * 0.32, ch * 0.45);
+      ctx.fillRect(cx + cw * 0.06, cy - ch * 0.35, cw * 0.32, ch * 0.45);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(cx - cw * 0.42, cy - ch * 0.48, cw * 0.84, ch * 0.24);
+      ctx.strokeRect(cx - cw * 0.42, cy - ch * 0.48, cw * 0.84, ch * 0.24);
+
+      ctx.font = '700 13px "IBM Plex Mono", sans-serif';
+      ctx.fillStyle = '#fbbf24';
+      ctx.textAlign = 'center';
+      ctx.fillText('裏 稲 荷', cx, cy - ch * 0.32);
+
+      const lx = cx + cw * 0.68;
+      const ly = cy - ch * 0.15;
+      ctx.fillStyle = '#fbbf24';
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, 12, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.font = '700 10px sans-serif';
+      ctx.fillStyle = '#020306';
+      ctx.fillText('珈琲', lx, ly + 4);
+    } else {
+      const dirSign = currentNode.answer === 'left' ? -1 : (currentNode.answer === 'right' ? 1 : 0);
+
+      const doorW = alleyHalfW * 0.22;
+      const doorH = height * 0.22;
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+      ctx.strokeRect(vanishX - alleyHalfW * 0.42, vanishY - doorH * 0.4, doorW, doorH);
+      ctx.strokeRect(vanishX + alleyHalfW * 0.20, vanishY - doorH * 0.4, doorW, doorH);
+
+      if (currentNode.clueType === 'fox') {
+        const fx = vanishX + dirSign * (alleyHalfW * 0.28);
+        const fy = vanishY + height * 0.08;
+
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(fx - 18, fy - 26); ctx.lineTo(fx + 18, fy - 26);
+        ctx.moveTo(fx - 14, fy - 20); ctx.lineTo(fx + 14, fy - 20);
+        ctx.moveTo(fx - 10, fy - 26); ctx.lineTo(fx - 10, fy + 6);
+        ctx.moveTo(fx + 10, fy - 26); ctx.lineTo(fx + 10, fy + 6);
+        ctx.stroke();
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(fx - 3 + dirSign * 2, fy - 8, 2.2, 0, Math.PI * 2);
+        ctx.arc(fx + 3 + dirSign * 2, fy - 8, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.font = '700 12px "IBM Plex Mono", monospace';
+        ctx.fillStyle = '#fbbf24';
+        ctx.textAlign = 'center';
+        const arrowChar = dirSign === -1 ? '◀' : (dirSign === 1 ? '▶' : '▲');
+        ctx.fillText(arrowChar, fx, fy - 34);
+      } else if (currentNode.clueType === 'puddle') {
+        const px = vanishX + dirSign * (alleyHalfW * 0.32);
+        const py = vanishY + height * 0.19;
+
+        const pGrad = ctx.createRadialGradient(px, py, 2, px, py, 46);
+        pGrad.addColorStop(0, 'rgba(251, 191, 36, 0.75)');
+        pGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.25)');
+        pGrad.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = pGrad;
+        ctx.beginPath();
+        ctx.ellipse(px, py, 44, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const rippleR = (timeTick * 18) % 36;
+        ctx.strokeStyle = `rgba(251, 191, 36, ${1 - rippleR / 36})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(px, py, rippleR, rippleR * 0.32, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (currentNode.clueType === 'wire') {
+        const wx = vanishX + dirSign * (alleyHalfW * 0.30);
+        const wy = vanishY - height * 0.14;
+        const flicker = 0.65 + Math.sin(timeTick * 8) * 0.35;
+
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(wx, vanishY - height * 0.24);
+        ctx.lineTo(wx, wy);
+        ctx.stroke();
+
+        const wGrad = ctx.createRadialGradient(wx, wy, 2, wx, wy, 36);
+        wGrad.addColorStop(0, `rgba(254, 240, 138, ${flicker})`);
+        wGrad.addColorStop(0.4, `rgba(251, 191, 36, ${flicker * 0.5})`);
+        wGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = wGrad;
+        ctx.beginPath();
+        ctx.arc(wx, wy, 36, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(wx, wy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    rainDrops.forEach(r => {
+      r.y += r.speed;
+      if (r.y > height) {
+        r.y = -20;
+        r.x = leftWallX + Math.random() * (rightWallX - leftWallX);
+      }
+      if (r.x > leftWallX && r.x < rightWallX) {
+        ctx.moveTo(r.x, r.y);
+        ctx.lineTo(r.x - 1, r.y + r.len);
+      }
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = '#010204';
+    ctx.fillRect(0, 0, leftWallX, height);
+    ctx.fillRect(rightWallX, 0, width - rightWallX, height);
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(leftWallX, 0); ctx.lineTo(leftWallX, height);
+    ctx.moveTo(rightWallX, 0); ctx.lineTo(rightWallX, height);
+    ctx.stroke();
+
+    ctx.restore();
+
+    requestAnimationFrame(render);
+  }
+
+  btnLeft.addEventListener('click', () => makeMove('left'));
+  btnForward.addEventListener('click', () => makeMove('forward'));
+  btnRight.addEventListener('click', () => makeMove('right'));
+
+  btnReset.addEventListener('click', () => {
+    depth = 0;
+    steps = 0;
+    arrived = false;
+    hudDepth.textContent = `0 / ${TARGET_DEPTH}`;
+    hudSteps.textContent = '0';
+    btnLeft.style.display = 'inline-block';
+    btnForward.style.display = 'inline-block';
+    btnRight.style.display = 'inline-block';
+    btnReset.style.display = 'none';
+    generateNextNode();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') makeMove('left');
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') makeMove('forward');
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') makeMove('right');
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    initRain();
+  });
+
+  initRain();
+  generateNextNode();
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
