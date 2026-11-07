@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Marsko — Tanka and dark novels from the Tokyo suburbs. Browser tools for poetry, film, generative art, and physics.">
+    <meta name="description" content="Marsko — 비 내리는 도쿄의 뒷골목부터 머나먼 심우주 궤도까지. SF · 천문 관측 · 도심 오컬트 인터랙티브 아카이브.">
     <meta name="theme-color" content="#09090b">
     <meta property="og:title" content="Marsko">
-    <meta property="og:description" content="unclean vision / projected souls leak through / I wipe my glasses">
+    <meta property="og:description" content="비 내리는 도쿄의 뒷골목부터 머나먼 심우주 궤도까지. SF · 천문 관측 · 도심 오컬트 인터랙티브 아카이브.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://marsko.art/">
     <meta property="og:image" content="https://marsko.art/images/cone.jpg">
@@ -212,10 +212,12 @@
         <div class="relative z-10 flex min-h-[88svh] flex-col justify-end max-w-2xl mx-auto px-6 pb-14">
             <p class="text-xs tracking-[0.28em] uppercase text-zinc-300/80 mb-3">Tokyo, after rain</p>
             <h1 class="text-5xl font-bold mb-3">Marsko</h1>
-            <p class="text-lg text-zinc-200 max-w-md leading-relaxed">
-                unclean vision<br>
-                projected souls leak through<br>
-                I wipe my glasses
+            <p class="text-base text-zinc-200 max-w-lg leading-relaxed mb-3">
+                비 내리는 도쿄의 뒷골목부터 머나먼 심우주 궤도까지.<br>
+                SF · 천문 관측 · 도심 오컬트 인터랙티브 아카이브.
+            </p>
+            <p class="text-xs text-zinc-500 max-w-md leading-relaxed font-mono opacity-80">
+                unclean vision / projected souls leak through / I wipe my glasses
             </p>
             <div class="mt-6 flex gap-5 items-center">
                 <a href="https://x.com/marsko" target="_blank" rel="noopener noreferrer" class="hover:text-sky-300" aria-label="X (Twitter)">
@@ -228,18 +230,38 @@
         </div>
     </header>
 
-    <!-- Note 섹션 -->
-    <section class="max-w-2xl mx-auto px-6 py-16">
-        <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-4">Note</h2>
-        <p class="text-zinc-300 leading-relaxed text-lg">
+    <!-- Note & Interactive Fiction 섹션 -->
+    <section class="max-w-2xl mx-auto px-6 py-14">
+        <!-- Interactive Fiction Series (향후 단편들이 누적되는 쇼케이스) -->
+        <div class="mb-10">
+            <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-3 flex items-center justify-between">
+                <span>Interactive Fiction</span>
+                <span class="text-xs text-zinc-600 font-mono">Series</span>
+            </h2>
+            <div class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors">
+                <div class="flex items-baseline justify-between gap-2 mb-1.5">
+                    <a href="sluice4.html" class="text-sky-400 font-bold hover:underline text-base">x004F: 제4수문 앞의 가비지 컬렉션</a>
+                    <span class="text-xs text-zinc-500 font-mono">#01</span>
+                </div>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-3">
+                    시바우라 제4수문의 푸른 강철판과 검은 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 인터랙티브 단편 소설.
+                </p>
+                <div class="flex items-center gap-2">
+                    <a href="sluice4.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40">
+                        <span>▶ 단편 읽기 & 수문 인터랙티브</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 mb-3">Note & Archive</h2>
+        <p class="text-zinc-300 leading-relaxed text-base">
             Tanka and dark novels from the Tokyo suburbs.
         </p>
-        <p class="mt-6 text-sm text-zinc-400">
+        <p class="mt-4 text-sm text-zinc-400">
             <a href="archive.html" class="hover:text-sky-300">archive</a>
             ·
             <a href="walks.html" class="hover:text-sky-300">walks</a>
-            ·
-            <a href="sluice4.html" class="hover:text-sky-300 text-sky-400 font-medium">x004F: 제4수문</a>
             ·
             <a href="https://mindsoap.net" target="_blank" rel="noopener noreferrer" class="hover:text-sky-300">mindsoap</a>
         </p>
