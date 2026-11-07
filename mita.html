@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#030712">
+  <meta name="description" content="미타: 도시의 봉합선. 도쿄 타카나와 게이트웨이와 미타 경계 육교 위, 버려진 서비터와 선로의 불빛. 단편 소설 & 인터랙티브 시뮬레이터.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="미타: 도시의 봉합선 // Mita Overpass // marsko">
+  <meta property="og:description" content="열 갈래가 넘는 선로 위 낡은 육교. 통제 구역을 벗어나 잔류 기억을 쫓는 구형 서비터. 단편 소설 & 야간 철도 인터랙티브.">
+
+  <title>미타: 도시의 봉합선 // Mita Overpass // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #030712;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    .app-layout {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    /* 좌측: 캔버스 시뮬레이터 */
+    .canvas-pane {
+      position: relative;
+      flex: 1.1;
+      height: 100%;
+      background: #02050d;
+      overflow: hidden;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 우측: 소설 리더 */
+    .story-pane {
+      position: relative;
+      flex: 0.9;
+      height: 100%;
+      background: #040813;
+      overflow-y: auto;
+      padding: 72px 28px 60px 32px;
+      user-select: text;
+      scroll-behavior: smooth;
+    }
+    .story-pane::-webkit-scrollbar { width: 5px; }
+    .story-pane::-webkit-scrollbar-track { background: #040813; }
+    .story-pane::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .story-pane::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 캔버스 상단 텔레메트리 카드 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(8, 14, 28, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .accent-amber { color: #fbbf24; }
+    .telemetry-card .accent-rose { color: #f43f5e; }
+
+    /* 서비터 에러 알림 HUD 칩 */
+    .servitor-hud-chip {
+      position: absolute;
+      top: 68px;
+      left: 16px;
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #fef3c7;
+      z-index: 15;
+      display: none;
+      animation: pulseAlert 2.2s infinite ease-in-out;
+      pointer-events: none;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 0.85; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+
+    /* 캔버스 하단 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 14, 28, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 15;
+      max-width: 94%;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    }
+    .action-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .action-btn:hover { background: #334155; color: #38bdf8; border-color: #38bdf8; }
+    .action-btn:active { transform: scale(0.96); }
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+    .audio-btn {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 6px 9px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+    .audio-btn.on { color: #fbbf24; border-color: #fbbf24; }
+
+    /* 소설 본문 스타일링 */
+    .story-content {
+      max-width: 580px;
+      margin: 0 auto;
+      font-family: 'Noto Serif KR', Georgia, serif;
+      line-height: 2.1;
+      color: #cbd5e1;
+      font-size: 0.98rem;
+    }
+    .story-title-wrap {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .story-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .story-heading {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .story-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #64748b;
+    }
+    .story-content p {
+      margin-bottom: 22px;
+      word-break: keep-all;
+    }
+    .story-content p.quote {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.84rem;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.08);
+      border-left: 3px solid #fbbf24;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin: 24px 0;
+      line-height: 1.7;
+    }
+
+    /* 본문 내 인터랙티브 알약 버튼 */
+    .story-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.74rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: all 0.15s ease;
+      user-select: none;
+      margin: 0 3px;
+    }
+    .story-trigger:hover {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+
+    /* 모바일 뷰 스위처 */
+    .view-switcher {
+      display: none;
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      z-index: 25;
+      background: rgba(8, 14, 28, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 5px 9px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      background: #1e293b;
+      color: #38bdf8;
+    }
+
+    @media (max-width: 900px) {
+      .app-layout { flex-direction: column; }
+      .view-switcher { display: flex; }
+      .telemetry-card { display: none; }
+      .canvas-pane { flex: none; height: 44vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      .story-pane { flex: 1; padding: 24px 18px 80px 18px; }
+      .app-layout.view-canvas-only .canvas-pane { height: 100%; }
+      .app-layout.view-canvas-only .story-pane { display: none; }
+      .app-layout.view-story-only .canvas-pane { display: none; }
+      .app-layout.view-story-only .story-pane { height: 100%; padding-top: 60px; }
+      .control-dock { bottom: 12px; padding: 6px 10px; gap: 6px; }
+      .action-btn { padding: 5px 8px; font-size: 0.68rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>MITA OVERPASS // 都市の縫合線</h1>
+  <div class="hud-meta">Series #02: 미타: 도시의 봉합선</div>
+</header>
+
+<div class="view-switcher" id="viewSwitcher">
+  <button type="button" class="view-btn active" data-view="split">분할</button>
+  <button type="button" class="view-btn" data-view="canvas">육교</button>
+  <button type="button" class="view-btn" data-view="story">소설</button>
+</div>
+
+<div class="app-layout" id="appLayout">
+  <!-- 좌측 캔버스 영역 -->
+  <div class="canvas-pane">
+    <div class="telemetry-card">
+      <div>OVERPASS: <strong>三田 (MITA FOOTBRIDGE)</strong></div>
+      <div>BOUNDARY: <strong>TAKANAWA GATEWAY ↔ MITA</strong></div>
+      <div>TRACK COUNT: <strong>12 ACTIVE RAILS</strong></div>
+      <div>SERVITOR: <strong id="hudServitor" class="accent-amber">ERR_OUT_OF_BOUNDS</strong></div>
+    </div>
+
+    <div class="servitor-hud-chip" id="servitorHudChip">
+      ⚠️ [경고: 허용 구역 이탈 (OUT_OF_BOUNDS) · 잔류 기억 알고리즘 루프 감지]
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <div class="control-dock">
+      <button type="button" class="action-btn" id="btnTrain">🚂 화물 열차 통과</button>
+      <button type="button" class="action-btn" id="btnServitor">🤖 서비터 센서 줌</button>
+      <button type="button" class="action-btn" id="btnSpark">⚡ 전차선 스파크</button>
+      <div class="dock-sep"></div>
+      <button type="button" class="audio-btn on" id="btnAudio" title="오디오 토글">🔊 사운드</button>
+    </div>
+  </div>
+
+  <!-- 우측 소설 리더 영역 -->
+  <div class="story-pane" id="storyPane">
+    <div class="story-content">
+      <div class="story-title-wrap">
+        <div class="story-code">SERIES #02 // THE SEAM OF THE CITY</div>
+        <h2 class="story-heading">미타: 도시의 봉합선</h2>
+        <div class="story-meta">26 Oct 2026 · #디스토피아 #단편소설 · 미타 육교 (三田)</div>
+      </div>
+
+      <p>
+        차가운 밤공기 사이로 궤도를 스치는 철의 비명이 얇게 번졌다.
+      </p>
+
+      <p>
+        육교 한가운데, 녹슨 철골 난간에 붙은 흐릿한 명판에는 오래된 획으로 '三田(미타)'라는 글자가 새겨져 있었다. 표면의 페인트는 갈라져 들떴고, 산성 안개에 부식된 볼트 주변으로 붉은 침전물이 얼룩져 흘러내렸다.
+      </p>
+
+      <p>
+        발아래로는 열 갈래가 넘는 선로가 어둠 속으로 길게 뻗어 있었다. 전력망이 불안정한 탓에 전차선(電車線)마다 푸른 스파크가 간헐적으로 튀었다.
+        <button type="button" class="story-trigger" id="trigSpark">⚡ 전차선 스파크 방전</button>
+      </p>
+
+      <p>
+        저 멀리, 거대한 유리와 백색 합금으로 지어진 타카나와 게이트웨이 구역의 매끄러운 돔이 안개 너머로 빛났다. 그곳은 모든 것이 규격화되고 통제되는 신도시 구역이었다. 경비 드론의 점멸등과 매끄러운 원통형 순찰 유닛들이 바닥의 유도선을 따라 소리 없이 미끄러져 다니는 곳.
+      </p>
+
+      <p class="quote">
+        그러나 육교가 걸쳐진 이 지점은 경계였다.<br>
+        타카나와의 매끈한 유리벽이 끝나고 미타의 낡은 콘크리트 오피스와 엉킨 케이블이 시작되는, 도시의 봉합선.
+      </p>
+
+      <p>
+        덜컹거리는 구동음과 함께 육교 계단참에서 바퀴 달린 기계 하나가 모습을 드러냈다. 원래는 역내 청소나 물류 지원용으로 배정되었을 구형 서비터였다. 둥근 외피는 긁히고 찌그러져 있었고, 타카나와의 중앙 서버가 내리는 패치 신호를 수신하지 못한 지 오래된 듯 안테나 끝에서 주황색 에러 램프만 깜빡였다.
+        <button type="button" class="story-trigger" id="trigServitor">🤖 서비터 센서 응시</button>
+      </p>
+
+      <p>
+        녀석은 난간 옆에 멈춰 섰다. 옵티컬 센서가 줌을 조절하며 찌르륵, 모터 소리를 냈다. 아래쪽 선로를 가로지르는 무인 화물 열차의 둔중한 진동이 육교 바닥을 타고 올라왔다. 로봇은 그 진동을 분석하는 것인지, 아니면 그저 루프에 빠진 알고리즘을 반복하는 것인지 알 수 없는 각도로 고개를 꺾은 채 미타의 낡은 빌딩 숲을 내려다보았다.
+        <button type="button" class="story-trigger" id="trigTrain">🚂 화물 열차 진동 소환</button>
+      </p>
+
+      <p>
+        새 구역의 자율 기계들은 종종 이유 없이 이 낡은 육교로 기어 올라왔다. 허용 구역을 벗어났다는 경고음이 내부 스피커에서 뭉개져 흘러나오는데도, 마치 지워지지 않은 잔류 기억이라도 쫓듯 난간 끝에 서서 구시가지의 어두운 골목을 향해 센서를 고정하곤 했다.
+      </p>
+
+      <p class="quote">
+        바람이 불자 미타의 낡은 전선들이 파도처럼 흔들렸다.<br>
+        버려진 로봇의 렌즈 표면에, 지나가는 열차의 차가운 헤드라이트가 한 줄기 하얀 선으로 그어졌다 사라졌다.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+  const appLayout = document.getElementById('appLayout');
+  const viewSwitcher = document.getElementById('viewSwitcher');
+  const viewBtns = document.querySelectorAll('.view-btn');
+
+  const servitorHudChip = document.getElementById('servitorHudChip');
+  const hudServitor = document.getElementById('hudServitor');
+
+  const btnTrain = document.getElementById('btnTrain');
+  const btnServitor = document.getElementById('btnServitor');
+  const btnSpark = document.getElementById('btnSpark');
+  const btnAudio = document.getElementById('btnAudio');
+
+  const trigSpark = document.getElementById('trigSpark');
+  const trigServitor = document.getElementById('trigServitor');
+  const trigTrain = document.getElementById('trigTrain');
+
+  let width = canvas.width = canvas.clientWidth || 600;
+  let height = canvas.height = canvas.clientHeight || 700;
+
+  // --- 상태 관리 ---
+  let soundEnabled = true;
+  let timeTick = 0;
+
+  // 열차 통과 상태
+  let trainActive = false;
+  let trainX = -400;
+  let trainRumble = 0; // 0 ~ 1 바닥 진동
+  let trainHeadlightStreak = 0; // 로봇 렌즈 위 반사광 잔상
+
+  // 전차선 스파크 이펙트 리스트
+  let sparks = [];
+
+  // 구형 서비터 상태
+  let servitorZooming = 0; // 줌 모터 애니메이션
+  let servitorEyeAngle = 0;
+
+  // --- Web Audio 사운드 엔진 ---
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  // 1. 화물 열차 둔중한 선로 진동 & 레일 마찰음
+  function playTrainSound() {
+    if (!soundEnabled) return;
+    const ac = getAudioCtx();
+    const now = ac.currentTime;
+
+    // 둔탁한 저주파 레일 덜컹거림 진동
+    const bSize = ac.sampleRate * 2.8;
+    const b = ac.createBuffer(1, bSize, ac.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < bSize; i++) {
+      const t = i / ac.sampleRate;
+      const chug = Math.sin(t * 22) * Math.sin(t * 11);
+      d[i] = (Math.random() * 2 - 1) * 0.4 * (0.6 + chug * 0.4) * Math.exp(-t * 0.35);
+    }
+    const src = ac.createBufferSource();
+    src.buffer = b;
+
+    const filter = ac.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, now);
+    filter.frequency.linearRampToValueAtTime(320, now + 1.2);
+    filter.frequency.exponentialRampToValueAtTime(80, now + 2.7);
+
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 2.8);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ac.destination);
+    src.start(now);
+
+    // 레일 스치는 고주파 철의 비명 (Flange Squeal)
+    const osc = ac.createOscillator();
+    const oGain = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1650, now + 0.4);
+    osc.frequency.linearRampToValueAtTime(1820, now + 1.1);
+    osc.frequency.exponentialRampToValueAtTime(900, now + 2.2);
+
+    oGain.gain.setValueAtTime(0.06, now + 0.4);
+    oGain.gain.exponentialRampToValueAtTime(0.001, now + 2.3);
+
+    osc.connect(oGain);
+    oGain.connect(ac.destination);
+    osc.start(now + 0.4);
+    osc.stop(now + 2.4);
+  }
+
+  // 2. 전차선 푸른 전기 스파크 소리 (Crack/Zap)
+  function playSparkSound() {
+    if (!soundEnabled) return;
+    const ac = getAudioCtx();
+    const now = ac.currentTime;
+
+    const bSize = ac.sampleRate * 0.12;
+    const b = ac.createBuffer(1, bSize, ac.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < bSize; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ac.sampleRate * 0.015));
+    const src = ac.createBufferSource();
+    src.buffer = b;
+
+    const filter = ac.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 2200;
+
+    const gain = ac.createGain();
+    gain.gain.value = 0.22;
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ac.destination);
+    src.start(now);
+  }
+
+  // 3. 서비터 옵티컬 센서 줌 모터 소리 (찌르륵) & 뭉개진 경고음
+  function playServitorMotor() {
+    servitorZooming = 1.0;
+    servitorHudChip.style.display = 'block';
+    setTimeout(() => { servitorHudChip.style.display = 'none'; }, 4500);
+
+    if (!soundEnabled) return;
+    const ac = getAudioCtx();
+    const now = ac.currentTime;
+
+    // 모터 서보 찌르륵 고주파 펄스
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(780, now);
+    osc.frequency.linearRampToValueAtTime(940, now + 0.12);
+    osc.frequency.linearRampToValueAtTime(680, now + 0.28);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(now);
+    osc.stop(now + 0.34);
+
+    // 뭉개진 구역 이탈 비프음 (Muffled Warning Beep)
+    [0.15, 0.32].forEach((delay, idx) => {
+      const bOsc = ac.createOscillator();
+      const bGain = ac.createGain();
+      bOsc.type = 'sine';
+      bOsc.frequency.setValueAtTime(440 + idx * 80, now + delay);
+      bGain.gain.setValueAtTime(0.08, now + delay);
+      bGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.12);
+
+      const f = ac.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 550;
+
+      bOsc.connect(f);
+      f.connect(bGain);
+      bGain.connect(ac.destination);
+      bOsc.start(now + delay);
+      bOsc.stop(now + delay + 0.13);
+    });
+  }
+
+  // --- 이벤트 조작 ---
+  function triggerTrain() {
+    if (trainActive) return;
+    trainActive = true;
+    trainX = -width * 0.4;
+    trainRumble = 1.0;
+    playTrainSound();
+  }
+
+  function triggerSpark() {
+    playSparkSound();
+    for (let i = 0; i < 4; i++) {
+      sparks.push({
+        x: width * 0.25 + Math.random() * (width * 0.5),
+        y: height * 0.52 + Math.random() * 30,
+        life: 1.0,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4
+      });
+    }
+  }
+
+  btnTrain.addEventListener('click', triggerTrain);
+  btnServitor.addEventListener('click', playServitorMotor);
+  btnSpark.addEventListener('click', triggerSpark);
+
+  trigTrain.addEventListener('click', triggerTrain);
+  trigServitor.addEventListener('click', playServitorMotor);
+  trigSpark.addEventListener('click', triggerSpark);
+
+  btnAudio.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    btnAudio.classList.toggle('on', soundEnabled);
+    btnAudio.textContent = soundEnabled ? '🔊 사운드' : '🔇 음소거';
+  });
+
+  // 모바일 뷰 전환
+  viewBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const v = btn.dataset.view;
+      appLayout.className = 'app-layout';
+      if (v === 'canvas') appLayout.classList.add('view-canvas-only');
+      if (v === 'story') appLayout.classList.add('view-story-only');
+      resizeCanvas();
+    });
+  });
+
+  // 캔버스 클릭 시 로봇 클릭 감지
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // 서비터 로봇 클릭 (화면 우측 난간 부근)
+    const robX = width * 0.72;
+    const robY = height * 0.78;
+    if (Math.hypot(mx - robX, my - robY) < 45) {
+      playServitorMotor();
+      return;
+    }
+
+    // 선로 클릭 시 열차 통과
+    if (my > height * 0.4 && my < height * 0.7) {
+      triggerTrain();
+      return;
+    }
+
+    // 전차선 클릭 시 스파크
+    if (my < height * 0.5) {
+      triggerSpark();
+    }
+  });
+
+  // --- 렌더링 루프 ---
+  function render() {
+    timeTick += 0.02;
+
+    if (servitorZooming > 0) servitorZooming = Math.max(0, servitorZooming - 0.04);
+    if (trainRumble > 0) trainRumble = Math.max(0, trainRumble - 0.007);
+    if (trainHeadlightStreak > 0) trainHeadlightStreak = Math.max(0, trainHeadlightStreak - 0.03);
+
+    // 열차 이동
+    if (trainActive) {
+      trainX += width * 0.016;
+      // 열차가 로봇 앞을 지날 때 렌즈 표면에 하얀 헤드라이트 섬광 발동
+      if (trainX > width * 0.55 && trainX < width * 0.85) {
+        trainHeadlightStreak = 1.0;
+      }
+      if (trainX > width * 1.5) {
+        trainActive = false;
+      }
+    }
+
+    // 주기적 자연 스파크
+    if (Math.random() < 0.018) {
+      triggerSpark();
+    }
+
+    ctx.clearRect(0, 0, width, height);
+
+    // 바닥 진동 쉐이크 (열차 통과 시 육교 흔들림)
+    const shakeY = trainRumble > 0 ? (Math.random() - 0.5) * trainRumble * 4 : 0;
+    const shakeX = trainRumble > 0 ? (Math.random() - 0.5) * trainRumble * 2 : 0;
+
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
+    // 1. 야간 도쿄만 경계 하늘 (Night Atmospheric Dusk)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.6);
+    skyGrad.addColorStop(0, '#02050c');
+    skyGrad.addColorStop(0.5, '#070f20');
+    skyGrad.addColorStop(1, '#0e1628');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, width, height * 0.6);
+
+    // 2. [좌측] 타카나와 게이트웨이 구역의 매끄러운 백색 합금 돔 & 유리벽
+    const domeCX = width * 0.22;
+    const domeCY = height * 0.42;
+    const domeR = width * 0.26;
+
+    // 백색 돔 은은한 사이버 네온 발광
+    const domeGlow = ctx.createRadialGradient(domeCX, domeCY, 10, domeCX, domeCY, domeR * 1.4);
+    domeGlow.addColorStop(0, 'rgba(56, 189, 248, 0.2)');
+    domeGlow.addColorStop(0.6, 'rgba(14, 165, 233, 0.06)');
+    domeGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = domeGlow;
+    ctx.beginPath();
+    ctx.arc(domeCX, domeCY, domeR * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 매끄러운 기하학적 돔 실루엣
+    ctx.fillStyle = '#061325';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(domeCX, domeCY, domeR, Math.PI, 0);
+    ctx.fill();
+    ctx.stroke();
+
+    // 돔 내부 격자 패널 라인
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
+    ctx.lineWidth = 1;
+    for (let a = Math.PI + 0.25; a < Math.PI * 2 - 0.2; a += 0.35) {
+      ctx.beginPath();
+      ctx.moveTo(domeCX, domeCY);
+      ctx.lineTo(domeCX + Math.cos(a) * domeR, domeCY + Math.sin(a) * domeR);
+      ctx.stroke();
+    }
+
+    // 순찰 경비 드론의 점멸등 (Takanawa Patrol Drone Beacon)
+    const droneX = domeCX + Math.sin(timeTick * 1.2) * 50;
+    const droneY = domeCY - domeR * 0.65 + Math.cos(timeTick * 0.8) * 15;
+    const droneBlink = Math.sin(timeTick * 6) > 0;
+    ctx.fillStyle = droneBlink ? '#38bdf8' : 'rgba(56, 189, 248, 0.2)';
+    ctx.beginPath();
+    ctx.arc(droneX, droneY, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. [우측] 미타(三田) 구역의 낡은 콘크리트 오피스 & 전선 덤불
+    const mitaX = width * 0.62;
+    ctx.fillStyle = '#050a14';
+    ctx.fillRect(mitaX, height * 0.18, width - mitaX, height * 0.35);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(mitaX, height * 0.18, width - mitaX, height * 0.35);
+
+    // 희미한 오렌지/앰버 창문 불빛들
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
+    for (let fx = mitaX + 20; fx < width - 15; fx += 26) {
+      for (let fy = height * 0.22; fy < height * 0.45; fy += 28) {
+        if ((fx + fy) % 3 === 0) ctx.fillRect(fx, fy, 8, 12);
+      }
+    }
+
+    // 바람에 흔들리는 얽힌 전선들 (Mita Tangled Cables)
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
+    ctx.lineWidth = 1.2;
+    const windWave = Math.sin(timeTick * 2.5) * 6;
+    for (let c = 0; c < 5; c++) {
+      const cy = height * 0.28 + c * 14;
+      ctx.beginPath();
+      ctx.moveTo(mitaX - 20, cy);
+      ctx.quadraticCurveTo(width * 0.8 + windWave, cy + 18 + windWave, width, cy + 4);
+      ctx.stroke();
+    }
+
+    // 4. [하단] 10갈래가 넘는 어두운 철도 선로 (12 Active Rails)
+    const trackStartY = height * 0.48;
+    const vanishCX = width * 0.48;
+    ctx.fillStyle = '#010307';
+    ctx.fillRect(0, trackStartY, width, height - trackStartY);
+
+    // 원근감 있는 레일 강철 라인들
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+    ctx.lineWidth = 1.2;
+    const railTracks = [-0.45, -0.36, -0.26, -0.16, -0.06, 0.05, 0.16, 0.26, 0.36, 0.46, 0.56];
+    railTracks.forEach(rx => {
+      ctx.beginPath();
+      ctx.moveTo(vanishCX + rx * 20, trackStartY);
+      ctx.lineTo(vanishCX + rx * (width * 1.1), height * 0.82);
+      ctx.stroke();
+    });
+
+    // 침목 (Sleepers)
+    for (let sy = trackStartY + 10; sy < height * 0.82; sy += 18) {
+      const progress = (sy - trackStartY) / (height * 0.34);
+      const spanW = width * 0.85 * progress;
+      ctx.strokeStyle = `rgba(30, 41, 59, ${progress * 0.8})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(vanishCX - spanW * 0.5, sy);
+      ctx.lineTo(vanishCX + spanW * 0.5, sy);
+      ctx.stroke();
+    }
+
+    // 가공 전차선(電車線 Catenary Wires)
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, trackStartY + 14); ctx.lineTo(width, trackStartY + 14);
+    ctx.moveTo(0, trackStartY + 38); ctx.lineTo(width, trackStartY + 38);
+    ctx.stroke();
+
+    // 5. 무인 화물 열차 통과 애니메이션 (Unmanned Freight Train)
+    if (trainActive) {
+      const ty = trackStartY + 24;
+      const tLen = width * 0.55;
+      const tH = 34;
+
+      // 열차 차체 (무인 화물 컨테이너)
+      ctx.fillStyle = '#0b1320';
+      ctx.fillRect(trainX, ty, tLen, tH);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(trainX, ty, tLen, tH);
+
+      // 열차 차가운 헤드라이트 빔 (Cold Piercing Headlight)
+      const hX = trainX + tLen;
+      const hY = ty + tH * 0.5;
+
+      const beamGrad = ctx.createRadialGradient(hX, hY, 4, hX + 160, hY, 200);
+      beamGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      beamGrad.addColorStop(0.3, 'rgba(224, 242, 254, 0.45)');
+      beamGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(hX, hY - 8);
+      ctx.lineTo(hX + 220, hY - 35);
+      ctx.lineTo(hX + 220, hY + 35);
+      ctx.lineTo(hX, hY + 8);
+      ctx.fill();
+    }
+
+    // 6. 전차선 스파크 파티클 렌더링
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const sp = sparks[i];
+      sp.x += sp.vx;
+      sp.y += sp.vy;
+      sp.life -= 0.05;
+
+      ctx.fillStyle = `rgba(56, 189, 248, ${sp.life})`;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 2.5 * sp.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      if (sp.life <= 0) sparks.splice(i, 1);
+    }
+
+    // 7. [전경] 미타(三田) 녹슨 철골 육교 & 명판 (Mita Footbridge)
+    const overpassY = height * 0.81;
+
+    // 육교 바닥 강철 발판
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, overpassY, width, height - overpassY);
+
+    // 녹슨 철골 난간 빔 (Rusted Iron Railing)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, overpassY, width, 10);
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, overpassY, width, 10);
+
+    // 난간 세로 기둥들
+    for (let px = 20; px < width; px += 45) {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(px, overpassY + 10, 8, height - overpassY);
+      // 부식된 볼트 및 붉은 침전물 녹
+      ctx.fillStyle = '#991b1b';
+      ctx.fillRect(px + 1, overpassY + 12, 6, 8);
+    }
+
+    // 흐릿한 오래된 명판 '三田' (Mita Plaque)
+    const plaqueX = width * 0.32;
+    const plaqueY = overpassY + 16;
+    ctx.fillStyle = '#090d16';
+    ctx.strokeStyle = '#b91c1c';
+    ctx.lineWidth = 1.2;
+    ctx.fillRect(plaqueX - 32, plaqueY - 10, 64, 22);
+    ctx.strokeRect(plaqueX - 32, plaqueY - 10, 64, 22);
+
+    ctx.font = '700 12px "IBM Plex Mono", serif';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.textAlign = 'center';
+    ctx.fillText('三 田', plaqueX, plaqueY + 6);
+
+    // 8. 바퀴 달린 구형 서비터 로봇 (Old Wheel Servitor)
+    const robX = width * 0.72;
+    const robY = overpassY + 2;
+
+    // 로봇 바퀴 2개
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(robX - 16, robY + 14, 6, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(robX + 16, robY + 14, 6, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 찌그러진 둥근 외피 바디 (Dented Round Shell)
+    ctx.fillStyle = '#334155';
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(robX, robY - 6, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 긁힌 스크래치 자국
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(robX - 10, robY - 14); ctx.lineTo(robX + 4, robY - 4);
+    ctx.moveTo(robX - 4, robY + 4); ctx.lineTo(robX + 12, robY + 6);
+    ctx.stroke();
+
+    // 안테나 & 주황색 에러 램프 (Blinking Amber Error Lamp)
+    const antX = robX - 12;
+    const antY = robY - 38;
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(robX - 8, robY - 26);
+    ctx.lineTo(antX, antY);
+    ctx.stroke();
+
+    const errBlink = Math.sin(timeTick * 5) > 0;
+    ctx.fillStyle = errBlink ? '#f59e0b' : '#78350f';
+    ctx.shadowColor = errBlink ? '#fbbf24' : 'transparent';
+    ctx.shadowBlur = errBlink ? 12 : 0;
+    ctx.beginPath();
+    ctx.arc(antX, antY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 미타 골목을 응시하는 옵티컬 센서 렌즈 (Optical Sensor Eye)
+    const eyeOffsetX = servitorZooming > 0 ? (Math.random() - 0.5) * 2 : 0;
+    const eyeX = robX + 12 + eyeOffsetX;
+    const eyeY = robY - 8;
+
+    ctx.fillStyle = '#090d16';
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 내부 푸른 센서 조리개
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ★ 하이라이트: 열차 헤드라이트가 렌즈 표면에 한 줄기 하얀 선으로 그어지는 연출
+    if (trainHeadlightStreak > 0) {
+      ctx.strokeStyle = `rgba(255, 255, 255, ${trainHeadlightStreak})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(eyeX - 8, eyeY - 8);
+      ctx.lineTo(eyeX + 8, eyeY + 8);
+      ctx.stroke();
+
+      // 센서 전체 글레어
+      ctx.fillStyle = `rgba(255, 255, 255, ${trainHeadlightStreak * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(eyeX, eyeY, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    requestAnimationFrame(render);
+  }
+
+  function resizeCanvas() {
+    width = canvas.width = canvas.parentElement.clientWidth || 600;
+    height = canvas.height = canvas.parentElement.clientHeight || 700;
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  resizeCanvas();
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
