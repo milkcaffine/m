@@ -313,14 +313,15 @@
       .app-layout { flex-direction: column; }
       .view-switcher { display: flex; }
       .telemetry-card { display: none; }
-      .canvas-pane { flex: none; height: 44vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
-      .story-pane { flex: 1; padding: 24px 18px 80px 18px; }
+      .canvas-pane { flex: none; height: 46vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      .story-pane { flex: 1; padding: 20px 18px 80px 18px; }
       .app-layout.view-canvas-only .canvas-pane { height: 100%; }
       .app-layout.view-canvas-only .story-pane { display: none; }
       .app-layout.view-story-only .canvas-pane { display: none; }
       .app-layout.view-story-only .story-pane { height: 100%; padding-top: 60px; }
-      .control-dock { bottom: 12px; padding: 6px 10px; gap: 6px; }
-      .action-btn { padding: 5px 8px; font-size: 0.68rem; }
+      .servitor-hud-chip { top: 12px; left: 12px; font-size: 0.65rem; padding: 4px 8px; max-width: calc(100% - 150px); }
+      .control-dock { bottom: 10px; padding: 5px 8px; gap: 5px; max-width: calc(100% - 16px); }
+      .action-btn { padding: 4px 7px; font-size: 0.66rem; }
     }
   </style>
 </head>
@@ -396,11 +397,12 @@
 
       <p>
         덜컹거리는 구동음과 함께 육교 계단참에서 바퀴 달린 기계 하나가 모습을 드러냈다. 원래는 역내 청소나 물류 지원용으로 배정되었을 구형 서비터였다. 둥근 외피는 긁히고 찌그러져 있었고, 타카나와의 중앙 서버가 내리는 패치 신호를 수신하지 못한 지 오래된 듯 안테나 끝에서 주황색 에러 램프만 깜빡였다.
-        <button type="button" class="story-trigger" id="trigServitor">🤖 서비터 센서 응시</button>
+        <button type="button" class="story-trigger" id="trigServitorEnter">🤖 서비터 계단참 등장</button>
       </p>
 
       <p>
         녀석은 난간 옆에 멈춰 섰다. 옵티컬 센서가 줌을 조절하며 찌르륵, 모터 소리를 냈다. 아래쪽 선로를 가로지르는 무인 화물 열차의 둔중한 진동이 육교 바닥을 타고 올라왔다. 로봇은 그 진동을 분석하는 것인지, 아니면 그저 루프에 빠진 알고리즘을 반복하는 것인지 알 수 없는 각도로 고개를 꺾은 채 미타의 낡은 빌딩 숲을 내려다보았다.
+        <button type="button" class="story-trigger" id="trigServitorZoom">🔍 센서 줌 & 경고음</button>
         <button type="button" class="story-trigger" id="trigTrain">🚂 화물 열차 진동 소환</button>
       </p>
 
@@ -432,7 +434,8 @@
   const btnAudio = document.getElementById('btnAudio');
 
   const trigSpark = document.getElementById('trigSpark');
-  const trigServitor = document.getElementById('trigServitor');
+  const trigServitorEnter = document.getElementById('trigServitorEnter');
+  const trigServitorZoom = document.getElementById('trigServitorZoom');
   const trigTrain = document.getElementById('trigTrain');
 
   let width = canvas.width = canvas.clientWidth || 600;
@@ -452,8 +455,12 @@
   let sparks = [];
 
   // 구형 서비터 상태
-  let servitorZooming = 0; // 줌 모터 애니메이션
-  let servitorEyeAngle = 0;
+  let servitorTargetX = width * 0.64; // 난간 위 목표 위치
+  let servitorX = width + 60;         // 초기 계단참 진입 위치 (화면 밖)
+  let servitorWheelRot = 0;           // 바퀴 회전
+  let servitorMoving = true;          // 진입 이동 중
+  let servitorZooming = 0;            // 줌 모터 애니메이션
+  let servitorSuspension = 0;         // 덜컹거림 진동
 
   // --- Web Audio 사운드 엔진 ---
   let audioCtx = null;
@@ -538,11 +545,39 @@
     src.start(now);
   }
 
-  // 3. 서비터 옵티컬 센서 줌 모터 소리 (찌르륵) & 뭉개진 경고음
-  function playServitorMotor() {
+  // 3. 서비터 바퀴 덜컹거리는 주행 구동음
+  function playServitorDriveSound() {
+    if (!soundEnabled) return;
+    const ac = getAudioCtx();
+    const now = ac.currentTime;
+
+    const bSize = ac.sampleRate * 0.9;
+    const b = ac.createBuffer(1, bSize, ac.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < bSize; i++) {
+      const t = i / ac.sampleRate;
+      const clatter = Math.sin(t * 36) > 0.3 ? 1 : 0;
+      d[i] = ((Math.random() * 2 - 1) * 0.22 * clatter + Math.sin(t * 110) * 0.12) * Math.exp(-t * 1.4);
+    }
+    const src = ac.createBufferSource();
+    src.buffer = b;
+    const filter = ac.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ac.destination);
+    src.start(now);
+  }
+
+  // 4. 서비터 옵티컬 센서 줌 모터 소리 (찌르륵) & 뭉개진 경고음
+  function triggerServitorScan() {
     servitorZooming = 1.0;
     servitorHudChip.style.display = 'block';
-    setTimeout(() => { servitorHudChip.style.display = 'none'; }, 4500);
+    setTimeout(() => { servitorHudChip.style.display = 'none'; }, 5000);
 
     if (!soundEnabled) return;
     const ac = getAudioCtx();
@@ -556,7 +591,7 @@
     osc.frequency.linearRampToValueAtTime(940, now + 0.12);
     osc.frequency.linearRampToValueAtTime(680, now + 0.28);
 
-    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.setValueAtTime(0.14, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
 
     osc.connect(gain);
@@ -585,6 +620,25 @@
     });
   }
 
+  // 5. 서비터 계단참 등장 (소환)
+  function summonServitor() {
+    servitorX = width + 60;
+    servitorTargetX = width * 0.64;
+    servitorMoving = true;
+    playServitorDriveSound();
+    servitorHudChip.style.display = 'block';
+    setTimeout(() => { servitorHudChip.style.display = 'none'; }, 5000);
+  }
+
+  function handleServitorButton() {
+    if (servitorMoving) return;
+    if (Math.abs(servitorX - servitorTargetX) > 40 || servitorX > width) {
+      summonServitor();
+    } else {
+      triggerServitorScan();
+    }
+  }
+
   // --- 이벤트 조작 ---
   function triggerTrain() {
     if (trainActive) return;
@@ -608,11 +662,12 @@
   }
 
   btnTrain.addEventListener('click', triggerTrain);
-  btnServitor.addEventListener('click', playServitorMotor);
+  btnServitor.addEventListener('click', handleServitorButton);
   btnSpark.addEventListener('click', triggerSpark);
 
   trigTrain.addEventListener('click', triggerTrain);
-  trigServitor.addEventListener('click', playServitorMotor);
+  if (trigServitorEnter) trigServitorEnter.addEventListener('click', summonServitor);
+  if (trigServitorZoom) trigServitorZoom.addEventListener('click', triggerServitorScan);
   trigSpark.addEventListener('click', triggerSpark);
 
   btnAudio.addEventListener('click', () => {
@@ -640,22 +695,22 @@
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
-    // 서비터 로봇 클릭 (화면 우측 난간 부근)
-    const robX = width * 0.72;
-    const robY = height * 0.78;
-    if (Math.hypot(mx - robX, my - robY) < 45) {
-      playServitorMotor();
+    // 서비터 로봇 클릭 (현재 서비터 X, Y 위치 기반)
+    const overpassY = height * 0.76;
+    const robY = overpassY - 14;
+    if (Math.hypot(mx - servitorX, my - robY) < 50) {
+      handleServitorButton();
       return;
     }
 
     // 선로 클릭 시 열차 통과
-    if (my > height * 0.4 && my < height * 0.7) {
+    if (my > height * 0.4 && my < height * 0.72) {
       triggerTrain();
       return;
     }
 
     // 전차선 클릭 시 스파크
-    if (my < height * 0.5) {
+    if (my < height * 0.45) {
       triggerSpark();
     }
   });
@@ -667,6 +722,24 @@
     if (servitorZooming > 0) servitorZooming = Math.max(0, servitorZooming - 0.04);
     if (trainRumble > 0) trainRumble = Math.max(0, trainRumble - 0.007);
     if (trainHeadlightStreak > 0) trainHeadlightStreak = Math.max(0, trainHeadlightStreak - 0.03);
+
+    // 서비터 계단참 이동 애니메이션
+    if (servitorMoving) {
+      const dx = servitorTargetX - servitorX;
+      if (Math.abs(dx) > 1.8) {
+        const step = Math.sign(dx) * Math.max(1.8, Math.min(5.2, Math.abs(dx) * 0.055));
+        servitorX += step;
+        servitorWheelRot += step * 0.12;
+        servitorSuspension = Math.sin(timeTick * 16) * 1.8;
+      } else {
+        servitorX = servitorTargetX;
+        servitorMoving = false;
+        servitorSuspension = 0;
+        triggerServitorScan();
+      }
+    } else {
+      servitorSuspension = Math.sin(timeTick * 2.2) * 0.5;
+    }
 
     // 열차 이동
     if (trainActive) {
@@ -774,6 +847,7 @@
     }
 
     // 4. [하단] 10갈래가 넘는 어두운 철도 선로 (12 Active Rails)
+    const overpassY = height * 0.76;
     const trackStartY = height * 0.48;
     const vanishCX = width * 0.48;
     ctx.fillStyle = '#010307';
@@ -786,13 +860,13 @@
     railTracks.forEach(rx => {
       ctx.beginPath();
       ctx.moveTo(vanishCX + rx * 20, trackStartY);
-      ctx.lineTo(vanishCX + rx * (width * 1.1), height * 0.82);
+      ctx.lineTo(vanishCX + rx * (width * 1.1), overpassY + 10);
       ctx.stroke();
     });
 
     // 침목 (Sleepers)
-    for (let sy = trackStartY + 10; sy < height * 0.82; sy += 18) {
-      const progress = (sy - trackStartY) / (height * 0.34);
+    for (let sy = trackStartY + 10; sy < overpassY + 8; sy += 18) {
+      const progress = (sy - trackStartY) / ((overpassY + 8) - trackStartY);
       const spanW = width * 0.85 * progress;
       ctx.strokeStyle = `rgba(30, 41, 59, ${progress * 0.8})`;
       ctx.lineWidth = 1.5;
@@ -859,31 +933,29 @@
     }
 
     // 7. [전경] 미타(三田) 녹슨 철골 육교 & 명판 (Mita Footbridge)
-    const overpassY = height * 0.81;
-
     // 육교 바닥 강철 발판
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, overpassY, width, height - overpassY);
 
     // 녹슨 철골 난간 빔 (Rusted Iron Railing)
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, overpassY, width, 10);
+    ctx.fillRect(0, overpassY, width, 12);
     ctx.strokeStyle = '#475569';
     ctx.lineWidth = 1;
-    ctx.strokeRect(0, overpassY, width, 10);
+    ctx.strokeRect(0, overpassY, width, 12);
 
     // 난간 세로 기둥들
     for (let px = 20; px < width; px += 45) {
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(px, overpassY + 10, 8, height - overpassY);
+      ctx.fillRect(px, overpassY + 12, 8, height - overpassY);
       // 부식된 볼트 및 붉은 침전물 녹
       ctx.fillStyle = '#991b1b';
-      ctx.fillRect(px + 1, overpassY + 12, 6, 8);
+      ctx.fillRect(px + 1, overpassY + 14, 6, 8);
     }
 
     // 흐릿한 오래된 명판 '三田' (Mita Plaque)
-    const plaqueX = width * 0.32;
-    const plaqueY = overpassY + 16;
+    const plaqueX = width * 0.28;
+    const plaqueY = overpassY + 18;
     ctx.fillStyle = '#090d16';
     ctx.strokeStyle = '#b91c1c';
     ctx.lineWidth = 1.2;
@@ -895,90 +967,170 @@
     ctx.textAlign = 'center';
     ctx.fillText('三 田', plaqueX, plaqueY + 6);
 
-    // 8. 바퀴 달린 구형 서비터 로봇 (Old Wheel Servitor)
-    const robX = width * 0.72;
-    const robY = overpassY + 2;
+    // 8. 바퀴 달린 구형 서비터 로봇 (Old Wheel Servitor) - 절대 사라지지 않고 육교 위에 상주
+    const robX = servitorX;
+    const robY = overpassY - 12 + servitorSuspension;
 
-    // 로봇 바퀴 2개
-    ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.5;
+    // 바닥 접지 그림자 (Ground Contact Shadow)
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.7)';
     ctx.beginPath();
-    ctx.ellipse(robX - 16, robY + 14, 6, 10, 0, 0, Math.PI * 2);
-    ctx.ellipse(robX + 16, robY + 14, 6, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(robX, overpassY + 16, 30, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
 
-    // 찌그러진 둥근 외피 바디 (Dented Round Shell)
-    ctx.fillStyle = '#334155';
-    ctx.strokeStyle = '#64748b';
+    // 두 개의 중장비 고무 바퀴 (Dual Industrial Wheels with Tread)
+    [-18, 18].forEach(wx => {
+      // 바퀴 고무 타이어
+      ctx.fillStyle = '#090d16';
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(robX + wx, robY + 16, 7, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 금속 휠 림 (Steel Wheel Hub)
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(robX + wx, robY + 16, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 회전 스포크 선 (Rotating Spoke indicating movement)
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      const spkAngle = servitorWheelRot + (wx > 0 ? 0.6 : 0);
+      ctx.moveTo(robX + wx - Math.cos(spkAngle) * 5, robY + 16 - Math.sin(spkAngle) * 5);
+      ctx.lineTo(robX + wx + Math.cos(spkAngle) * 5, robY + 16 + Math.sin(spkAngle) * 5);
+      ctx.stroke();
+    });
+
+    // 찌그러진 둥근 외피 바디 (Dented Round Shell - High Contrast Dual-Tone)
+    const bodyR = 26;
+    // 하단 섀시 합금 베이스
+    ctx.fillStyle = '#1e293b';
+    ctx.strokeStyle = '#334155';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(robX, robY - 6, 22, 0, Math.PI * 2);
+    ctx.arc(robX, robY - 4, bodyR, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // 긁힌 스크래치 자국
-    ctx.strokeStyle = '#1e293b';
+    // 상단 오프화이트 합성 세라믹 외피 (Off-White Industrial Shell - 어둠 속에서도 뚜렷하게 발광)
+    const shellGrad = ctx.createLinearGradient(robX - bodyR, robY - bodyR - 4, robX + bodyR, robY + bodyR);
+    shellGrad.addColorStop(0, '#ffffff');
+    shellGrad.addColorStop(0.35, '#e2e8f0');
+    shellGrad.addColorStop(0.8, '#94a3b8');
+    shellGrad.addColorStop(1, '#475569');
+
+    ctx.fillStyle = shellGrad;
+    ctx.beginPath();
+    ctx.arc(robX, robY - 4, bodyR - 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 패널 파팅 라인 & 긁힌 스크래치 자국 (Patina & Weathering)
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(robX - bodyR + 4, robY - 4);
+    ctx.lineTo(robX + bodyR - 4, robY - 4); // 중앙 수평 절개선
+    ctx.stroke();
+
+    // 붉은 녹/부식 스크래치 자국
+    ctx.strokeStyle = '#b91c1c';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(robX - 10, robY - 14); ctx.lineTo(robX + 4, robY - 4);
-    ctx.moveTo(robX - 4, robY + 4); ctx.lineTo(robX + 12, robY + 6);
+    ctx.moveTo(robX - 12, robY - 14); ctx.lineTo(robX - 2, robY - 6);
+    ctx.moveTo(robX + 2, robY + 2); ctx.lineTo(robX + 14, robY + 5);
     ctx.stroke();
+
+    // 스텐실 모델 라벨 (Stencil Marking)
+    ctx.font = '700 8px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#1e293b';
+    ctx.textAlign = 'center';
+    ctx.fillText('TK-09', robX - 4, robY + 8);
 
     // 안테나 & 주황색 에러 램프 (Blinking Amber Error Lamp)
     const antX = robX - 12;
-    const antY = robY - 38;
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 1.5;
+    const antY = robY - 44;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(robX - 8, robY - 26);
-    ctx.lineTo(antX, antY);
+    ctx.quadraticCurveTo(robX - 10, robY - 36, antX, antY);
     ctx.stroke();
 
-    const errBlink = Math.sin(timeTick * 5) > 0;
-    ctx.fillStyle = errBlink ? '#f59e0b' : '#78350f';
-    ctx.shadowColor = errBlink ? '#fbbf24' : 'transparent';
-    ctx.shadowBlur = errBlink ? 12 : 0;
+    // 주황색 에러 램프 (어떤 순간에도 완전히 꺼지지 않는 안전 네온 글로우)
+    const blinkPhase = Math.sin(timeTick * 6);
+    const errBlink = blinkPhase > -0.3;
+    const lampAlpha = errBlink ? 0.95 : 0.35;
+    ctx.fillStyle = `rgba(245, 158, 11, ${lampAlpha})`;
+    ctx.shadowColor = '#f59e0b';
+    ctx.shadowBlur = errBlink ? 18 : 6;
     ctx.beginPath();
-    ctx.arc(antX, antY, 4, 0, Math.PI * 2);
+    ctx.arc(antX, antY, 5, 0, Math.PI * 2);
     ctx.fill();
+
+    // 램프 중심 핫스팟
+    if (errBlink) {
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(antX, antY, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.shadowBlur = 0;
 
     // 미타 골목을 응시하는 옵티컬 센서 렌즈 (Optical Sensor Eye)
-    const eyeOffsetX = servitorZooming > 0 ? (Math.random() - 0.5) * 2 : 0;
-    const eyeX = robX + 12 + eyeOffsetX;
-    const eyeY = robY - 8;
+    const eyeOffsetX = servitorZooming > 0 ? (Math.random() - 0.5) * 3 : 0;
+    const eyeOffsetY = servitorZooming > 0 ? (Math.random() - 0.5) * 2 : 0;
+    const eyeX = robX + 14 + eyeOffsetX;
+    const eyeY = robY - 8 + eyeOffsetY;
 
-    ctx.fillStyle = '#090d16';
+    // 센서 외부 하우징 베젤
+    ctx.fillStyle = '#020617';
     ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(eyeX, eyeY, 8, 0, Math.PI * 2);
+    ctx.arc(eyeX, eyeY, 10, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // 내부 푸른 센서 조리개
+    // 줌 조리개 (Aperture Iris)
+    const irisR = 4.5 + (servitorZooming * 2.5);
     ctx.fillStyle = '#38bdf8';
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 10;
     ctx.beginPath();
-    ctx.arc(eyeX, eyeY, 3.5, 0, Math.PI * 2);
+    ctx.arc(eyeX, eyeY, irisR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 조리개 중심 코어
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, 2, 0, Math.PI * 2);
     ctx.fill();
 
     // ★ 하이라이트: 열차 헤드라이트가 렌즈 표면에 한 줄기 하얀 선으로 그어지는 연출
     if (trainHeadlightStreak > 0) {
       ctx.strokeStyle = `rgba(255, 255, 255, ${trainHeadlightStreak})`;
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(eyeX - 8, eyeY - 8);
-      ctx.lineTo(eyeX + 8, eyeY + 8);
+      ctx.moveTo(eyeX - 11, eyeY - 11);
+      ctx.lineTo(eyeX + 11, eyeY + 11);
       ctx.stroke();
 
       // 센서 전체 글레어
-      ctx.fillStyle = `rgba(255, 255, 255, ${trainHeadlightStreak * 0.4})`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${trainHeadlightStreak * 0.6})`;
       ctx.beginPath();
-      ctx.arc(eyeX, eyeY, 14, 0, Math.PI * 2);
+      ctx.arc(eyeX, eyeY, 18, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // 머리 위 고정 상태 태그 (Floating HUD Tag - 상시 표시되어 존재감 확인)
+    ctx.font = '600 9px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
+    ctx.fillText('SV-09 // ERR_OUT_OF_BOUNDS', robX, robY - 54);
 
     ctx.restore();
 
@@ -986,8 +1138,14 @@
   }
 
   function resizeCanvas() {
-    width = canvas.width = canvas.parentElement.clientWidth || 600;
-    height = canvas.height = canvas.parentElement.clientHeight || 700;
+    const parent = canvas.parentElement;
+    width = canvas.width = parent.clientWidth || 600;
+    height = canvas.height = parent.clientHeight || 700;
+    servitorTargetX = width * 0.64;
+    if (servitorX > 90000) {
+      servitorX = width + 60;
+      servitorMoving = true;
+    }
   }
   window.addEventListener('resize', resizeCanvas);
 
