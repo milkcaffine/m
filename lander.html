@@ -331,12 +331,12 @@
   }
 
   // --- 게임 상태 및 물리 변수 ---
-  const GRAVITY = 0.028;
-  const MAIN_THRUST = 0.075;
-  const ROT_SPEED = 0.045;
-  const SAFE_MAX_VY = 1.15; // 안전 수직 착륙 속도
-  const SAFE_MAX_VX = 0.75; // 안전 수평 속도
-  const SAFE_MAX_TILT = 11; // 허용 기울기(도)
+  const GRAVITY = 0.026;
+  const MAIN_THRUST = 0.082;
+  const ROT_SPEED = 0.048;
+  const SAFE_MAX_VY = 1.85; // 안전 수직 착륙 속도 (기존 1.15에서 여유 확대)
+  const SAFE_MAX_VX = 1.25; // 안전 수평 속도 (기존 0.75에서 여유 확대)
+  const SAFE_MAX_TILT = 18; // 허용 기울기(도, 기존 11에서 18도로 완화)
 
   let score = 0;
   let level = 1;
@@ -378,11 +378,11 @@
     const points = 36;
     const step = width / points;
 
-    // 2~3개의 평평한 착륙 패드 위치 선정
+    // 3개의 평평한 착륙 패드 위치 선정 (간격 안정화)
     const padIndices = [
-      Math.floor(points * 0.22),
-      Math.floor(points * 0.55),
-      Math.floor(points * 0.82)
+      Math.floor(points * 0.18),
+      Math.floor(points * 0.50),
+      Math.floor(points * 0.78)
     ];
 
     let baseH = height * 0.78;
@@ -392,8 +392,8 @@
       let y = baseH + Math.sin(i * 0.8) * 45 + (Math.random() - 0.5) * 50;
       y = Math.max(height * 0.55, Math.min(height - 40, y));
 
-      // 패드 구간은 완벽한 수평선 유지
-      const padIndex = padIndices.find(pi => i >= pi && i <= pi + 2);
+      // 패드 구간은 완벽한 수평선 유지 (기존 2칸 -> 3칸 폭으로 넓혀 착륙 안정성 확보)
+      const padIndex = padIndices.find(pi => i >= pi && i <= pi + 3);
       if (padIndex !== undefined) {
         y = height * 0.82; // 수평 고정
       }
@@ -401,15 +401,15 @@
       terrain.push({ x, y });
     }
 
-    // 패드 데이터 확정
+    // 패드 데이터 확정 (폭 넓힘: pi ~ pi+3)
     padIndices.forEach((pi, idx) => {
       const p1 = terrain[pi];
-      const p2 = terrain[pi + 2];
+      const p2 = terrain[pi + 3];
       landingPads.push({
         x1: p1.x,
         x2: p2.x,
         y: p1.y,
-        mult: idx === 1 ? 5 : (idx === 0 ? 3 : 2) // 폭과 난이도에 따른 배수
+        mult: idx === 1 ? 4 : (idx === 0 ? 2 : 1) // 폭과 난이도에 따른 배수
       });
     });
   }
@@ -417,10 +417,10 @@
   function resetShip() {
     ship.x = width * 0.15;
     ship.y = 80;
-    ship.vx = 1.2 + Math.random() * 0.5;
+    ship.vx = 0.6 + Math.random() * 0.4; // 초기 유입 속도 완화 (기존 1.2+0.5 -> 0.6+0.4)
     ship.vy = 0.2;
     ship.angle = 0;
-    ship.fuel = Math.max(400, 1000 - (level - 1) * 80);
+    ship.fuel = Math.max(500, 1200 - (level - 1) * 80); // 넉넉한 연료 (기존 1000 -> 1200)
     ship.thrusting = false;
     ship.rotatingLeft = false;
     ship.rotatingRight = false;
@@ -479,15 +479,14 @@
     const cosA = Math.cos(ship.angle);
     const sinA = Math.sin(ship.angle);
     const footLX = ship.x - 9 * cosA + 10 * sinA;
-    const footLY = ship.y - 9 * sinA - 10 * cosA;
     const footRX = ship.x + 9 * cosA + 10 * sinA;
-    const footRY = ship.y + 9 * sinA - 10 * cosA;
 
-    // 1. 착륙 패드 검사
+    // 1. 착륙 패드 검사 (발이 패드 범위 내에 오고, 하단이 패드 표면에 닿았을 때)
     for (let pad of landingPads) {
-      if (footLX >= pad.x1 && footRX <= pad.x2 &&
-          Math.abs(ship.y + 10 - pad.y) < 6) {
-        
+      const onPadX = (footLX >= pad.x1 - 6 && footRX <= pad.x2 + 6);
+      const onPadY = (ship.y + 10 >= pad.y - 5 && ship.y + 10 <= pad.y + 10);
+
+      if (onPadX && onPadY) {
         const deg = Math.abs(ship.angle * (180 / Math.PI));
         const safeVy = Math.abs(ship.vy) <= SAFE_MAX_VY;
         const safeVx = Math.abs(ship.vx) <= SAFE_MAX_VX;
@@ -497,6 +496,9 @@
           // 완벽한 착륙 성공!
           gameState = 'LANDED';
           setThrusterSound(false);
+          ship.y = pad.y - 10;
+          ship.vx = 0;
+          ship.vy = 0;
           const earned = Math.round((ship.fuel * 2 + 500) * pad.mult);
           score += earned;
           playSuccessSound();
@@ -517,6 +519,10 @@
     for (let i = 0; i < terrain.length - 1; i++) {
       const p1 = terrain[i];
       const p2 = terrain[i + 1];
+
+      // 패드 위 구간은 일반 지형 충돌 검사 제외 (패드 판정 우선 보호)
+      const isPadSection = landingPads.some(pad => p1.x >= pad.x1 - 1 && p2.x <= pad.x2 + 1);
+      if (isPadSection) continue;
 
       // 기체 4개 꼭짓점 선분과 지형 선분 교차 검출
       if (lineIntersect(ship.x, ship.y - 10, ship.x, ship.y + 10, p1.x, p1.y, p2.x, p2.y) ||
@@ -627,8 +633,21 @@
     }
     ctx.stroke();
 
-    // 3. 착륙 패드 하이라이트 (네온 그린 & 배수 텍스트)
+    // 3. 착륙 패드 하이라이트 (네온 그린 & 비콘 가이드)
     landingPads.forEach(pad => {
+      // 상공 가이드 비콘 점선 (은은한 수직선)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(74, 222, 128, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(pad.x1, pad.y);
+      ctx.lineTo(pad.x1, pad.y - 45);
+      ctx.moveTo(pad.x2, pad.y);
+      ctx.lineTo(pad.x2, pad.y - 45);
+      ctx.stroke();
+      ctx.restore();
+
       ctx.strokeStyle = '#4ade80';
       ctx.lineWidth = 3.0;
       ctx.shadowColor = '#4ade80';
@@ -659,6 +678,9 @@
       ctx.translate(ship.x, ship.y);
       ctx.rotate(ship.angle);
 
+      const deg = Math.abs(ship.angle * (180 / Math.PI));
+      const isSafe = Math.abs(ship.vy) <= SAFE_MAX_VY && Math.abs(ship.vx) <= SAFE_MAX_VX && deg <= SAFE_MAX_TILT;
+
       ctx.strokeStyle = '#f8fafc';
       ctx.lineWidth = 1.4;
 
@@ -674,7 +696,13 @@
       // 하단 하강단 몸체
       ctx.strokeRect(-9, 2, 18, 6);
 
-      // 좌우 착륙 다리(Legs) 및 패드
+      // 좌우 착륙 다리(Legs) 및 패드 — 안전 착륙 가능 상태일 때 초록색 점등
+      ctx.save();
+      if (isSafe) {
+        ctx.strokeStyle = '#4ade80';
+        ctx.shadowColor = '#4ade80';
+        ctx.shadowBlur = 8;
+      }
       ctx.beginPath();
       // 좌측 다리
       ctx.moveTo(-9, 5);
@@ -687,6 +715,7 @@
       ctx.moveTo(11, 12);
       ctx.lineTo(17, 12);
       ctx.stroke();
+      ctx.restore();
 
       // 분사구 노즐
       ctx.strokeRect(-3, 8, 6, 3);
