@@ -187,6 +187,17 @@
         .tool-drawer.is-searching .tool-drawer-body {
             display: none;
         }
+
+        /* 서랍 안 카테고리 라벨 */
+        .tool-drawer-body .tool-cat-label {
+            margin: 1.5rem 0 0.35rem;
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: #52525b;
+            font-family: ui-monospace, monospace;
+        }
+        .tool-drawer-body .tool-cat-label:first-child { margin-top: 0.5rem; }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -315,7 +326,8 @@
             <div id="toolDrawer" class="tool-drawer">
             <div id="toolRows" class="tool-drawer-body space-y-1.5">
                 <!-- write -->
-                <p>
+                <p class="tool-cat-label">Write</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="syllable"><a href="syllable.html" data-desc="하이쿠·단가 5-7-5 음수 계산기 (한국어·일본어·영어 모드)">syllable</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="poem-card"><a href="poem-card.html" data-desc="세로쓰기·가로쓰기 지원 감성 시/단가 카드 메이커">poem</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="long-card"><a href="long-card.html" data-desc="SNS 긴 글 스레드·카드뉴스 자동 분할 ZIP 생성기">thread</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
@@ -325,43 +337,57 @@
                 </p>
 
                 <!-- photo -->
-                <p>
+                <p class="tool-cat-label">Photo</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="curve"><a href="curve.html" data-desc="실시간 히스토그램 기반 RGB·휘도 톤 커브 정밀 보정 다크룸">curves</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="filmscan"><a href="filmscan.html" data-desc="네거티브 필름 반전 & 주황 마스크 제거 간이 스캐너">filmscan</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="film-frame"><a href="film-frame.html" data-desc="EXIF 메타데이터 자동 추출 필름 프레임 생성기">frame</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="watermark"><a href="watermark.html" data-desc="SNS 아이디·닉네임 & 90s 필름 쿼츠 날짜 스탬프 워터마크">watermark</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="x-optimize"><a href="x-optimize.html" data-desc="트위터 규격 최적화 리사이즈 & 흑백 샤프니스 다크룸">x-resize</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="psdview"><a href="psdview.html" data-desc="Photoshop PSD 합성본·레이어 브라우저 뷰어 (업로드 없음)">psd</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                    <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-grid</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                    <span class="tool-item" data-id="collage"><a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="color-palette"><a href="color-palette.html" data-desc="사진 대표 색상 5종 추출 & 스와치 칩 카드 생성">palette</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
+                <!-- convert / files -->
+                <p class="tool-cat-label">Convert / Files</p>
+                <p class="tool-cat-row">
+                    <span class="tool-item" data-id="heic-to-jpg"><a href="heic-to-jpg.html" data-desc="아이폰 HEIC 사진 초고속 JPG 일괄 변환기">heic</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                    <span class="tool-item" data-id="psdview"><a href="psdview.html" data-desc="Photoshop PSD 합성본·레이어 브라우저 뷰어 (업로드 없음)">psd</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                    <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stl</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
+                </p>
+
                 <!-- image fx -->
-                <p>
-                    <span class="tool-item" data-id="x-split"><a href="x-split.html" data-desc="트위터(X) 타임라인 4분할 격자 보정 슬라이서">x-grid</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="collage"><a href="collage.html" data-desc="그리드 레이아웃 감성 사진 콜라주 메이커">collage</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                <p class="tool-cat-label">Image FX</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="dither"><a href="dither.html" data-desc="1-Bit·4계조 도트 매트릭스 디더 픽셀 변환">dither</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="glitch"><a href="glitch.html" data-desc="사이버펑크 RGB 색수차 Shift & CRT 스캔라인 스튜디오">glitch</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="kaleido"><a href="kaleido.html" data-desc="사진을 거울로 접어 끌고 돌리는 실시간 만화경 · PNG·GIF 저장">kaleido</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="ascii"><a href="ascii.html" data-desc="사진을 모노스페이스 ASCII·유니코드 아트로 변환">ascii</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                    <span class="tool-item" data-id="ascii"><a href="ascii.html" data-desc="사진을 모노스페이스 ASCII·유니코드 아트로 변환">ascii</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
+                </p>
+
+                <!-- draw -->
+                <p class="tool-cat-label">Draw</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="mandala"><a href="mandala.html" data-desc="신성기하학 조화 진동 곡선 기반 프로시저럴 만다라 생성 & 2K 워터마크 저장기">mandala</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="sumi"><a href="sumi.html" data-desc="화선지 위로 유기적으로 번지는 수묵 잉크와 자라나는 덩굴 줄기 인터랙티브 캔버스">sumi</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="oekaki"><a href="oekaki.html" data-desc="다중 브러시·대칭·타임어택·갤러리, PNG 릴레이로 친구와 이어 그리는 오에카키 캔버스">oekaki</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
-                <!-- sound / files -->
-                <p>
+                <!-- sound -->
+                <p class="tool-cat-label">Sound</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="ambient"><a href="ambient.html" data-desc="프로시저럴 실시간 합성 빗소리·LP·솔페지오 사운드 믹서">ambient</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="radio"><a href="radio.html" data-desc="국가별 세계 라디오 다이얼 — Radio Browser 스트림 재생">radio</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="keystroke"><a href="keystroke.html" data-desc="타자기 & 윤활 기계식 키보드 프로시저럴 타건음 합성 패드">keys</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="morse"><a href="morse.html" data-desc="Web Audio 기반 CW 모스 부호 오디오 합성 & 실시간 페이퍼 테이프 전신기">morse</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="oscilloscope"><a href="oscilloscope.html" data-desc="CRT 브라운관 형광체 잔상 리사주 X-Y 벡터 오실로스코프">scope</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="mosquito"><a href="mosquito.html" data-desc="고주파 모기 퇴치음 발생기 (고정·스윕·펄스·타이머) & 가청 주파수 귀 나이 테스트">mosquito</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="stlview"><a href="stlview.html" data-desc="3D 프린터 STL 모델링 파일 360도 WebGL 뷰어">stl</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
+                    <span class="tool-item" data-id="mosquito"><a href="mosquito.html" data-desc="고주파 모기 퇴치음 발생기 (고정·스윕·펄스·타이머) & 가청 주파수 귀 나이 테스트">mosquito</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
                 <!-- space -->
-                <p>
+                <p class="tool-cat-label">Space</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="galaxy"><a href="galaxy.html" data-desc="만유인력 N-Body 실시간 나선 은하 형성 & 충돌 시뮬레이터">galaxy</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="orrery"><a href="orrery.html" data-desc="케플러 궤도 방정식 기반 8대 행성 실시간 태양계 천문대">orrery</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="vortex"><a href="vortex.html" data-desc="은하 정점(Apex) 60도 황도면 전진 나선형 태양계 볼텍스 3D 시뮬레이터">vortex</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
@@ -371,20 +397,21 @@
                     <span class="tool-item" data-id="blackhole"><a href="blackhole.html" data-desc="WebGL 셰이더 기반 슈바르츠실트 블랙홀 중력 렌징 & 강착원반">blackhole</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="threebody"><a href="threebody.html" data-desc="RK4 정밀 적분기 기반 세 천체의 만유인력 카오스 궤적 시뮬레이터">3body</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="trisolaris"><a href="trisolaris.html" data-desc="삼중성계 N체 궤도 역학 기반 실시간 항성계 시뮬레이션 & 행성 기후·문명 생존 모니터">trisolaris</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="lorenz"><a href="lorenz.html" data-desc="카오스 이론 로렌츠 어트랙터 3D 궤적 & 실시간 사운드스코프">lorenz</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="slingshot"><a href="slingshot.html" data-desc="만유인력과 행성 중력 우물을 이용한 RK4 궤적 우주선 슬링샷 퍼즐">slingshot</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="massdriver"><a href="massdriver.html" data-desc="달 기지 28km 전자기 코일건 기반 지구 대기권 감속 투하 & 화성 궤도 진입 탄도 시뮬레이터">massdriver</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="debris"><a href="debris.html" data-desc="LEO 420km 우주정거장 궤도 쓰레기 수거 & 큐폴라(Cupola) 지구 야경·오로라 감상 관측 덱">debris</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
                 </p>
 
                 <!-- life / pattern -->
-                <p>
+                <p class="tool-cat-label">Life / Pattern</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="quantum"><a href="quantum.html" data-desc="1차원 슈뢰딩거 파동 방정식 & 양자 터널링 확률 밀도 시뮬레이터">quantum</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="wave"><a href="wave.html" data-desc="FDTD 파동 방정식 2D 수조 & 이중 슬릿 양자 간섭 시뮬레이터">waves</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="life"><a href="life.html" data-desc="콘웨이의 2차원 세포 오토마타 실시간 생명 게임">life</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="lenia"><a href="lenia.html" data-desc="환형 가우시안 커널 기반 연속 세포 오토마타 인공 생명체 배양기">lenia</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="particle-life"><a href="particle-life.html" data-desc="인력·척력 매트릭스 기반 1,200개 입자의 자가조직화 생명 군무 시뮬레이터">particles</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="reaction"><a href="reaction.html" data-desc="튜링 패턴 그레이-스콧 반응-확산 생체 무늬 시뮬레이터">reaction</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                    <span class="tool-item" data-id="lorenz"><a href="lorenz.html" data-desc="카오스 이론 로렌츠 어트랙터 3D 궤적 & 실시간 사운드스코프">lorenz</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="fractal"><a href="fractal.html" data-desc="WebGL 셰이더 기반 복소평면 만델브로 & 줄리아 무한 프랙탈 탐험기">fractal</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="jellyfish"><a href="jellyfish.html" data-desc="다축 사인·코사인 파라미터 합성으로 춤추는 해파리형 유기 곡선 생성기">jellyfish</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="aquarium"><a href="aquarium.html" data-desc="3D 카테시안 수조 속 해파리·비단잉어 생체 역학 및 심리스 루프 GIF 생성기">aquarium</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
@@ -392,12 +419,18 @@
                 </p>
 
                 <!-- play -->
-                <p>
+                <p class="tool-cat-label">Play</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="lander"><a href="lander.html" data-desc="1979 아타리 벡터 그래픽 기반 아폴로 달 착륙선 관성 조종 게임">lander</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="missile"><a href="missile.html" data-desc="CRT 녹색 레이더 화면과 동심원 연쇄 폭발 방공 요격 시뮬레이션">missile</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="tunnel"><a href="tunnel.html" data-desc="의사 3D 원근법 와이어프레임 터널 속 360도 롤링 회피 하이퍼스피드 레이서">tunnel</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="stacker"><a href="stacker.html" data-desc="낙하 블록 라인 클리어 아케이드 — Hold·Next·고스트 피스">stacker</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
-                    <span class="tool-item" data-id="snake"><a href="snake.html" data-desc="네온 벡터 그리드와 사이버 신스 FX 기반의 레트로 스네이크 아케이드">snake</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
+                    <span class="tool-item" data-id="snake"><a href="snake.html" data-desc="네온 벡터 그리드와 사이버 신스 FX 기반의 레트로 스네이크 아케이드">snake</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
+                </p>
+
+                <!-- stories -->
+                <p class="tool-cat-label">Stories</p>
+                <p class="tool-cat-row">
                     <span class="tool-item" data-id="rojiura"><a href="rojiura.html" data-desc="폭 1m 비유클리드 도쿄 뒷골목과 숨겨진 심야 카페 [우라이나리] 탐색 텍스트-비주얼 인터랙티브">rojiura</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="sluice4"><a href="sluice4.html" data-desc="x004F: 제4수문 앞의 가비지 컬렉션 — 도쿄만 수문과 유기 냉각수 운하 단편 소설 인터랙티브">sluice4</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span> ·
                     <span class="tool-item" data-id="mita"><a href="mita.html" data-desc="미타: 도시의 봉합선 — 타카나와 경계 육교와 버려진 서비터 로봇 단편 소설 인터랙티브">mita</a><button type="button" class="star-btn" title="즐겨찾기" aria-label="즐겨찾기">☆</button></span>
