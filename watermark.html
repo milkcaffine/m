@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Marsko lab tool — watermark.">
+  <meta name="description" content="Marsko lab tool — watermark & 90s retro quartz date stamp.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#09090b">
+  <meta name="theme-color" content="#09090b">
   <link rel="stylesheet" href="assets/marsko-hud.css">
   <title>사진 워터마크 메이커 // marsko</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Playfair+Display:ital,wght@1,600&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Montserrat:wght@600;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@500;700&family=Playfair+Display:ital,wght@1,600&family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
@@ -20,6 +21,7 @@
       display: flex;
       justify-content: center;
       padding: 12px;
+      min-height: 100vh;
     }
     .container {
       background: #18181b;
@@ -30,8 +32,46 @@
       padding: 20px 16px;
       box-shadow: 0 4px 24px rgba(0,0,0,0.4);
     }
+    .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
+    .back a { color: #64748b; text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+    .back a:hover { color: #38bdf8; }
     h1 { font-size: 1.25rem; font-weight: 800; text-align: center; margin-bottom: 4px; color: #f4f4f5; }
     p.sub { font-size: 0.8rem; color: #a1a1aa; text-align: center; margin-bottom: 16px; }
+
+    /* 모드 전환 탭 (일반 워터마크 vs 90s 쿼츠 데이트 스탬프) */
+    .mode-switcher {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #09090b;
+      border: 1px solid #27272a;
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+    }
+    .mode-tab {
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      padding: 9px 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .mode-tab:hover { color: #f4f4f5; }
+    .mode-tab.active {
+      background: #27272a;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
     .dropzone {
       border: 2px dashed #0284c7;
       background: #0f172a;
@@ -48,12 +88,13 @@
       gap: 4px;
       transition: background 0.15s ease, border-color 0.15s ease;
     }
-    .dropzone:hover {
+    .dropzone:hover, .dropzone.dragover {
       background: #132038;
       border-color: #38bdf8;
     }
     .dropzone small { font-size: 0.75rem; color: #94a3b8; font-weight: 400; }
     input[type="file"] { display: none; }
+
     .control-panel {
       margin-top: 14px;
       background: #27272a;
@@ -64,22 +105,123 @@
       flex-direction: column;
       gap: 12px;
     }
+    .mode-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
     .control-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       font-size: 0.88rem;
+      gap: 8px;
     }
-    .control-row label { font-weight: 600; color: #d4d4d8; }
+    .control-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .control-row label, .control-col label { font-weight: 600; color: #d4d4d8; font-size: 0.85rem; }
     .control-row select, .control-row input[type="text"] {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       border-radius: 8px;
       padding: 7px 10px;
       border: 1px solid #3f3f46;
       background: #18181b;
       color: #f4f4f5;
     }
+    .control-row select { max-width: 220px; }
     .control-row input[type="text"] { width: 180px; }
+
+    /* 프리셋 컬러 버튼 */
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      width: 100%;
+    }
+    @media (min-width: 440px) {
+      .preset-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .preset-btn {
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      color: #d4d4d8;
+      border-radius: 8px;
+      padding: 7px 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .preset-btn:hover { background: #27272a; border-color: #52525b; }
+    .preset-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    .preset-btn .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* 날짜 선택 / EXIF 칩 */
+    .exif-chip {
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      color: #38bdf8;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.74rem;
+      font-family: 'IBM Plex Mono', monospace;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .exif-chip.warn {
+      background: rgba(161, 161, 170, 0.1);
+      border-color: rgba(161, 161, 170, 0.25);
+      color: #a1a1aa;
+    }
+    .date-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 220px;
+      width: 100%;
+    }
+    .date-input-wrap input[type="date"] {
+      flex: 1;
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      color: #f4f4f5;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      font-family: inherit;
+    }
+    .btn-today {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 9px;
+      font-size: 0.74rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .btn-today:hover { background: #334155; color: #38bdf8; }
+
     .slider-box {
       display: flex;
       align-items: center;
@@ -167,35 +309,134 @@
     }
     .btn:hover { background: #0369a1; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
-    .back a { color: #64748b; text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
-    .back a:hover { color: #38bdf8; }
   </style>
 </head>
 <body>
 <div class="container">
   <div class="back"><a href="index.html">← marsko</a></div>
   <h1>워터마크 메이커</h1>
-  <p class="sub">X 아이디 · 닉네임 · 회전 · 커스텀 폰트 & 색상</p>
+  <p class="sub">X 아이디 · 닉네임 · 90s 필름 쿼츠 데이트 스탬프</p>
+
+  <!-- 모드 선택 탭 -->
+  <div class="mode-switcher">
+    <button type="button" class="mode-tab active" id="tabGeneral">🏷️ 일반 워터마크</button>
+    <button type="button" class="mode-tab" id="tabDatestamp">📅 90s 쿼츠 데이트</button>
+  </div>
+
   <div class="dropzone" id="dropzone">
-    <span>📷 사진 선택 / 불러오기</span>
-    <small>워터마크를 넣을 사진을 선택하세요</small>
+    <span>📷 사진 선택 / 드래그 & 드롭</span>
+    <small>워터마크 또는 날짜 스탬프를 넣을 사진을 선택하세요</small>
     <input type="file" id="fileInput" accept="image/*">
   </div>
+
   <div class="control-panel">
-    <div class="control-row">
-      <label for="wmText">워터마크 문구</label>
-      <input type="text" id="wmText" value="@username" placeholder="예: @내아이디">
+    <!-- 모드 1: 일반 워터마크 전용 패널 -->
+    <div id="panelGeneral" class="mode-panel">
+      <div class="control-row">
+        <label for="wmText">워터마크 문구</label>
+        <input type="text" id="wmText" value="@username" placeholder="예: @내아이디">
+      </div>
+      <div class="control-row">
+        <label for="wmFont">폰트 스타일</label>
+        <select id="wmFont">
+          <option value="'Montserrat', sans-serif" selected>모던 영문 (Montserrat)</option>
+          <option value="'Playfair Display', serif">클래식 세리프 (Playfair)</option>
+          <option value="'Nanum Pen Script', cursive">손글씨 펜 (Nanum Pen)</option>
+          <option value="'Noto Sans KR', sans-serif">깔끔한 고딕 (Noto Sans)</option>
+          <option value="'Share Tech Mono', monospace">레트로 모노 (Share Tech Mono)</option>
+          <option value="'VT323', monospace">디지털 도트 (VT323)</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <label>글자 색상</label>
+        <div class="color-options">
+          <label style="font-size: 0.8rem; font-weight: normal; cursor: pointer;">
+            <input type="checkbox" id="shadowCheck" checked> 그림자 효과
+          </label>
+          <input type="color" id="textColor" value="#ffffff">
+        </div>
+      </div>
     </div>
-    <div class="control-row">
-      <label for="wmFont">폰트 스타일</label>
-      <select id="wmFont">
-        <option value="'Montserrat', sans-serif" selected>모던 영문 (Montserrat)</option>
-        <option value="'Playfair Display', serif">클래식 세리프 (Playfair)</option>
-        <option value="'Nanum Pen Script', cursive">손글씨 펜 (Nanum Pen)</option>
-        <option value="'Noto Sans KR', sans-serif">깔끔한 고딕 (Noto Sans)</option>
-      </select>
+
+    <!-- 모드 2: 90s 쿼츠 날짜 스탬프 전용 패널 -->
+    <div id="panelDatestamp" class="mode-panel" style="display: none;">
+      <!-- EXIF 정보 배너 칩 -->
+      <div id="exifChip" class="exif-chip" style="display: none;">
+        <span id="exifChipText">📸 EXIF 촬영일 감지됨</span>
+      </div>
+
+      <!-- 네온 컬러 프리셋 -->
+      <div class="control-col">
+        <label>네온 컬러 프리셋</label>
+        <div class="preset-grid">
+          <button type="button" class="preset-btn active" data-preset="orange">
+            <span class="dot" style="background: #ff6200; box-shadow: 0 0 6px #ff6200;"></span> 🍊 오렌지 네온
+          </button>
+          <button type="button" class="preset-btn" data-preset="white">
+            <span class="dot" style="background: #ffffff; box-shadow: 0 0 6px #93c5fd;"></span> ⚪ 화이트 네온
+          </button>
+          <button type="button" class="preset-btn" data-preset="amber">
+            <span class="dot" style="background: #f59e0b; box-shadow: 0 0 6px #f59e0b;"></span> 🟡 앰버 골드
+          </button>
+          <button type="button" class="preset-btn" data-preset="red">
+            <span class="dot" style="background: #ef4444; box-shadow: 0 0 6px #ef4444;"></span> 🔴 빈티지 레드
+          </button>
+        </div>
+      </div>
+
+      <!-- 날짜 표기 형식 -->
+      <div class="control-row">
+        <label for="dateFormat">날짜 표기 포맷</label>
+        <select id="dateFormat">
+          <option value="yy_mm_dd_quote" selected>'YY  MM  DD ('26  11  07)</option>
+          <option value="yy_mm_dd_dot">'YY. MM. DD ('26. 11. 07)</option>
+          <option value="yyyy_mm_dd_dot">YYYY. MM. DD (2026. 11. 07)</option>
+          <option value="yy_mm_dd_time">'YY MM DD  HH:MM ('26 11 07 17:05)</option>
+          <option value="yy_m_d">'YY  M  D ('98  7 24)</option>
+          <option value="custom">직접 수정 입력</option>
+        </select>
+      </div>
+
+      <!-- 날짜 선택기 -->
+      <div class="control-row">
+        <label for="datePicker">촬영 날짜 선택</label>
+        <div class="date-input-wrap">
+          <input type="date" id="datePicker">
+          <button type="button" class="btn-today" id="btnToday">오늘 날짜</button>
+        </div>
+      </div>
+
+      <!-- 스탬프 텍스트 -->
+      <div class="control-row">
+        <label for="dateCustomText">스탬프 문구</label>
+        <input type="text" id="dateCustomText" value="'26  11  07" placeholder="'26  11  07">
+      </div>
+
+      <!-- 스탬프 폰트 -->
+      <div class="control-row">
+        <label for="dateFont">스탬프 폰트</label>
+        <select id="dateFont">
+          <option value="'VT323', monospace" selected>디지털 LED / 도트 (VT323)</option>
+          <option value="'Share Tech Mono', monospace">90s 쿼츠 모노 (Share Tech Mono)</option>
+          <option value="'IBM Plex Mono', monospace">클린 테크 모노 (IBM Plex)</option>
+          <option value="'Montserrat', sans-serif">모던 산세리프 (Montserrat)</option>
+        </select>
+      </div>
+
+      <!-- 광학 네온 글로우 -->
+      <div class="control-row">
+        <label for="glowRange">광학 네온 발광</label>
+        <div class="slider-box">
+          <label style="font-size: 0.78rem; color: #a1a1aa; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+            <input type="checkbox" id="glowCheck" checked> 빛번짐
+          </label>
+          <input type="range" id="glowRange" min="10" max="100" value="55">
+          <span id="glowVal">55%</span>
+        </div>
+      </div>
     </div>
+
+    <!-- 공통 제어 옵션: 글자 크기, 불투명도, 회전, 위치 -->
     <div class="control-row">
       <label for="sizeRange">글자 크기</label>
       <div class="slider-box">
@@ -206,8 +447,8 @@
     <div class="control-row">
       <label for="alphaRange">불투명도</label>
       <div class="slider-box">
-        <input type="range" id="alphaRange" min="10" max="100" value="85">
-        <span id="alphaVal">85%</span>
+        <input type="range" id="alphaRange" min="10" max="100" value="95">
+        <span id="alphaVal">95%</span>
       </div>
     </div>
     <div class="control-row">
@@ -215,15 +456,6 @@
       <div class="slider-box">
         <input type="range" id="rotateRange" min="-45" max="45" value="0">
         <span id="rotateVal">0°</span>
-      </div>
-    </div>
-    <div class="control-row">
-      <label>글자 색상</label>
-      <div class="color-options">
-        <label style="font-size: 0.8rem; font-weight: normal; cursor: pointer;">
-          <input type="checkbox" id="shadowCheck" checked> 외곽선/그림자 효과
-        </label>
-        <input type="color" id="textColor" value="#ffffff">
       </div>
     </div>
     <div class="control-row">
@@ -241,6 +473,7 @@
       </div>
     </div>
   </div>
+
   <div id="previewArea">
     <div class="preview-header">미리보기 (원본 해상도 유지)</div>
     <div class="canvas-container">
@@ -248,30 +481,138 @@
     </div>
   </div>
   <div class="btn-group">
-    <button class="btn" id="downloadBtn" disabled>워터마크 이미지 다운로드</button>
+    <button class="btn" id="downloadBtn" disabled>완성된 사진 다운로드</button>
   </div>
 </div>
+
 <script>
+  // DOM Elements
+  const tabGeneral = document.getElementById('tabGeneral');
+  const tabDatestamp = document.getElementById('tabDatestamp');
+  const panelGeneral = document.getElementById('panelGeneral');
+  const panelDatestamp = document.getElementById('panelDatestamp');
+
   const fileInput = document.getElementById('fileInput');
   const dropzone = document.getElementById('dropzone');
+
+  // General Mode Elements
   const wmText = document.getElementById('wmText');
   const wmFont = document.getElementById('wmFont');
+  const textColor = document.getElementById('textColor');
+  const shadowCheck = document.getElementById('shadowCheck');
+
+  // Datestamp Mode Elements
+  const exifChip = document.getElementById('exifChip');
+  const exifChipText = document.getElementById('exifChipText');
+  const presetBtns = document.querySelectorAll('.preset-btn');
+  const dateFormat = document.getElementById('dateFormat');
+  const datePicker = document.getElementById('datePicker');
+  const btnToday = document.getElementById('btnToday');
+  const dateCustomText = document.getElementById('dateCustomText');
+  const dateFont = document.getElementById('dateFont');
+  const glowCheck = document.getElementById('glowCheck');
+  const glowRange = document.getElementById('glowRange');
+  const glowVal = document.getElementById('glowVal');
+
+  // Common Elements
   const sizeRange = document.getElementById('sizeRange');
   const sizeVal = document.getElementById('sizeVal');
   const alphaRange = document.getElementById('alphaRange');
   const alphaVal = document.getElementById('alphaVal');
   const rotateRange = document.getElementById('rotateRange');
   const rotateVal = document.getElementById('rotateVal');
-  const textColor = document.getElementById('textColor');
-  const shadowCheck = document.getElementById('shadowCheck');
   const posButtons = document.querySelectorAll('.pos-btn');
   const previewArea = document.getElementById('previewArea');
   const canvas = document.getElementById('previewCanvas');
   const ctx = canvas.getContext('2d');
   const downloadBtn = document.getElementById('downloadBtn');
+
+  // State
+  let currentMode = 'general'; // 'general' | 'datestamp'
   let currentImg = null;
   let currentPos = 'br';
+  let currentPreset = 'orange';
+  let selectedDate = new Date();
 
+  // Color Presets for Quartz Date
+  const DATE_PRESETS = {
+    orange: {
+      name: '오렌지 네온',
+      halo: '#ff5a00',
+      core: '#fff7ed',
+      accent: '#ff5a00'
+    },
+    white: {
+      name: '화이트 네온',
+      halo: '#93c5fd',
+      core: '#ffffff',
+      accent: '#ffffff'
+    },
+    amber: {
+      name: '앰버 골드',
+      halo: '#f59e0b',
+      core: '#fffbeb',
+      accent: '#f59e0b'
+    },
+    red: {
+      name: '빈티지 레드',
+      halo: '#ef4444',
+      core: '#ffe4e6',
+      accent: '#ef4444'
+    }
+  };
+
+  // Initialize datepicker with today
+  setDatePickerFromDate(selectedDate);
+  updateDateText();
+
+  // Mode Tabs Switching
+  tabGeneral.addEventListener('click', () => {
+    if (currentMode === 'general') return;
+    currentMode = 'general';
+    tabGeneral.classList.add('active');
+    tabDatestamp.classList.remove('active');
+    panelGeneral.style.display = 'flex';
+    panelDatestamp.style.display = 'none';
+
+    if (currentImg) {
+      updateBaseSize(0.035);
+    }
+    renderWatermark();
+  });
+
+  tabDatestamp.addEventListener('click', () => {
+    if (currentMode === 'datestamp') return;
+    currentMode = 'datestamp';
+    tabDatestamp.classList.add('active');
+    tabGeneral.classList.remove('active');
+    panelDatestamp.style.display = 'flex';
+    panelGeneral.style.display = 'none';
+
+    // Quartz Date typically sits at bottom-right
+    posButtons.forEach(b => {
+      if (b.dataset.pos === 'br') b.classList.add('active');
+      else b.classList.remove('active');
+    });
+    currentPos = 'br';
+
+    if (currentImg) {
+      updateBaseSize(0.028);
+    }
+    renderWatermark();
+  });
+
+  // Preset buttons
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      presetBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPreset = btn.dataset.preset;
+      renderWatermark();
+    });
+  });
+
+  // Position Grid Buttons
   posButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
       posButtons.forEach(b => b.classList.remove('active'));
@@ -281,27 +622,154 @@
     });
   });
 
+  // Drag and drop support on dropzone
   dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
   fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  async function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return;
+
+    // EXIF metadata date extraction
+    let exifFound = false;
+    try {
+      if (typeof window.exifr !== 'undefined') {
+        const exif = await window.exifr.parse(file);
+        if (exif && (exif.DateTimeOriginal || exif.CreateDate)) {
+          const dt = exif.DateTimeOriginal || exif.CreateDate;
+          if (dt instanceof Date && !isNaN(dt)) {
+            selectedDate = dt;
+            exifFound = true;
+            setDatePickerFromDate(dt);
+            updateDateText();
+            exifChip.style.display = 'flex';
+            exifChip.className = 'exif-chip';
+            exifChipText.textContent = `📸 EXIF 촬영일 감지: ${formatDateString(dt, 'yyyy_mm_dd_dot')}`;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('EXIF parse error:', err);
+    }
+
+    if (!exifFound) {
+      exifChip.style.display = 'flex';
+      exifChip.className = 'exif-chip warn';
+      exifChipText.textContent = `ℹ️ EXIF 날짜 없음 (선택한 날짜 적용)`;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       currentImg = new Image();
       currentImg.onload = () => {
-        const baseDimension = Math.max(currentImg.naturalWidth, currentImg.naturalHeight);
-        const autoSize = Math.round(baseDimension * 0.035);
-        sizeRange.max = Math.max(120, Math.round(baseDimension * 0.15));
-        sizeRange.value = autoSize;
-        sizeVal.textContent = autoSize + 'px';
+        const ratio = currentMode === 'datestamp' ? 0.028 : 0.035;
+        updateBaseSize(ratio);
         renderWatermark();
       };
       currentImg.src = ev.target.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  function updateBaseSize(ratio) {
+    if (!currentImg) return;
+    const baseDimension = Math.max(currentImg.naturalWidth, currentImg.naturalHeight);
+    const autoSize = Math.max(16, Math.round(baseDimension * ratio));
+    sizeRange.max = Math.max(120, Math.round(baseDimension * 0.15));
+    sizeRange.value = autoSize;
+    sizeVal.textContent = autoSize + 'px';
+  }
+
+  function setDatePickerFromDate(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    datePicker.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  function formatDateString(date, format) {
+    const fullYear = date.getFullYear();
+    const yy = String(fullYear).slice(-2);
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1);
+    const d = String(date.getDate());
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+
+    switch (format) {
+      case 'yy_mm_dd_quote': // '26  11  07
+        return `'${yy}  ${mm}  ${dd}`;
+      case 'yy_mm_dd_dot':   // '26. 11. 07
+        return `'${yy}. ${mm}. ${dd}`;
+      case 'yyyy_mm_dd_dot': // 2026. 11. 07
+        return `${fullYear}. ${mm}. ${dd}`;
+      case 'yy_mm_dd_time':  // '26 11 07  17:05
+        return `'${yy}  ${mm}  ${dd}   ${hh}:${min}`;
+      case 'yy_m_d':         // '26  7 24
+        return `'${yy}  ${m.padStart(2, ' ')} ${d.padStart(2, ' ')}`;
+      default:
+        return `'${yy}  ${mm}  ${dd}`;
+    }
+  }
+
+  function updateDateText() {
+    const fmt = dateFormat.value;
+    if (fmt !== 'custom') {
+      dateCustomText.value = formatDateString(selectedDate, fmt);
+    }
+  }
+
+  datePicker.addEventListener('change', () => {
+    if (datePicker.value) {
+      const parts = datePicker.value.split('-');
+      selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0);
+      updateDateText();
+      renderWatermark();
+    }
   });
 
-  [wmText, wmFont, textColor, shadowCheck].forEach(el => el.addEventListener('input', renderWatermark));
+  btnToday.addEventListener('click', () => {
+    selectedDate = new Date();
+    setDatePickerFromDate(selectedDate);
+    updateDateText();
+    renderWatermark();
+  });
+
+  dateFormat.addEventListener('change', () => {
+    updateDateText();
+    renderWatermark();
+  });
+
+  dateCustomText.addEventListener('input', () => {
+    dateFormat.value = 'custom';
+    renderWatermark();
+  });
+
+  // Inputs event bindings
+  [wmText, wmFont, textColor, shadowCheck, dateFont, glowCheck].forEach(el => el.addEventListener('input', renderWatermark));
+
+  glowRange.addEventListener('input', () => {
+    glowVal.textContent = glowRange.value + '%';
+    renderWatermark();
+  });
+
   sizeRange.addEventListener('input', () => {
     sizeVal.textContent = sizeRange.value + 'px';
     renderWatermark();
@@ -315,6 +783,13 @@
     renderWatermark();
   });
 
+  // Web Fonts Ready Auto-Rerender
+  if (document.fonts) {
+    document.fonts.ready.then(() => {
+      if (currentImg) renderWatermark();
+    });
+  }
+
   function renderWatermark() {
     if (!currentImg) return;
     const w = currentImg.naturalWidth;
@@ -323,57 +798,149 @@
     canvas.height = h;
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(currentImg, 0, 0, w, h);
-    const text = wmText.value.trim();
-    if (!text) {
-      previewArea.style.display = 'block';
-      downloadBtn.disabled = false;
-      return;
-    }
+
     const fontSize = parseInt(sizeRange.value, 10);
     const alpha = parseInt(alphaRange.value, 10) / 100;
-    const fontFam = wmFont.value;
-    const color = textColor.value;
-    const hasShadow = shadowCheck.checked;
     const rotation = parseInt(rotateRange.value, 10) * Math.PI / 180;
-    ctx.save();
-    ctx.font = `bold ${fontSize}px ${fontFam}`;
-    ctx.globalAlpha = alpha;
     const pad = Math.max(24, Math.round(Math.min(w, h) * 0.04));
-    let x = 0, y = 0;
-    if (currentPos.includes('l')) {
-      ctx.textAlign = 'left';
-      x = pad;
-    } else if (currentPos.includes('r')) {
-      ctx.textAlign = 'right';
-      x = w - pad;
+
+    if (currentMode === 'datestamp') {
+      const text = dateCustomText.value || '';
+      if (!text) {
+        previewArea.style.display = 'block';
+        downloadBtn.disabled = false;
+        return;
+      }
+
+      const fontFam = dateFont.value;
+      const preset = DATE_PRESETS[currentPreset] || DATE_PRESETS.orange;
+      const hasGlow = glowCheck.checked;
+      const glowStrength = parseInt(glowRange.value, 10) / 50;
+
+      ctx.save();
+      ctx.font = `bold ${fontSize}px ${fontFam}`;
+      ctx.globalAlpha = alpha;
+
+      if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = `${Math.max(1, Math.round(fontSize * 0.08))}px`;
+      }
+
+      let x = 0, y = 0;
+      if (currentPos.includes('l')) {
+        ctx.textAlign = 'left';
+        x = pad;
+      } else if (currentPos.includes('r')) {
+        ctx.textAlign = 'right';
+        x = w - pad;
+      } else {
+        ctx.textAlign = 'center';
+        x = w / 2;
+      }
+
+      if (currentPos.includes('t')) {
+        ctx.textBaseline = 'top';
+        y = pad;
+      } else if (currentPos.includes('b')) {
+        ctx.textBaseline = 'bottom';
+        y = h - pad;
+      } else {
+        ctx.textBaseline = 'middle';
+        y = h / 2;
+      }
+
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+
+      if (hasGlow) {
+        // Dual-pass optical bloom:
+        // Pass 1: Wide soft optical halo
+        ctx.save();
+        ctx.shadowColor = preset.halo;
+        ctx.shadowBlur = Math.round(fontSize * 0.45 * glowStrength);
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.fillStyle = preset.halo;
+        ctx.fillText(text, 0, 0);
+
+        // Pass 1.5: Mid bloom
+        ctx.shadowBlur = Math.round(fontSize * 0.22 * glowStrength);
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+
+        // Pass 2: Overexposed hot center core
+        ctx.save();
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = preset.core;
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = preset.halo;
+        ctx.fillText(text, 0, 0);
+      }
+
+      ctx.restore();
     } else {
-      ctx.textAlign = 'center';
-      x = w / 2;
+      // General Watermark Mode
+      const text = wmText.value.trim();
+      if (!text) {
+        previewArea.style.display = 'block';
+        downloadBtn.disabled = false;
+        return;
+      }
+
+      const fontFam = wmFont.value;
+      const color = textColor.value;
+      const hasShadow = shadowCheck.checked;
+
+      ctx.save();
+      ctx.font = `bold ${fontSize}px ${fontFam}`;
+      ctx.globalAlpha = alpha;
+
+      if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = '0px';
+      }
+
+      let x = 0, y = 0;
+      if (currentPos.includes('l')) {
+        ctx.textAlign = 'left';
+        x = pad;
+      } else if (currentPos.includes('r')) {
+        ctx.textAlign = 'right';
+        x = w - pad;
+      } else {
+        ctx.textAlign = 'center';
+        x = w / 2;
+      }
+
+      if (currentPos.includes('t')) {
+        ctx.textBaseline = 'top';
+        y = pad;
+      } else if (currentPos.includes('b')) {
+        ctx.textBaseline = 'bottom';
+        y = h - pad;
+      } else {
+        ctx.textBaseline = 'middle';
+        y = h / 2;
+      }
+
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+
+      if (hasShadow) {
+        const isBrightColor = isLightColor(color);
+        ctx.shadowColor = isBrightColor ? 'rgba(0, 0, 0, 0.75)' : 'rgba(255, 255, 255, 0.85)';
+        ctx.shadowBlur = Math.round(fontSize * 0.15);
+        ctx.shadowOffsetX = Math.round(fontSize * 0.05);
+        ctx.shadowOffsetY = Math.round(fontSize * 0.05);
+      } else {
+        ctx.shadowColor = 'transparent';
+      }
+
+      ctx.fillStyle = color;
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
     }
-    if (currentPos.includes('t')) {
-      ctx.textBaseline = 'top';
-      y = pad;
-    } else if (currentPos.includes('b')) {
-      ctx.textBaseline = 'bottom';
-      y = h - pad;
-    } else {
-      ctx.textBaseline = 'middle';
-      y = h / 2;
-    }
-    ctx.translate(x, y);
-    ctx.rotate(rotation);
-    if (hasShadow) {
-      const isBrightColor = isLightColor(color);
-      ctx.shadowColor = isBrightColor ? 'rgba(0, 0, 0, 0.75)' : 'rgba(255, 255, 255, 0.85)';
-      ctx.shadowBlur = Math.round(fontSize * 0.15);
-      ctx.shadowOffsetX = Math.round(fontSize * 0.05);
-      ctx.shadowOffsetY = Math.round(fontSize * 0.05);
-    } else {
-      ctx.shadowColor = 'transparent';
-    }
-    ctx.fillStyle = color;
-    ctx.fillText(text, 0, 0);
-    ctx.restore();
+
     previewArea.style.display = 'block';
     downloadBtn.disabled = false;
   }
@@ -392,7 +959,8 @@
     canvas.toBlob((blob) => {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `watermarked_${Date.now()}.jpg`;
+      const prefix = currentMode === 'datestamp' ? 'dated' : 'watermarked';
+      link.download = `${prefix}_${Date.now()}.jpg`;
       link.click();
     }, 'image/jpeg', 0.98);
   });
