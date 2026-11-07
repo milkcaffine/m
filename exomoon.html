@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#020306">
+  <meta name="description" content="Marsko lab tool — exomoon. 조석 고정 위성(엔셀라두스·유로파·포보스) 지평선에서 바라보는 거대 모행성·고리·간헐천 실시간 관측소.">
+  <title>Exomoon Horizon Observatory // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #skyCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #skyCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 천문 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(8, 12, 22, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.65;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .accent-amber { color: #fbbf24; }
+    .telemetry-card .accent-rose { color: #f43f5e; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 12, 22, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 58px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+
+    @media (max-width: 720px) {
+      .telemetry-card {
+        display: none;
+      }
+      header h1 {
+        font-size: 0.85rem;
+      }
+      .control-dock {
+        bottom: 10px;
+        padding: 6px 10px;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>EXOMOON HORIZON OBSERVATORY</h1>
+  <div class="hud-meta">TIDAL LOCK SKY · PLANETARY RING & TRANSIT</div>
+</header>
+
+<div class="telemetry-card">
+  <div>VANTAGE: <strong id="hudMoon">ENCELADUS (SATURN)</strong></div>
+  <div>DISTANCE: <strong id="hudDist">238,000 km</strong></div>
+  <div>APPARENT SIZE: <strong id="hudSize" class="accent-amber">30.2x FULL MOON</strong></div>
+  <div>PHENOMENON: <strong id="hudPhenom">CRYO-PLUME & RINGS</strong></div>
+</div>
+
+<canvas id="skyCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnSaturn">토성 (엔셀라두스)</button>
+  <button type="button" class="dock-btn" id="btnJupiter">목성 (유로파)</button>
+  <button type="button" class="dock-btn" id="btnMars">화성 (포보스)</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>관측 위도(기울기)</span>
+    <input type="range" id="tiltRange" min="-35" max="35" value="18">
+  </div>
+  <div class="slider-group">
+    <span>태양 위상</span>
+    <input type="range" id="phaseRange" min="15" max="165" value="55">
+  </div>
+  <div class="slider-group">
+    <span>고도</span>
+    <input type="range" id="altRange" min="-10" max="60" value="22">
+  </div>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn active" id="btnSpin">자전 재생</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('skyCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const hudMoon = document.getElementById('hudMoon');
+  const hudDist = document.getElementById('hudDist');
+  const hudSize = document.getElementById('hudSize');
+  const hudPhenom = document.getElementById('hudPhenom');
+
+  const btnSaturn = document.getElementById('btnSaturn');
+  const btnJupiter = document.getElementById('btnJupiter');
+  const btnMars = document.getElementById('btnMars');
+  const btnSpin = document.getElementById('btnSpin');
+
+  const tiltRange = document.getElementById('tiltRange');
+  const phaseRange = document.getElementById('phaseRange');
+  const altRange = document.getElementById('altRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // 상태 파라미터
+  let currentSystem = 'saturn'; // saturn, jupiter, mars
+  let viewTiltDeg = 18;
+  let sunPhaseDeg = 55;
+  let altitudeDeg = 22;
+  let rotAngle = 0;
+  let isSpinning = true;
+  let timeTick = 0;
+
+  // 배경 별빛과 엔셀라두스 얼음 간헐천 파티클
+  let stars = [];
+  let plumeParticles = [];
+  let terrainRidges = [];
+
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 180; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height * 0.8,
+        r: Math.random() * 1.3 + 0.3,
+        alpha: Math.random() * 0.7 + 0.15
+      });
+    }
+  }
+
+  function initPlumes() {
+    plumeParticles = [];
+    for (let i = 0; i < 85; i++) {
+      plumeParticles.push({
+        x: width * (0.2 + Math.random() * 0.6),
+        y: height * 0.75 + Math.random() * 60,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -(Math.random() * 1.6 + 0.6),
+        size: Math.random() * 2.2 + 0.8,
+        life: Math.random()
+      });
+    }
+  }
+
+  function initTerrain() {
+    terrainRidges = [];
+    for (let l = 0; l < 4; l++) {
+      const pts = [];
+      const segs = 54;
+      for (let i = 0; i <= segs; i++) {
+        const u = i / segs;
+        // 위성별 지형 거칠기 프로파일
+        const jagged = Math.sin(u * 15 + l * 1.9) * 16 + Math.cos(u * 33 - l * 1.3) * 8;
+        pts.push({ u, jagged });
+      }
+      terrainRidges.push(pts);
+    }
+  }
+
+  function setSystem(sys) {
+    currentSystem = sys;
+    [btnSaturn, btnJupiter, btnMars].forEach(b => b.classList.remove('active'));
+
+    if (sys === 'saturn') {
+      btnSaturn.classList.add('active');
+      hudMoon.textContent = 'ENCELADUS (SATURN)';
+      hudDist.textContent = '238,000 km';
+      hudSize.textContent = '30.2x FULL MOON';
+      hudSize.className = 'accent-amber';
+      hudPhenom.textContent = 'CRYO-PLUME & CASSINI RINGS';
+      viewTiltDeg = 18;
+      sunPhaseDeg = 55;
+      altitudeDeg = 24;
+    } else if (sys === 'jupiter') {
+      btnJupiter.classList.add('active');
+      hudMoon.textContent = 'EUROPA (JUPITER)';
+      hudDist.textContent = '670,900 km';
+      hudSize.textContent = '24.0x FULL MOON';
+      hudSize.className = 'accent-amber';
+      hudPhenom.textContent = 'GREAT RED SPOT & IO TRANSIT';
+      viewTiltDeg = 6;
+      sunPhaseDeg = 48;
+      altitudeDeg = 20;
+    } else if (sys === 'mars') {
+      btnMars.classList.add('active');
+      hudMoon.textContent = 'STICKNEY CRATER (PHOBOS)';
+      hudDist.textContent = '5,980 km (ULTRA CLOSE)';
+      hudSize.textContent = '82.0x FULL MOON';
+      hudSize.className = 'accent-rose';
+      hudPhenom.textContent = 'VALLES MARINERIS & OLYMPUS';
+      viewTiltDeg = -10;
+      sunPhaseDeg = 65;
+      altitudeDeg = 14;
+    }
+
+    tiltRange.value = viewTiltDeg;
+    phaseRange.value = sunPhaseDeg;
+    altRange.value = altitudeDeg;
+  }
+
+  // --- 토성 동심원 고리 렌더링 헬퍼 (앞/뒤 절반 선택 드로잉) ---
+  function drawSaturnRings(cx, cy, pRadius, tiltRad, isFrontHalf) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.14); // 고리 중력장 기울기
+
+    // 고리의 단축 스케일 (관측 위도에 따른 타원 납작도)
+    const yScale = Math.max(0.03, Math.abs(Math.sin(tiltRad)));
+    const flip = tiltRad >= 0 ? 1 : -1;
+
+    // Front(앞쪽 절반) 또는 Back(뒤쪽 절반) 클리핑 영역 설정
+    ctx.beginPath();
+    if (isFrontHalf) {
+      if (flip > 0) ctx.rect(-pRadius * 3, 0, pRadius * 6, pRadius * 3);
+      else ctx.rect(-pRadius * 3, -pRadius * 3, pRadius * 6, pRadius * 3);
+    } else {
+      if (flip > 0) ctx.rect(-pRadius * 3, -pRadius * 3, pRadius * 6, pRadius * 3);
+      else ctx.rect(-pRadius * 3, 0, pRadius * 6, pRadius * 3);
+    }
+    ctx.clip();
+
+    ctx.scale(1, yScale);
+
+    // C링, B링, 카시니 간극(Cassini Division), A링, F링 데이터
+    const ringBands = [
+      { rIn: 1.25, rOut: 1.48, color: 'rgba(148, 163, 184, 0.22)', step: 3.5 }, // C Ring
+      { rIn: 1.48, rOut: 1.92, color: 'rgba(253, 230, 138, 0.62)', step: 2.2 }, // B Ring (가장 밝고 조밀)
+      { rIn: 1.92, rOut: 2.00, color: 'rgba(2, 3, 6, 0.90)',       step: 4.0 }, // Cassini Division (간극)
+      { rIn: 2.00, rOut: 2.32, color: 'rgba(56, 189, 248, 0.45)',  step: 2.5 }, // A Ring
+      { rIn: 2.36, rOut: 2.38, color: 'rgba(248, 250, 252, 0.70)', step: 1.5 }  // F Ring (외곽 세선)
+    ];
+
+    ringBands.forEach(band => {
+      ctx.strokeStyle = band.color;
+      ctx.lineWidth = 1.6 / yScale;
+      for (let r = pRadius * band.rIn; r <= pRadius * band.rOut; r += band.step) {
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    });
+
+    // 토성 본체가 뒤쪽 고리에 드리우는 거대한 행성 그림자 (Planetary Shadow on Rings)
+    if (!isFrontHalf) {
+      const sunRad = (sunPhaseDeg * Math.PI) / 180;
+      ctx.fillStyle = 'rgba(2, 3, 6, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, pRadius * 2.45, -Math.PI * 0.5 - sunRad * 0.5, -Math.PI * 0.5 + 0.35);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // --- 행성 본체 렌더링 ---
+  function drawPlanetBody(cx, cy, pRadius, tiltRad) {
+    ctx.save();
+
+    // 1. 외곽 대기권 글로우 (Limb Glow)
+    const glowColor = currentSystem === 'saturn' ? 'rgba(251, 191, 36, 0.3)' :
+                      currentSystem === 'jupiter' ? 'rgba(56, 189, 248, 0.32)' :
+                      'rgba(244, 63, 94, 0.38)';
+    const atmoGrad = ctx.createRadialGradient(cx, cy, pRadius * 0.92, cx, cy, pRadius * 1.12);
+    atmoGrad.addColorStop(0, glowColor);
+    atmoGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = atmoGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, pRadius * 1.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 구면 클리핑 마스크
+    ctx.beginPath();
+    ctx.arc(cx, cy, pRadius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // 기저 배경색
+    ctx.fillStyle = currentSystem === 'mars' ? '#1c080b' : '#060c18';
+    ctx.fillRect(cx - pRadius, cy - pRadius, pRadius * 2, pRadius * 2);
+
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.14); // 자전축 기울기
+
+    // 2-A. [토성] 황금·시안 대기 줄무늬 + 본체에 드리운 고리 그림자 + 북극 육각형 폭풍
+    if (currentSystem === 'saturn') {
+      const bands = [
+        { y: -0.85, h: 0.25, col: 'rgba(56, 189, 248, 0.28)' },
+        { y: -0.60, h: 0.30, col: 'rgba(251, 191, 36, 0.35)' },
+        { y: -0.30, h: 0.25, col: 'rgba(253, 230, 138, 0.45)' },
+        { y: -0.05, h: 0.20, col: 'rgba(245, 158, 11, 0.40)' },
+        { y:  0.15, h: 0.35, col: 'rgba(251, 191, 36, 0.30)' },
+        { y:  0.50, h: 0.50, col: 'rgba(14, 116, 144, 0.28)' }
+      ];
+      bands.forEach(b => {
+        ctx.fillStyle = b.col;
+        ctx.fillRect(-pRadius, b.y * pRadius, pRadius * 2, b.h * pRadius);
+      });
+
+      // 구면 위도선 와이어프레임
+      ctx.strokeStyle = 'rgba(254, 240, 138, 0.22)';
+      ctx.lineWidth = 1;
+      for (let lat = -75; lat <= 75; lat += 15) {
+        const yOff = Math.sin((lat * Math.PI) / 180) * pRadius;
+        ctx.beginPath();
+        ctx.moveTo(-pRadius, yOff);
+        ctx.lineTo(pRadius, yOff);
+        ctx.stroke();
+      }
+
+      // 토성 표면에 드리운 검은 고리 그림자 (Ring Shadow Band)
+      const shadowY = -Math.sin(tiltRad) * pRadius * 0.45;
+      ctx.fillStyle = 'rgba(2, 3, 6, 0.78)';
+      ctx.fillRect(-pRadius, shadowY - pRadius * 0.06, pRadius * 2, pRadius * 0.12);
+    }
+
+    // 2-B. [목성] 난류 구름 제트기류 + 거대 대적점(GRS) + 위성 이오의 검은 일식 그림자 + 극지방 오로라
+    else if (currentSystem === 'jupiter') {
+      const jBands = [
+        { y: -0.90, h: 0.22, col: 'rgba(30, 58, 138, 0.35)' },
+        { y: -0.68, h: 0.18, col: 'rgba(226, 232, 240, 0.38)' },
+        { y: -0.50, h: 0.16, col: 'rgba(234, 88, 12, 0.45)' },
+        { y: -0.34, h: 0.20, col: 'rgba(248, 250, 252, 0.42)' },
+        { y: -0.14, h: 0.24, col: 'rgba(249, 115, 22, 0.48)' },
+        { y:  0.10, h: 0.18, col: 'rgba(241, 245, 249, 0.45)' },
+        { y:  0.28, h: 0.22, col: 'rgba(225, 29, 72, 0.42)' }, // 남적도 띠 (대적점 위치)
+        { y:  0.50, h: 0.50, col: 'rgba(56, 189, 248, 0.25)' }
+      ];
+      jBands.forEach(b => {
+        ctx.fillStyle = b.col;
+        ctx.fillRect(-pRadius, b.y * pRadius, pRadius * 2, b.h * pRadius);
+      });
+
+      // 흐르는 제트기류 사인파 물결선
+      ctx.strokeStyle = 'rgba(254, 215, 170, 0.35)';
+      ctx.lineWidth = 1.2;
+      for (let row = -3; row <= 3; row++) {
+        const baseY = row * pRadius * 0.22;
+        ctx.beginPath();
+        for (let x = -pRadius; x <= pRadius; x += 8) {
+          const wave = Math.sin((x * 0.04) + rotAngle * (row % 2 === 0 ? 2 : -1.5)) * 4;
+          if (x === -pRadius) ctx.moveTo(x, baseY + wave);
+          else ctx.lineTo(x, baseY + wave);
+        }
+        ctx.stroke();
+      }
+
+      // 목성 대적점 (Great Red Spot) 회전 투영
+      const grsLon = ((rotAngle * 1.4) % (Math.PI * 2));
+      const grsX = Math.sin(grsLon) * pRadius * 0.85;
+      const grsZ = Math.cos(grsLon);
+      if (grsZ > 0) {
+        const grsY = pRadius * 0.36;
+        const grsW = pRadius * 0.18 * grsZ;
+        const grsH = pRadius * 0.11;
+
+        ctx.save();
+        ctx.translate(grsX, grsY);
+        // 대적점 소용돌이 타원
+        const grsGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, grsW);
+        grsGrad.addColorStop(0, '#f43f5e');
+        grsGrad.addColorStop(0.6, '#e11d48');
+        grsGrad.addColorStop(1, 'rgba(251, 191, 36, 0.2)');
+        ctx.fillStyle = grsGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, grsW, grsH, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fda4af';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 위성 이오(Io)의 새까만 일식 그림자 통과 (Shadow Transit)
+      const transitX = Math.sin(rotAngle * 0.9 + 0.5) * pRadius * 0.75;
+      const transitZ = Math.cos(rotAngle * 0.9 + 0.5);
+      if (transitZ > 0) {
+        ctx.fillStyle = '#020306';
+        ctx.beginPath();
+        ctx.arc(transitX, -pRadius * 0.08, pRadius * 0.055, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // 북극/남극 네온 시안 자기장 오로라 링 (Jovian Polar Aurora)
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.ellipse(0, -pRadius * 0.92, pRadius * 0.32, pRadius * 0.06, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // 2-C. [화성 - 포보스 뷰] 압도적인 근접 크기의 마리네리스 대협곡 & 올림푸스 화산 & 극관
+    else if (currentSystem === 'mars') {
+      // 붉은 산화철 표면 그라데이션
+      const marsGrad = ctx.createRadialGradient(-pRadius * 0.2, -pRadius * 0.2, pRadius * 0.1, 0, 0, pRadius);
+      marsGrad.addColorStop(0, 'rgba(244, 63, 94, 0.55)');
+      marsGrad.addColorStop(0.6, 'rgba(185, 28, 28, 0.45)');
+      marsGrad.addColorStop(1, 'rgba(69, 10, 10, 0.7)');
+      ctx.fillStyle = marsGrad;
+      ctx.fillRect(-pRadius, -pRadius, pRadius * 2, pRadius * 2);
+
+      // 구면 경위도 측지 그리드
+      ctx.strokeStyle = 'rgba(251, 113, 133, 0.18)';
+      ctx.lineWidth = 1;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, pRadius * (Math.abs(i) * 0.25), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // 마리네리스 대협곡 (Valles Marineris) 거대 흉터 회전
+      const canyonX = Math.sin(rotAngle) * pRadius * 0.5;
+      if (Math.cos(rotAngle) > -0.2) {
+        ctx.strokeStyle = '#fecdd3';
+        ctx.lineWidth = 3.0;
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(canyonX - pRadius * 0.35, pRadius * 0.08);
+        ctx.lineTo(canyonX - pRadius * 0.10, pRadius * 0.14);
+        ctx.lineTo(canyonX + pRadius * 0.22, pRadius * 0.11);
+        ctx.lineTo(canyonX + pRadius * 0.38, pRadius * 0.16);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // 올림푸스 화산 칼데라 링 (Olympus Mons)
+        const olyX = canyonX - pRadius * 0.42;
+        const olyY = -pRadius * 0.24;
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(olyX, olyY, pRadius * 0.11, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(olyX, olyY, pRadius * 0.03, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // 북극 드라이아이스 극관 (North Polar Ice Cap)
+      ctx.fillStyle = 'rgba(240, 249, 255, 0.75)';
+      ctx.beginPath();
+      ctx.ellipse(0, -pRadius * 0.95, pRadius * 0.36, pRadius * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. 태양 조명 위상 그림자 (Terminator Shadow)
+    const sunRad = (sunPhaseDeg * Math.PI) / 180;
+    const shadowOffsetX = -Math.sin(sunRad) * pRadius * 1.15;
+    const termGrad = ctx.createRadialGradient(
+      shadowOffsetX, 0, pRadius * 0.25,
+      shadowOffsetX, 0, pRadius * 1.55
+    );
+    termGrad.addColorStop(0, 'rgba(2, 3, 6, 0.96)');
+    termGrad.addColorStop(0.6, 'rgba(2, 3, 6, 0.85)');
+    termGrad.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = termGrad;
+    ctx.fillRect(-pRadius * 1.5, -pRadius * 1.5, pRadius * 3, pRadius * 3);
+
+    // 4. 행성 외곽 테두리 림 라이트
+    ctx.strokeStyle = currentSystem === 'mars' ? 'rgba(251, 113, 133, 0.65)' : 'rgba(186, 230, 253, 0.55)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, pRadius - 0.8, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // --- 메인 렌더 루프 ---
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    timeTick += 0.015;
+    if (isSpinning) {
+      rotAngle += currentSystem === 'jupiter' ? 0.012 : 0.006;
+    }
+
+    const horizonY = height * 0.76;
+
+    // 1. 배경 별빛
+    ctx.fillStyle = '#f8fafc';
+    stars.forEach(s => {
+      ctx.globalAlpha = s.alpha;
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // 2. 모행성 중심 좌표 및 겉보기 반지름 계산
+    // 포보스에서 본 화성은 하늘을 압도적으로 뒤덮음
+    const baseScale = currentSystem === 'mars' ? 0.42 : (currentSystem === 'saturn' ? 0.23 : 0.27);
+    const pRadius = Math.min(width, height) * baseScale;
+    const cx = width * 0.5;
+    const cy = horizonY - (altitudeDeg / 60) * (height * 0.48);
+    const tiltRad = (viewTiltDeg * Math.PI) / 180;
+
+    // 3. [토성 전용] 행성 뒤편으로 지나가는 고리 뒷면(Back Half) 먼저 렌더링
+    if (currentSystem === 'saturn') {
+      drawSaturnRings(cx, cy, pRadius, tiltRad, false);
+    }
+
+    // 4. 거대 모행성 본체 렌더링
+    drawPlanetBody(cx, cy, pRadius, tiltRad);
+
+    // 5. [토성 전용] 행성 앞면을 가로지르는 고리 앞면(Front Half) 덮어쓰기!
+    if (currentSystem === 'saturn') {
+      drawSaturnRings(cx, cy, pRadius, tiltRad, true);
+    }
+
+    // 6. [엔셀라두스 전용] 지평선 얼음 크레바스에서 우주로 뿜어져 나오는 극저온 수증기 간헐천 (Cryo-Plumes)
+    if (currentSystem === 'saturn') {
+      plumeParticles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.008;
+        if (p.life <= 0 || p.y < horizonY - 180) {
+          p.x = width * (0.25 + Math.random() * 0.5);
+          p.y = horizonY + 10;
+          p.life = 1.0;
+        }
+        ctx.fillStyle = `rgba(186, 230, 253, ${p.life * 0.45})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // 7. 전경 위성 지표면 능선 (엔셀라두스 설원 / 유로파 붉은 얼음 균열 / 포보스 암석 크레이터)
+    terrainRidges.forEach((pts, idx) => {
+      const layerY = horizonY + idx * 24;
+
+      if (currentSystem === 'saturn') {
+        // 엔셀라두스: 눈부신 시안-화이트 얼음 능선
+        ctx.fillStyle = idx === 0 ? '#081426' : '#040a14';
+        ctx.strokeStyle = idx === 0 ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)';
+      } else if (currentSystem === 'jupiter') {
+        // 유로파: 붉은 황산염 줄무늬(Lineae)가 얽힌 얼음 지각
+        ctx.fillStyle = idx === 0 ? '#0c101d' : '#060810';
+        ctx.strokeStyle = idx === 0 ? '#f43f5e' : 'rgba(56, 189, 248, 0.4)';
+      } else {
+        // 포보스: 어두운 탄소질 소행성 암석 지형
+        ctx.fillStyle = idx === 0 ? '#110c10' : '#080508';
+        ctx.strokeStyle = idx === 0 ? '#fb7185' : 'rgba(148, 163, 184, 0.3)';
+      }
+
+      ctx.lineWidth = idx === 0 ? 1.8 : 1.1;
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+      pts.forEach(pt => {
+        ctx.lineTo(pt.u * width, layerY + pt.jagged);
+      });
+      ctx.lineTo(width, height);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    requestAnimationFrame(render);
+  }
+
+  // 마우스/터치로 행성 자전 각도 및 기울기 직접 조작
+  let isDragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    rotAngle += dx * 0.008;
+    viewTiltDeg = Math.max(-35, Math.min(35, viewTiltDeg + dy * 0.15));
+    tiltRange.value = Math.round(viewTiltDeg);
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - lastX;
+    const dy = e.touches[0].clientY - lastY;
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+
+    rotAngle += dx * 0.008;
+    viewTiltDeg = Math.max(-35, Math.min(35, viewTiltDeg + dy * 0.15));
+    tiltRange.value = Math.round(viewTiltDeg);
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  // 컨트롤 버튼 이벤트
+  btnSaturn.addEventListener('click', () => setSystem('saturn'));
+  btnJupiter.addEventListener('click', () => setSystem('jupiter'));
+  btnMars.addEventListener('click', () => setSystem('mars'));
+
+  tiltRange.addEventListener('input', (e) => { viewTiltDeg = parseFloat(e.target.value); });
+  phaseRange.addEventListener('input', (e) => { sunPhaseDeg = parseFloat(e.target.value); });
+  altRange.addEventListener('input', (e) => { altitudeDeg = parseFloat(e.target.value); });
+
+  btnSpin.addEventListener('click', () => {
+    isSpinning = !isSpinning;
+    btnSpin.classList.toggle('active', isSpinning);
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    initStars();
+    initPlumes();
+  });
+
+  // 초기화 및 시작
+  initStars();
+  initPlumes();
+  initTerrain();
+  setSystem('saturn');
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
