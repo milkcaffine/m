@@ -46,4 +46,4 @@ If a new page uses Tailwind, add it to `content` in `tailwind.config.js` and lin
 
 Self-contained browser-side experiments across writing, darkroom optics, sound, space dynamics, generative life, and arcade — open `index.html` for the live list (filter search, drawer toggle, random jump, and favorites stored in `localStorage`).
 
-Notable space tools: `orrery.html`, `orbit.html` (Solar & Earth Kepler orbits + Hohmann + Lagrange), `earthrise.html`, `exomoon.html`, `massdriver.html`, `vortex.html`.
+Notable space tools: `orrery.html`, `orbit.html` (Solar & Earth Kepler orbits + Hohmann + Lagrange), `earthrise.html`, `exomoon.html`, `massdriver.html`, `debris.html`, `vortex.html`.

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#020306">
+  <meta name="description" content="Marsko lab tool — debris. LEO 420km 우주정거장 궤도 쓰레기 수거 & 큐폴라(Cupola) 지구 야경·오로라 감상 관측 덱.">
+  <title>LEO Debris Sweeper & Cupola // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #leoCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 궤도 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(8, 12, 22, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.65;
+      text-align: right;
+      z-index: 10;
+      transition: opacity 0.4s ease;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .ok { color: #34d399; }
+    .telemetry-card .warn { color: #fbbf24; }
+    .telemetry-card .danger { color: #f43f5e; }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 12, 22, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+      overflow-x: auto;
+    }
+    .dock-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .dock-btn:hover { background: #334155; color: #38bdf8; }
+    .dock-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .slider-group input[type="range"] {
+      width: 58px;
+      height: 4px;
+      accent-color: #38bdf8;
+      background: #334155;
+      cursor: pointer;
+    }
+
+    @media (max-width: 680px) {
+      .telemetry-card {
+        font-size: 0.6rem;
+        padding: 6px 8px;
+        min-width: 140px;
+        max-width: 48vw;
+      }
+      .control-dock {
+        bottom: 10px;
+        padding: 6px 10px;
+        gap: 6px;
+      }
+      header h1 {
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header id="topHeader">
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>LEO DEBRIS SWEEPER // 420km</h1>
+  <div class="hud-meta">ORBITAL SALVAGE · CUPOLA OBSERVATION DECK</div>
+</header>
+
+<div class="telemetry-card" id="telemetryCard">
+  <div>ORBIT VEL: <strong>7.66 km/s</strong></div>
+  <div>SALVAGED: <strong id="hudScore" class="ok">0</strong> kg</div>
+  <div>HULL INTEGRITY: <strong id="hudHull" class="ok">100%</strong></div>
+  <div>KESSLER RISK: <strong id="hudRisk" class="warn">MODERATE</strong></div>
+</div>
+
+<canvas id="leoCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnSweeper">수거 작업 (EVA Sweeper)</button>
+  <button type="button" class="dock-btn" id="btnCupola">큐폴라 지구 감상 (Cupola View)</button>
+
+  <div class="dock-sep"></div>
+
+  <button type="button" class="dock-btn" id="btnPulse">EMP 파편 감속 펄스</button>
+
+  <div class="dock-sep"></div>
+
+  <div class="slider-group">
+    <span>궤도 배속</span>
+    <input type="range" id="speedRange" min="5" max="40" value="14">
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('leoCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const topHeader = document.getElementById('topHeader');
+  const telemetryCard = document.getElementById('telemetryCard');
+  const hudScore = document.getElementById('hudScore');
+  const hudHull = document.getElementById('hudHull');
+  const hudRisk = document.getElementById('hudRisk');
+
+  const btnSweeper = document.getElementById('btnSweeper');
+  const btnCupola = document.getElementById('btnCupola');
+  const btnPulse = document.getElementById('btnPulse');
+  const speedRange = document.getElementById('speedRange');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // --- Web Audio API 사운드 합성 ---
+  let audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function playSalvageChime() {
+    initAudio();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, now); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.14); // A5
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.26);
+  }
+
+  function playHitSound() {
+    initAudio();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(45, now + 0.22);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.26);
+  }
+
+  // --- 상태 변수 ---
+  let mode = 'sweeper'; // 'sweeper' | 'cupola'
+  let salvagedKg = 0;
+  let hull = 100;
+  let earthRotAngle = 0;
+  let orbitSpeed = 0.0014;
+  let timeTick = 0;
+
+  // 청소선(Sweeper Pod) 상태
+  const ship = {
+    x: width * 0.5,
+    y: height * 0.36,
+    vx: 0,
+    vy: 0,
+    targetX: width * 0.5,
+    targetY: height * 0.36,
+    tractorRadius: 115
+  };
+
+  // 우주 쓰레기 파편 배열
+  const debrisList = [];
+  const DEBRIS_COUNT = 18;
+  const particles = [];
+  let empWave = null;
+
+  // 배경 별 & 지구 표면 도시/뇌우 데이터
+  let stars = [];
+  let surfaceFeatures = [];
+  let lightningFlashes = [];
+
+  function initEnvironment() {
+    stars = [];
+    for (let i = 0; i < 150; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height * 0.75,
+        r: Math.random() * 1.3 + 0.3,
+        a: Math.random() * 0.7 + 0.15
+      });
+    }
+
+    // 지구 곡면 위에 배치될 도시 불빛 클러스터 & 대륙 패치
+    surfaceFeatures = [];
+    for (let i = 0; i < 95; i++) {
+      const clusterAngle = (i / 95) * Math.PI * 2 + (Math.random() - 0.5) * 0.08;
+      surfaceFeatures.push({
+        angle: clusterAngle,
+        depth: 0.02 + Math.random() * 0.22,
+        isCity: Math.random() > 0.25,
+        size: Math.random() * 2.2 + 1.0,
+        color: Math.random() > 0.3 ? '#fbbf24' : '#38bdf8'
+      });
+    }
+  }
+
+  function createDebris(randomX = false) {
+    const types = ['panel', 'boltnut', 'stage', 'kessler'];
+    const isKessler = Math.random() < 0.18;
+    const type = isKessler ? 'kessler' : types[Math.floor(Math.random() * 3)];
+    const fromLeft = Math.random() > 0.5;
+
+    return {
+      x: randomX ? Math.random() * width : (fromLeft ? -40 : width + 40),
+      y: Math.random() * (height * 0.55) + 40,
+      vx: (fromLeft ? 1 : -1) * (isKessler ? (Math.random() * 2.8 + 2.2) : (Math.random() * 1.2 + 0.4)),
+      vy: (Math.random() - 0.5) * 0.5,
+      rot: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 0.06,
+      type,
+      mass: isKessler ? 0 : Math.floor(Math.random() * 45 + 15),
+      size: type === 'stage' ? 12 : (type === 'panel' ? 10 : 6),
+      captured: false
+    };
+  }
+
+  function initDebris() {
+    debrisList.length = 0;
+    for (let i = 0; i < DEBRIS_COUNT; i++) {
+      debrisList.push(createDebris(true));
+    }
+  }
+
+  // --- 물리 업데이트 ---
+  function update() {
+    timeTick += 0.016;
+    orbitSpeed = parseFloat(speedRange.value) * 0.0001;
+    earthRotAngle += orbitSpeed;
+
+    // 대기권 뇌우 발생
+    if (Math.random() < 0.03) {
+      lightningFlashes.push({
+        angle: -Math.PI * 0.5 + (Math.random() - 0.5) * 0.7,
+        depth: 0.04 + Math.random() * 0.14,
+        alpha: 1.0
+      });
+    }
+    for (let i = lightningFlashes.length - 1; i >= 0; i--) {
+      lightningFlashes[i].alpha -= 0.06;
+      if (lightningFlashes[i].alpha <= 0) lightningFlashes.splice(i, 1);
+    }
+
+    if (mode === 'cupola') return;
+
+    // 청소선 관성 이동
+    const dx = ship.targetX - ship.x;
+    const dy = ship.targetY - ship.y;
+    ship.vx = ship.vx * 0.88 + dx * 0.018;
+    ship.vy = ship.vy * 0.88 + dy * 0.018;
+    ship.x += ship.vx;
+    ship.y += ship.vy;
+
+    if (Math.hypot(ship.vx, ship.vy) > 0.6 && Math.random() < 0.5) {
+      particles.push({
+        x: ship.x - ship.vx * 2,
+        y: ship.y - ship.vy * 2,
+        vx: -ship.vx * 0.4 + (Math.random() - 0.5),
+        vy: -ship.vy * 0.4 + (Math.random() - 0.5),
+        color: 'rgba(186, 230, 253, 0.7)',
+        life: 0.5
+      });
+    }
+
+    if (empWave) {
+      empWave.r += 14;
+      empWave.alpha -= 0.025;
+      if (empWave.alpha <= 0) empWave = null;
+    }
+
+    for (let i = 0; i < debrisList.length; i++) {
+      const d = debrisList[i];
+      d.x += d.vx;
+      d.y += d.vy;
+      d.rot += d.vRot;
+
+      if (d.x < -80 || d.x > width + 80 || d.y < -60 || d.y > height * 0.72) {
+        debrisList[i] = createDebris(false);
+        continue;
+      }
+
+      const distToShip = Math.hypot(ship.x - d.x, ship.y - d.y);
+
+      if (d.type === 'kessler') {
+        if (distToShip < 18) {
+          playHitSound();
+          hull = Math.max(0, hull - 15);
+          hudHull.textContent = `${hull}%`;
+          hudHull.className = hull < 40 ? 'danger' : (hull < 75 ? 'warn' : 'ok');
+
+          for (let k = 0; k < 20; k++) {
+            particles.push({
+              x: d.x, y: d.y,
+              vx: (Math.random() - 0.5) * 6,
+              vy: (Math.random() - 0.5) * 6,
+              color: '#f43f5e',
+              life: 1.0
+            });
+          }
+          debrisList[i] = createDebris(false);
+        }
+      } else {
+        if (distToShip < ship.tractorRadius) {
+          d.captured = true;
+          d.vx = d.vx * 0.9 + ((ship.x - d.x) / distToShip) * 0.55;
+          d.vy = d.vy * 0.9 + ((ship.y - d.y) / distToShip) * 0.55;
+
+          if (distToShip < 16) {
+            playSalvageChime();
+            salvagedKg += d.mass;
+            hudScore.textContent = salvagedKg.toLocaleString();
+
+            for (let k = 0; k < 12; k++) {
+              particles.push({
+                x: d.x, y: d.y,
+                vx: (Math.random() - 0.5) * 3,
+                vy: (Math.random() - 0.5) * 3,
+                color: '#34d399',
+                life: 0.8
+              });
+            }
+            debrisList[i] = createDebris(false);
+          }
+        } else {
+          d.captured = false;
+        }
+      }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.03;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  // --- 하단 지구 곡률 & 대기권 & 오로라 & 야경 렌더링 ---
+  function drawCurvedEarth() {
+    const earthR = Math.max(width, height) * 1.9;
+    const earthCX = width * 0.5;
+    const horizonTopY = height * 0.66;
+    const earthCY = horizonTopY + earthR;
+
+    ctx.save();
+
+    const airglowGrad = ctx.createRadialGradient(
+      earthCX, earthCY, earthR * 0.985,
+      earthCX, earthCY, earthR * 1.045
+    );
+    airglowGrad.addColorStop(0, '#0284c7');
+    airglowGrad.addColorStop(0.35, 'rgba(56, 189, 248, 0.45)');
+    airglowGrad.addColorStop(0.7, 'rgba(52, 211, 153, 0.18)');
+    airglowGrad.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = airglowGrad;
+    ctx.beginPath();
+    ctx.arc(earthCX, earthCY, earthR * 1.045, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.35)';
+    ctx.lineWidth = 22;
+    ctx.shadowColor = '#34d399';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    for (let a = -0.32; a <= 0.32; a += 0.02) {
+      const waveR = earthR + 12 + Math.sin(a * 18 + timeTick * 2.2) * 8;
+      const th = -Math.PI * 0.5 + a;
+      const ax = earthCX + Math.cos(th) * waveR;
+      const ay = earthCY + Math.sin(th) * waveR;
+      if (a === -0.32) ctx.moveTo(ax, ay);
+      else ctx.lineTo(ax, ay);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.beginPath();
+    ctx.arc(earthCX, earthCY, earthR, 0, Math.PI * 2);
+    ctx.clip();
+
+    const surfaceGrad = ctx.createRadialGradient(
+      earthCX, horizonTopY, 10,
+      earthCX, horizonTopY + height * 0.4, height * 0.55
+    );
+    surfaceGrad.addColorStop(0, '#07192e');
+    surfaceGrad.addColorStop(0.5, '#040c18');
+    surfaceGrad.addColorStop(1, '#020409');
+    ctx.fillStyle = surfaceGrad;
+    ctx.fillRect(0, horizonTopY, width, height - horizonTopY);
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+    ctx.lineWidth = 1;
+    for (let d = 1; d <= 5; d++) {
+      ctx.beginPath();
+      ctx.arc(earthCX, earthCY, earthR * (1 - d * 0.035), Math.PI * 1.2, Math.PI * 1.8);
+      ctx.stroke();
+    }
+
+    surfaceFeatures.forEach(f => {
+      const curAngle = f.angle + earthRotAngle;
+      const relAngle = Math.atan2(Math.sin(curAngle + Math.PI * 0.5), Math.cos(curAngle + Math.PI * 0.5));
+      if (Math.abs(relAngle) < 0.45) {
+        const r = earthR * (1 - f.depth);
+        const fx = earthCX + Math.sin(relAngle) * r;
+        const fy = earthCY - Math.cos(relAngle) * r;
+
+        ctx.fillStyle = f.color;
+        ctx.globalAlpha = f.isCity ? 0.75 : 0.25;
+        ctx.beginPath();
+        ctx.arc(fx, fy, f.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1.0;
+
+    lightningFlashes.forEach(lf => {
+      const r = earthR * (1 - lf.depth);
+      const lx = earthCX + Math.cos(lf.angle) * r;
+      const ly = earthCY + Math.sin(lf.angle) * r;
+
+      const lGrad = ctx.createRadialGradient(lx, ly, 1, lx, ly, 28);
+      lGrad.addColorStop(0, `rgba(224, 242, 254, ${lf.alpha})`);
+      lGrad.addColorStop(0.4, `rgba(56, 189, 248, ${lf.alpha * 0.5})`);
+      lGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = lGrad;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 28, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(earthCX, earthCY, earthR - 1, Math.PI * 1.2, Math.PI * 1.8);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawCupolaWindow() {
+    ctx.save();
+    const cx = width * 0.5;
+    const cy = height * 0.48;
+    const outerR = Math.min(width, height) * 0.44;
+    const innerR = outerR * 0.38;
+
+    ctx.fillStyle = 'rgba(3, 5, 10, 0.78)';
+    ctx.beginPath();
+    ctx.rect(0, 0, width, height);
+    ctx.arc(cx, cy, outerR, 0, Math.PI * 2, true);
+    ctx.fill();
+
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 10;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (let i = 0; i < 8; i++) {
+      const ang = (i * Math.PI) / 4 + Math.PI / 8;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * innerR, cy + Math.sin(ang) * innerR);
+      ctx.lineTo(cx + Math.cos(ang) * outerR, cy + Math.sin(ang) * outerR);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerR - 4, 0, Math.PI * 2);
+    ctx.arc(cx, cy, outerR + 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.font = '600 10px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText('CUPOLA OBSERVATION MODULE · NADIR VIEW 420KM', cx, cy + outerR + 24);
+
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = '#f8fafc';
+    stars.forEach(s => {
+      ctx.globalAlpha = s.a;
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    });
+    ctx.globalAlpha = 1.0;
+
+    drawCurvedEarth();
+
+    if (mode === 'cupola') {
+      const satX = ((timeTick * 28) % (width + 100)) - 50;
+      const satY = height * 0.28 + Math.sin(timeTick * 0.4) * 40;
+      ctx.fillStyle = 'rgba(186, 230, 253, 0.7)';
+      ctx.fillRect(satX, satY, 2, 2);
+
+      drawCupolaWindow();
+      return;
+    }
+
+    if (empWave) {
+      ctx.strokeStyle = `rgba(56, 189, 248, ${empWave.alpha})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(empWave.x, empWave.y, empWave.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    debrisList.forEach(d => {
+      if (d.captured) {
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.65)';
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(ship.x, ship.y);
+        ctx.lineTo(d.x, d.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      ctx.rotate(d.rot);
+
+      if (d.type === 'kessler') {
+        ctx.strokeStyle = '#f43f5e';
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.3)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(0, -8); ctx.lineTo(8, 0); ctx.lineTo(0, 8); ctx.lineTo(-8, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (d.type === 'panel') {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.fillStyle = 'rgba(14, 116, 144, 0.35)';
+        ctx.lineWidth = 1.2;
+        ctx.fillRect(-10, -5, 20, 10);
+        ctx.strokeRect(-10, -5, 20, 10);
+      } else if (d.type === 'stage') {
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-8, -8, 16, 16);
+      } else {
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(ship.x, ship.y, ship.tractorRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.life;
+      ctx.fillRect(p.x, p.y, 2.5, 2.5);
+    });
+    ctx.globalAlpha = 1.0;
+  }
+
+  function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  function moveShipTarget(clientX, clientY) {
+    ship.targetX = clientX;
+    ship.targetY = Math.min(height * 0.65, clientY);
+  }
+
+  canvas.addEventListener('mousemove', (e) => moveShipTarget(e.clientX, e.clientY));
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 0) moveShipTarget(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 0) moveShipTarget(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  btnSweeper.addEventListener('click', () => {
+    mode = 'sweeper';
+    btnSweeper.classList.add('active');
+    btnCupola.classList.remove('active');
+    topHeader.style.opacity = '1';
+    telemetryCard.style.opacity = '1';
+  });
+
+  btnCupola.addEventListener('click', () => {
+    mode = 'cupola';
+    btnCupola.classList.add('active');
+    btnSweeper.classList.remove('active');
+    topHeader.style.opacity = '0.35';
+    telemetryCard.style.opacity = '0';
+  });
+
+  btnPulse.addEventListener('click', () => {
+    initAudio();
+    empWave = { x: ship.x, y: ship.y, r: 10, alpha: 0.9 };
+    debrisList.forEach(d => {
+      d.vx *= 0.35;
+      d.vy *= 0.35;
+      if (d.type === 'kessler') {
+        d.type = 'stage';
+        d.mass = 50;
+      }
+    });
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    initEnvironment();
+  });
+
+  initEnvironment();
+  initDebris();
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
