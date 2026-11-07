@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#030407">
-  <meta name="description" content="Marsko lab tool — rojiura. 도쿄 아키하바라·긴자 경계의 폭 0.98m 비유클리드 빗속 골목길과 숨겨진 심야 다방 [우라이나리(裏稲荷)] 탐색.">
-  <title>Rojiura 1.0m // 裏稲荷 // marsko</title>
+  <meta name="description" content="Marsko lab tool — rojiura. 도심 모처 미관측 경계의 폭 0.98m 비유클리드 빗속 골목길과 숨겨진 심야 다방 [우라이나리(裏稲荷)] 탐색.">
+  <title>Rojiura 1.0m // 심야 차방 우라이나리 // marsko</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/marsko-hud.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
       background: #020306;
       color: #cbd5e1;
       overflow: hidden;
@@ -103,14 +103,14 @@
       background: rgba(12, 10, 8, 0.92);
       border: 1px solid rgba(251, 191, 36, 0.45);
       border-radius: 12px;
-      padding: 14px 20px;
+      padding: 16px 22px;
       text-align: center;
       z-index: 15;
       display: none;
       backdrop-filter: blur(10px);
-      box-shadow: 0 0 30px rgba(251, 191, 36, 0.15);
+      box-shadow: 0 0 30px rgba(251, 191, 36, 0.18);
       width: 90%;
-      max-width: 360px;
+      max-width: 380px;
       animation: fadeIn 0.5s ease;
     }
     .cafe-title {
@@ -121,7 +121,7 @@
       margin-bottom: 8px;
     }
     .cafe-tags {
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       color: #f8fafc;
       line-height: 1.8;
     }
@@ -224,11 +224,11 @@
 <header>
   <a href="index.html" class="home-link">← marsko</a>
   <h1>ROJIURA 1.0m // 裏稲荷</h1>
-  <div class="hud-meta">📍 秋葉原・銀座界隈 · ⛩️ 稲荷神社 / 怪談 / ドール / 読書</div>
+  <div class="hud-meta">📍 도심 모처의 미관측 경계 · ⛩️ 여우불이 이끄는 심야 은신처</div>
 </header>
 
 <div class="telemetry-card">
-  <div>AREA: <strong>AKIBA · GINZA BORDER</strong></div>
+  <div>AREA: <strong>UNMAPPED VOID (0.98m)</strong></div>
   <div>ALLEY WIDTH: <strong>0.98 m</strong></div>
   <div>TORII SYNC: <strong id="hudDepth" class="amber">0 / 6</strong></div>
   <div>STEPS: <strong id="hudSteps">0</strong></div>
@@ -236,26 +236,26 @@
 
 <!-- 우라이나리 도착 시 오픈되는 시그니처 보드 -->
 <div class="cafe-card" id="cafeCard">
-  <div class="cafe-title">⛩️ 深夜茶房・裏稲荷 🦊</div>
+  <div class="cafe-title">⛩️ 심야 차방 · 우라이나리 🦊</div>
   <div class="cafe-tags">
-    🍜 きつねうどん 🦊 & 深煎り珈琲<br>
-    📍 秋葉原・銀座界隈 (幅0.98m 路地裏)<br>
-    ⛩️ 稲荷神社 / 怪談・ホラー / ドール / 読書 / 多趣味
+    🍜 따뜻한 키츠네 우동 🦊 & 짙은 드립 커피<br>
+    📍 지도에 표시되지 않는 폭 0.98m 도심 뒷골목<br>
+    🌧️ 비 내리는 밤, 길을 잃은 자들을 위한 은신처
   </div>
 </div>
 
 <canvas id="alleyCanvas"></canvas>
 
 <div class="narrative-box" id="narrativeBox">
-  <div id="narrativeText">아키하바라의 전자 부품 냄새와 긴자의 오래된 네온이 뒤섞이는 폭 1m의 뒷골목. 여우 석상이나 호박색 불빛이 이끄는 방향을 따라가야 『우라이나리』에 닿을 수 있다.</div>
-  <div class="narrative-sub" id="narrativeHint">⛩️ 稲荷神社 · 怪談 · ドール · 読書 // 단서가 가리키는 길을 선택하세요 [← / ↑ / →]</div>
+  <div id="narrativeText">빌딩 숲 사이에 숨겨진 폭 1미터의 지도 없는 골목. 빗물 웅덩이나 여우 석상, 호박색 불빛이 이끄는 방향을 따라가야 『우라이나리』에 닿을 수 있다.</div>
+  <div class="narrative-sub" id="narrativeHint">⛩️ 지도 밖의 빗속 골목 // 단서가 가리키는 길을 선택하세요 [← / ↑ / →]</div>
 </div>
 
 <div class="control-dock">
   <button type="button" class="nav-btn" id="btnLeft">← 좌측 골목</button>
   <button type="button" class="nav-btn" id="btnForward">↑ 직진</button>
   <button type="button" class="nav-btn" id="btnRight">우측 골목 →</button>
-  <button type="button" class="nav-btn udon-btn" id="btnReset">🍜 きつねうどん 한 그릇 먹고 다시 골목으로</button>
+  <button type="button" class="nav-btn udon-btn" id="btnReset">🍜 키츠네 우동 한 그릇 먹고 다시 골목으로</button>
 </div>
 
 <script>
@@ -307,7 +307,7 @@
     gain.connect(audioCtx.destination);
     noise.start(now);
 
-    // 일본 전통 음계(미야코부시/요나누키) 느낌의 신비로운 방울 공명음
+    // 일본 전통 음계(미야코부시/신사 방울 소리) 느낌의 신비로운 공명음
     if (isCorrect) {
       const osc = audioCtx.createOscillator();
       const oGain = audioCtx.createGain();
@@ -380,29 +380,29 @@
     };
 
     if (arrived) {
-      narrativeText.textContent = '달콤짭짤한 유부를 얹은 키츠네 우동(きつねうどん) 국물 향기가 골목을 메운다. 창가에는 아름다운 인형과 괴담 고서들이 조용히 손님을 맞이한다.';
-      narrativeHint.textContent = '🍜 きつねうどん 🦊 · 📍 秋葉原・銀座界隈 · ⛩️ 稲荷神社 / 怪談 / ドール / 読書';
+      narrativeText.textContent = '달콤짭짤한 유부를 얹은 키츠네 우동 국물 향기가 골목을 메운다. 창가에는 아름다운 인형과 고서들이 조용히 손님을 맞이한다.';
+      narrativeHint.textContent = '🍜 키츠네 우동 🦊 · 📍 도심 모처의 미관측 틈새 · ⛩️ 심야 차방 우라이나리';
       return;
     }
 
     const clueTexts = {
       fox: [
-        '⛩️ 이나리 신사(稲荷神社)의 작은 여우 석상이 비에 젖은 채 한쪽 골목을 응시하고 있다.',
-        '🦊 여우 가면을 쓴 그림자가 스치더니 작은 붉은 도리이 너머로 방향을 가리킨다.'
+        '⛩️ 이끼 낀 작은 여우 석상이 비에 젖은 채 한쪽 골목을 가만히 응시하고 있다.',
+        '🦊 붉은 도리이 너머로 여우 가면을 쓴 그림자가 스치더니 방향을 가리킨다.'
       ],
       puddle: [
-        '📍 아키하바라 뒷골목의 빗물 웅덩이 위로 오래된 유리가게와 인형 공방의 호박색 네온이 한쪽에만 비친다.',
-        '📖 젖은 아스팔트 웅덩이 속에 누군가 흘린 괴담 문고본 표지와 따뜻한 등불이 한쪽 골목을 비춘다.'
+        '📍 빗물 고인 아스팔트 웅덩이 위로 오래된 유리 공방의 따뜻한 호박색 네온이 한쪽에만 일렁인다.',
+        '📖 젖은 물웅덩이 표면에 누군가 두고 간 오래된 괴담 문고본과 등불의 그림자가 비친다.'
       ],
       wire: [
-        '🍜 얽힌 전깃줄 사이로 달콤한 유부 다시(出汁) 냄새와 함께 여우불 같은 전구가 한쪽에서 깜빡인다.',
-        '🎎 좁은 처마 밑 전선 위로 오래된 구체관절인형의 유리 안구처럼 반짝이는 호박색 불빛이 매달려 있다.'
+        '🍜 머리 위로 얽힌 전깃줄 사이로 유부 다시 냄새와 함께 여우불 같은 전구가 한쪽에서 깜빡인다.',
+        '🎎 좁은 처마 밑 전선 위로 구체관절인형의 유리 안구처럼 반짝이는 호박색 등불이 매달려 있다.'
       ]
     };
 
     const list = clueTexts[currentNode.clueType];
     narrativeText.textContent = list[Math.floor(Math.random() * list.length)];
-    narrativeHint.textContent = `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 단서가 있는 방향을 선택하세요`;
+    narrativeHint.textContent = `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 단서가 가리키는 방향을 선택하세요`;
   }
 
   function makeMove(choice) {
@@ -430,7 +430,7 @@
         }
       } else {
         depth = Math.max(0, depth - 1);
-        narrativeText.textContent = '괴담 속 골목처럼 안개가 자욱해지더니 아키하바라·긴자 경계 초입으로 되돌아와 버렸다... 단서를 다시 읽자.';
+        narrativeText.textContent = '짙은 안개 속에서 발소리가 맴돌더니 지도 밖 골목길 초입으로 되돌아와 버렸다... 단서를 다시 살펴보자.';
       }
       hudDepth.textContent = `${depth} / ${TARGET_DEPTH}`;
       if (!arrived && isCorrect) generateNextNode();
@@ -502,7 +502,7 @@
     ctx.moveTo(rightWallX, height * 0.9); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY + height * 0.08);
     ctx.stroke();
 
-    // 3-A. [도착: 심야 다방·식당 '우라이나리(裏稲荷)']
+    // 3-A. [도착: 심야 다방 '우라이나리(裏稲荷)']
     if (arrived) {
       const cw = alleyHalfW * 0.58;
       const ch = height * 0.25;
