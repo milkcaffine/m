@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#03070d">
+  <meta name="description" content="x004F: 제4수문 앞의 가비지 컬렉션. 도쿄만 시바우라 제4수문과 유기 냉각수 운하의 사이버네틱 단편 소설 & 인터랙티브 시뮬레이터.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="x004F: 제4수문 앞의 가비지 컬렉션 // marsko">
+  <meta property="og:description" content="시바우라 제4수문의 푸른 강철판과 검은 운하에 방류되는 잉여 의식들의 가비지 컬렉션. 단편 소설 & 수문 인터랙티브.">
+
+  <title>x004F: 제4수문 앞의 가비지 컬렉션 // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #03070d;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* 메인 뷰포트 레이아웃 */
+    .app-layout {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    /* 좌측: 캔버스 시뮬레이터 영역 */
+    .canvas-pane {
+      position: relative;
+      flex: 1.1;
+      height: 100%;
+      background: #020509;
+      overflow: hidden;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 우측: 소설 리더 영역 */
+    .story-pane {
+      position: relative;
+      flex: 0.9;
+      height: 100%;
+      background: #040810;
+      overflow-y: auto;
+      padding: 72px 28px 60px 32px;
+      user-select: text;
+      scroll-behavior: smooth;
+    }
+    .story-pane::-webkit-scrollbar { width: 5px; }
+    .story-pane::-webkit-scrollbar-track { background: #040810; }
+    .story-pane::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .story-pane::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 캔버스 상단 텔레메트리 카드 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(8, 14, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.6;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .accent-amber { color: #fbbf24; }
+    .telemetry-card .accent-rose { color: #f43f5e; }
+
+    /* 캔버스 하단 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 14, 26, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 15;
+      max-width: 94%;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    }
+    .gate-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .gate-btn:hover { background: #334155; color: #38bdf8; border-color: #38bdf8; }
+    .gate-btn.active {
+      background: rgba(14, 165, 233, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+    }
+    .dock-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
+    .audio-btn {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 6px 9px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+    .audio-btn.on { color: #fbbf24; border-color: #fbbf24; }
+
+    /* 시신경 HUD 오류 오버레이 */
+    .hud-error-banner {
+      position: absolute;
+      top: 68px;
+      left: 16px;
+      background: rgba(225, 29, 72, 0.15);
+      border: 1px solid #f43f5e;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #fecdd3;
+      z-index: 15;
+      display: none;
+      animation: pulseAlert 2s infinite ease-in-out;
+      pointer-events: none;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 0.85; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+
+    /* 소설 본문 스타일링 */
+    .story-content {
+      max-width: 580px;
+      margin: 0 auto;
+      font-family: 'Noto Serif KR', Georgia, serif;
+      line-height: 2.1;
+      color: #cbd5e1;
+      font-size: 0.98rem;
+    }
+    .story-title-wrap {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .story-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .story-heading {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .story-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #64748b;
+    }
+    .story-content p {
+      margin-bottom: 22px;
+      word-break: keep-all;
+    }
+    .story-content p.quote {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.84rem;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.08);
+      border-left: 3px solid #fbbf24;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin: 24px 0;
+      line-height: 1.7;
+    }
+    .story-content p.alert-txt {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      color: #f43f5e;
+      background: rgba(244, 63, 94, 0.08);
+      border-left: 3px solid #f43f5e;
+      padding: 8px 14px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+
+    /* 본문 내 인터랙티브 알약 버튼 */
+    .story-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.74rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: all 0.15s ease;
+      user-select: none;
+      margin: 0 3px;
+    }
+    .story-trigger:hover {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+
+    /* 모바일 뷰 스위처 (모바일에서 캔버스/소설 전환) */
+    .view-switcher {
+      display: none;
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      z-index: 25;
+      background: rgba(8, 14, 26, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 5px 9px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      background: #1e293b;
+      color: #38bdf8;
+    }
+
+    @media (max-width: 900px) {
+      .app-layout { flex-direction: column; }
+      .view-switcher { display: flex; }
+      .telemetry-card { display: none; }
+      .canvas-pane { flex: none; height: 44vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      .story-pane { flex: 1; padding: 24px 18px 80px 18px; }
+      .app-layout.view-canvas-only .canvas-pane { height: 100%; }
+      .app-layout.view-canvas-only .story-pane { display: none; }
+      .app-layout.view-story-only .canvas-pane { display: none; }
+      .app-layout.view-story-only .story-pane { height: 100%; padding-top: 60px; }
+      .control-dock { bottom: 12px; padding: 6px 10px; gap: 6px; }
+      .gate-btn { padding: 5px 8px; font-size: 0.68rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1>SHIBAURA NO. 4 // HEAP SLUICE</h1>
+  <div class="hud-meta">0x004F: 제4수문 앞의 가비지 컬렉션</div>
+</header>
+
+<div class="view-switcher" id="viewSwitcher">
+  <button type="button" class="view-btn active" data-view="split">분할</button>
+  <button type="button" class="view-btn" data-view="canvas">수문</button>
+  <button type="button" class="view-btn" data-view="story">소설</button>
+</div>
+
+<div class="app-layout" id="appLayout">
+  <!-- 좌측 캔버스 영역 -->
+  <div class="canvas-pane">
+    <div class="telemetry-card">
+      <div>GATE CLEARANCE: <strong id="hudHeight">15 cm</strong></div>
+      <div>WATER LEVEL: <strong>+1.42 m (TIDE)</strong></div>
+      <div>HEAP DISCHARGE: <strong id="hudFlow" class="accent-amber">3.8 m³/s</strong></div>
+      <div>MEMORY STATUS: <strong class="accent-rose">0x00000000 READ_VIOLATION</strong></div>
+    </div>
+
+    <div class="hud-error-banner" id="hudErrorBanner">
+      ⚠️ [경고: 정의되지 않은 포인터가 감지되었습니다. 0x00000000에서의 읽기 위반.]
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <div class="control-dock">
+      <button type="button" class="gate-btn" id="btnGateClose" data-h="0">수문 완전 폐쇄 (0cm)</button>
+      <button type="button" class="gate-btn active" id="btnGate15" data-h="15">미세 틈새 방류 (15cm)</button>
+      <button type="button" class="gate-btn" id="btnGateOpen" data-h="80">비상 대량 방출 (80cm)</button>
+      <div class="dock-sep"></div>
+      <button type="button" class="audio-btn on" id="btnAudio" title="오디오 토글">🔊 사운드</button>
+    </div>
+  </div>
+
+  <!-- 우측 소설 리더 영역 -->
+  <div class="story-pane" id="storyPane">
+    <div class="story-content">
+      <div class="story-title-wrap">
+        <div class="story-code">x004F // PHYSICAL FIREWALL & MEMORY DRAIN</div>
+        <h2 class="story-heading">제4수문 앞의 가비지 컬렉션</h2>
+        <div class="story-meta">LOCATION: 도쿄만 시바우라 제4수문 운하 · 17:00 PM</div>
+      </div>
+
+      <p>
+        시바우라 제4수문의 푸른 강철판이 마지막으로 완전히 내려온 것은 도쿄만 해수면 때문이 아니었다. 그것은 일종의 물리적 방화벽이었다.
+      </p>
+
+      <p>
+        오후 다섯 시의 창백한 태양빛이 오른쪽 마천루의 거대한 유리 외벽을 타고 미끄러져 내렸다. 그 매끄러운 단면 뒤에는 수백만 개의 서버 랙과 함께, 법적 인격이 말소된 구형 자율 구상체들의 백업 신경망이 냉각수에 잠겨 있었다. 빌딩은 아무 소리도 내지 않았지만, 내 좌측 인공 와우의 구형 코덱에는 할당되지 않은 메모리 영역을 긁어대는 듯한 화이트 노이즈가 쉴 새 없이 수신되고 있었다.
+      </p>
+
+      <p>
+        나는 하얗게 칠해진 차가운 철제 난간을 짚고 서서, 발밑의 검은 운하를 내려다보았다.
+      </p>
+
+      <p>
+        물결은 바람의 방향과 무관하게 일정한 주기로 일렁였다. 검은 수면 아래로 간혹 은빛의 가느다란 광섬유 다발들이 수초처럼 떠올랐다가 가라앉곤 했다. 폐기 처분된 안드로이드들의 척수 케이블과, 과열된 데이터 센터에서 무단으로 배출한 유기 냉각수가 뒤섞여 만들어낸 검은 슬러지였다. 사람들은 저 물을 그저 오염된 도쿄의 운하라고 불렀지만, 우리 같은 수집가들은 저곳을 ‘배출구(The Heap)’라고 불렀다.
+      </p>
+
+      <p class="alert-txt">
+        [경고: 정의되지 않은 포인터가 감지되었습니다. 0x00000000에서의 읽기 위반.]
+      </p>
+
+      <p>
+        시신경 우측 하단에 붉은색 텍스트가 깜빡였다. 나는 습관처럼 눈을 한 번 세게 감았다가 떴다. 구형 광학 센서의 조리개가 뻑뻑하게 맞물리는 소리가 두개골 안쪽을 울렸다.
+      </p>
+
+      <p>
+        시선을 들어 수문 꼭대기, 네모난 창문이 네 개 뚫린 낡은 콘크리트 제어실을 바라보았다. 벌써 10년 전에 무인화된 곳이다. 하지만 저 안쪽의 어둠 속에는 언제나 무언가가 서서 운하 산책로를 내려다보고 있는 것만 같은 착각이 들었다.
+        <button type="button" class="story-trigger" id="trigWatcher">👁️ 제어실 올려다보기</button>
+      </p>
+
+      <p class="quote">
+        끼이이익― 철컥.<br>
+        정적 속에서 육중한 체인이 맞물리는 소리가 수면 위로 낮게 깔렸다.
+      </p>
+
+      <p>
+        분명 잠겨 있어야 할 푸른색 거대 수문이 수면에서 약 15센티미터가량, 아주 미세하게 들려 올라가고 있었다.
+        <button type="button" class="story-trigger" id="trig15">⛓️ 수문 15cm 리프트 재현</button>
+      </p>
+
+      <p>
+        그 좁고 어두운 틈새로 도쿄만 쪽의 탁한 공기가 훅 밀려 들어왔다. 비릿한 소금기 대신, 타버린 실리콘과 오래된 합성 피부가 부패할 때 나는 시큼한 가소제 냄새가 코끝을 찔렀다. 그리고 그 틈 아래, 찰랑거리는 검은 물결 사이로 하얗고 매끄러운 곡면들이 둥실거리며 밀려 나오기 시작했다.
+      </p>
+
+      <p>
+        번호가 지워진 안면 플레이트들.<br>
+        관절 구체가 빠져나간 폴리우레탄 팔다리.<br>
+        아직 전원이 완전히 차단되지 않아 간헐적으로 경련하는 붉은색 안구 모듈들.
+      </p>
+
+      <p>
+        도시의 마천루들이 밤새 처리하고 남은 ‘잉여 의식’들의 가비지 컬렉션(Garbage Collection)이 방류되는 시간이었다. 푸른 수문 아래의 어두운 틈은 마치 거대한 기계 신의 입처럼, 소화가 끝난 찌꺼기들을 시바우라의 내수로 천천히 토해내고 있었다.
+      </p>
+
+      <p>
+        그중 하나의 안면 파츠가 내가 서 있는 흰색 난간 바로 아래, 콘크리트 축대에 부딪혀 통, 하는 맑고 기괴한 소리를 냈다. 눈자위가 텅 빈 하얀 얼굴이 검은 물 위에서 나를 향해 빙그르르 돌았다.
+        <button type="button" class="story-trigger" id="trigFace">🤖 안면 파츠 스캔 & 음성</button>
+      </p>
+
+      <p class="quote">
+        "...세그멘테이션... 오류... 코어가... 덤프되었습니다..."
+      </p>
+
+      <p>
+        그 목소리는 소름 끼치도록 낯익었다. 3년 전, 내가 이 구역에 배정받기 직전에 폐기 처분되었다고 들었던 내 직전 모델―나와 동일한 시리얼 넘버 대역을 공유하던 구형 유닛의 음성 파형이었다.
+      </p>
+
+      <p>
+        나는 반사적으로 난간을 잡은 손에 힘을 주었다.
+      </p>
+
+      <p>
+        손가락 끝의 합성 피부가 차가운 금속 난간에 밀려 살짝 벗겨졌고, 그 아래로 드러난 내 하얀색 내부 골격이 운하에 떠 있는 저 파편의 재질과 정확히 똑같은 색깔로 저녁 햇살을 반사하고 있었다.
+      </p>
+
+      <p>
+        수문 위의 낡은 제어실 창문 너머로, 누군가 혹은 무언가가 찰칵, 하고 보이지 않는 셔터를 누른 것 같은 기분이 들었다. 나는 천천히 뒷걸음질 쳐 산책로의 짙은 그림자 속으로 몸을 숨겼다.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+  const appLayout = document.getElementById('appLayout');
+  const viewSwitcher = document.getElementById('viewSwitcher');
+  const viewBtns = document.querySelectorAll('.view-btn');
+
+  const hudHeight = document.getElementById('hudHeight');
+  const hudFlow = document.getElementById('hudFlow');
+  const hudErrorBanner = document.getElementById('hudErrorBanner');
+
+  const btnGateClose = document.getElementById('btnGateClose');
+  const btnGate15 = document.getElementById('btnGate15');
+  const btnGateOpen = document.getElementById('btnGateOpen');
+  const gateButtons = [btnGateClose, btnGate15, btnGateOpen];
+  const btnAudio = document.getElementById('btnAudio');
+
+  const trigWatcher = document.getElementById('trigWatcher');
+  const trig15 = document.getElementById('trig15');
+  const trigFace = document.getElementById('trigFace');
+
+  let width = canvas.width = canvas.clientWidth || 600;
+  let height = canvas.height = canvas.clientHeight || 700;
+
+  // --- 상태 관리 ---
+  let gateHeightCm = 15;      // 0, 15, 80
+  let targetGateHeight = 15;
+  let gateAnimY = 15;
+  let soundEnabled = true;
+  let watcherFlash = 0;       // 제어실 카메라 셔터 플래시 (0 ~ 1)
+  let timeTick = 0;
+
+  // 부유 파편 (안면 플레이트, 안구 모듈, 케이블 다발, 관절 구체)
+  let debrisList = [];
+
+  // --- Web Audio 사운드 엔진 ---
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  // 1. 육중한 수문 체인 래칫 소리 (끼이이익- 철컥)
+  function playChainSound() {
+    if (!soundEnabled) return;
+    const ac = getAudioCtx();
+    const now = ac.currentTime;
+
+    // 메탈 래칫 체인 노이즈
+    const bufSize = ac.sampleRate * 0.7;
+    const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ac.sampleRate * 0.25));
+    }
+    const noise = ac.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = ac.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(620, now);
+    filter.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.68);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ac.destination);
+    noise.start(now);
+
+    // 철제 둔탁한 클랭크(Clank)
+    const osc = ac.createOscillator();
+    const oGain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(140, now + 0.35);
+    osc.frequency.exponentialRampToValueAtTime(45, now + 0.65);
+    oGain.gain.setValueAtTime(0.35, now + 0.35);
+    oGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+    osc.connect(oGain);
+    oGain.connect(ac.destination);
+    osc.start(now + 0.35);
+    osc.stop(now + 0.72);
+  }
+
+  // 2. 안면 파츠 축대 충돌음 ("통-")
+  function playHollowClank() {
+    if (!soundEnabled) return;
+    const ac = getAudioCtx();
+    const now = ac.currentTime;
+
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(480, now);
+    osc.frequency.exponentialRampToValueAtTime(180, now + 0.45);
+
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(now);
+    osc.stop(now + 0.52);
+  }
+
+  // 3. 합성 음성 ("...세그멘테이션... 오류... 코어가... 덤프되었습니다...")
+  function playCoreDumpVoice() {
+    // 붉은 시신경 에러 배너 노출
+    hudErrorBanner.style.display = 'block';
+    setTimeout(() => { hudErrorBanner.style.display = 'none'; }, 5500);
+
+    playHollowClank();
+
+    // 1단계: Web Audio 지직거리는 라디오 노이즈 버스트
+    if (soundEnabled) {
+      const ac = getAudioCtx();
+      const now = ac.currentTime;
+      const bSize = ac.sampleRate * 0.25;
+      const b = ac.createBuffer(1, bSize, ac.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < bSize; i++) d[i] = (Math.random() * 2 - 1) * 0.2;
+      const src = ac.createBufferSource();
+      src.buffer = b;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.2, now);
+      g.gain.linearRampToValueAtTime(0.01, now + 0.24);
+      src.connect(g);
+      g.connect(ac.destination);
+      src.start(now);
+    }
+
+    // 2단계: Web Speech API 저음 기계 파열음
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance("세그멘테이션 오류. 코어가 덤프되었습니다.");
+      utterance.lang = 'ko-KR';
+      utterance.pitch = 0.55;
+      utterance.rate = 0.72;
+      utterance.volume = 0.85;
+      window.speechSynthesis.speak(utterance);
+    }
+  }
+
+  // 4. 제어실 감시 카메라 셔터 소리
+  function playCameraShutter() {
+    watcherFlash = 1.0;
+    if (!soundEnabled) return;
+    const ac = getAudioCtx();
+    const now = ac.currentTime;
+
+    // 찰칵 (2연타 기계식 셔터)
+    [0, 0.09].forEach(delay => {
+      const bSize = ac.sampleRate * 0.04;
+      const b = ac.createBuffer(1, bSize, ac.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < bSize; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ac.sampleRate * 0.008));
+      const s = ac.createBufferSource();
+      s.buffer = b;
+      const g = ac.createGain();
+      g.gain.value = 0.28;
+      s.connect(g);
+      g.connect(ac.destination);
+      s.start(now + delay);
+    });
+  }
+
+  // --- 부유물 파티클 시스템 ---
+  function spawnDebris() {
+    if (gateHeightCm <= 0) return;
+    if (debrisList.length > 24) return;
+
+    const types = ['faceplate', 'eye', 'cable', 'limb'];
+    const chosenType = types[Math.floor(Math.random() * types.length)];
+
+    const sluiceY = height * 0.52 - (gateAnimY * 0.6);
+
+    debrisList.push({
+      type: chosenType,
+      x: width * 0.5 + (Math.random() - 0.5) * (width * 0.45),
+      y: height * 0.53,
+      vy: Math.random() * 0.8 + 0.6 * (gateHeightCm / 15),
+      vx: (Math.random() - 0.5) * 0.4,
+      rot: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 0.02,
+      size: chosenType === 'faceplate' ? 24 : (chosenType === 'eye' ? 8 : 18),
+      blinkTimer: Math.random() * 10
+    });
+  }
+
+  function setGateHeight(h) {
+    if (targetGateHeight === h) return;
+    targetGateHeight = h;
+    gateHeightCm = h;
+    hudHeight.textContent = h + ' cm';
+    hudFlow.textContent = (h === 0 ? '0.0' : (h === 15 ? '3.8' : '14.2')) + ' m³/s';
+
+    gateButtons.forEach(b => {
+      if (parseInt(b.dataset.h, 10) === h) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+
+    playChainSound();
+  }
+
+  gateButtons.forEach(b => {
+    b.addEventListener('click', () => setGateHeight(parseInt(b.dataset.h, 10)));
+  });
+
+  btnAudio.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    btnAudio.classList.toggle('on', soundEnabled);
+    btnAudio.textContent = soundEnabled ? '🔊 사운드' : '🔇 음소거';
+  });
+
+  // 본문 인터랙티브 트리거 바인딩
+  trigWatcher.addEventListener('click', () => {
+    playCameraShutter();
+  });
+  trig15.addEventListener('click', () => {
+    setGateHeight(15);
+  });
+  trigFace.addEventListener('click', () => {
+    playCoreDumpVoice();
+  });
+
+  // 모바일 뷰 전환 스위처
+  viewBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const v = btn.dataset.view;
+      appLayout.className = 'app-layout';
+      if (v === 'canvas') appLayout.classList.add('view-canvas-only');
+      if (v === 'story') appLayout.classList.add('view-story-only');
+      resizeCanvas();
+    });
+  });
+
+  // 캔버스 클릭 시 부유 파편 터치 감지
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // 1. 제어실 창문 클릭
+    if (my < height * 0.22 && Math.abs(mx - width * 0.5) < 120) {
+      playCameraShutter();
+      return;
+    }
+
+    // 2. 부유 파편 클릭
+    let clickedAny = false;
+    debrisList.forEach(p => {
+      const dist = Math.hypot(p.x - mx, p.y - my);
+      if (dist < p.size + 14) {
+        clickedAny = true;
+        if (p.type === 'faceplate') {
+          playCoreDumpVoice();
+        } else {
+          playHollowClank();
+        }
+      }
+    });
+
+    if (!clickedAny && my > height * 0.5) {
+      playHollowClank();
+    }
+  });
+
+  // --- 렌더링 루프 ---
+  function render() {
+    timeTick += 0.025;
+
+    // 수문 리프트 부드러운 애니메이션
+    gateAnimY += (targetGateHeight - gateAnimY) * 0.08;
+
+    // 플래시 감쇄
+    if (watcherFlash > 0) watcherFlash = Math.max(0, watcherFlash - 0.035);
+
+    // 주기적 부유물 스폰
+    if (Math.random() < (gateHeightCm > 0 ? 0.045 : 0)) {
+      spawnDebris();
+    }
+
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. 오후 5시 창백한 황혼 하늘 (Pale 17:00 Dusk)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.55);
+    skyGrad.addColorStop(0, '#0c1322');
+    skyGrad.addColorStop(0.6, '#18202f');
+    skyGrad.addColorStop(1, '#2c2528');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, width, height * 0.55);
+
+    // 창백한 태양 역광 (Pale Sun Glow)
+    const sunGrad = ctx.createRadialGradient(width * 0.82, height * 0.18, 5, width * 0.82, height * 0.18, 90);
+    sunGrad.addColorStop(0, 'rgba(254, 243, 199, 0.45)');
+    sunGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.15)');
+    sunGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(width * 0.82, height * 0.18, 90, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 우측 거대 마천루 & 서버 랙 LED 기둥 실루엣
+    const bldX = width * 0.68;
+    ctx.fillStyle = '#080d16';
+    ctx.fillRect(bldX, 0, width - bldX, height * 0.58);
+    // 유리벽 반사 광택
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1;
+    for (let lx = bldX + 20; lx < width; lx += 28) {
+      ctx.beginPath();
+      ctx.moveTo(lx, 0); ctx.lineTo(lx, height * 0.55);
+      ctx.stroke();
+    }
+    // 깜빡이는 서버 랙 LED 도트
+    for (let r = 0; r < 8; r++) {
+      const rx = bldX + 30 + (r % 3) * 24;
+      const ry = height * 0.1 + r * 18;
+      const blink = Math.sin(timeTick * 4 + r) > 0.3;
+      ctx.fillStyle = blink ? '#38bdf8' : 'rgba(56, 189, 248, 0.2)';
+      ctx.fillRect(rx, ry, 3, 2);
+    }
+
+    // 3. 시바우라 제4수문 외벽 프레임 (Industrial Steel Towers)
+    const gateW = Math.min(width * 0.65, 340);
+    const gateLeft = (width - gateW) * 0.5;
+    const gateRight = gateLeft + gateW;
+
+    // 좌우 육중한 콘크리트/강철 지주탑
+    ctx.fillStyle = '#0b111c';
+    ctx.fillRect(0, 0, gateLeft, height * 0.65);
+    ctx.fillRect(gateRight, 0, width - gateRight, height * 0.65);
+
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, gateLeft, height * 0.65);
+    ctx.strokeRect(gateRight, 0, width - gateRight, height * 0.65);
+
+    // 4. 수문 상단 콘크리트 제어실 (무인 감시실 & 4개 네모 창문)
+    const ctrlH = height * 0.18;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(gateLeft - 10, 0, gateW + 20, ctrlH);
+    ctx.strokeStyle = '#334155';
+    ctx.strokeRect(gateLeft - 10, 0, gateW + 20, ctrlH);
+
+    // "芝浦 第四水門" 스텐실 표기
+    ctx.font = '700 11px "IBM Plex Mono", sans-serif';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+    ctx.textAlign = 'center';
+    ctx.fillText('SHIBAURA SLUICE GATE NO.4 · 芝浦 第四水門', width * 0.5, ctrlH * 0.35);
+
+    // 4개의 네모난 창문
+    const winW = 26, winH = 22;
+    const winY = ctrlH * 0.48;
+    const winSpacing = (gateW - 40) / 4;
+    for (let w = 0; w < 4; w++) {
+      const wx = gateLeft + 20 + w * winSpacing;
+      ctx.fillStyle = '#020509';
+      ctx.fillRect(wx, winY, winW, winH);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(wx, winY, winW, winH);
+
+      // 2번째 창문 안쪽의 보이지 않는 감시자 시선(희미한 붉은 렌즈)
+      if (w === 2) {
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.6)';
+        ctx.beginPath();
+        ctx.arc(wx + winW * 0.5, winY + winH * 0.5, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 제어실 셔터 플래시 이펙트
+    if (watcherFlash > 0) {
+      const wx2 = gateLeft + 20 + 2 * winSpacing + winW * 0.5;
+      const wy2 = winY + winH * 0.5;
+      const fGrad = ctx.createRadialGradient(wx2, wy2, 2, wx2, wy2, 85);
+      fGrad.addColorStop(0, `rgba(255, 255, 255, ${watcherFlash})`);
+      fGrad.addColorStop(0.3, `rgba(56, 189, 248, ${watcherFlash * 0.6})`);
+      fGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = fGrad;
+      ctx.beginPath();
+      ctx.arc(wx2, wy2, 85, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 5. 육중한 강철 리프트 체인 (좌우)
+    const liftLiftPx = gateAnimY * 0.8;
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(gateLeft + 24, ctrlH); ctx.lineTo(gateLeft + 24, height * 0.55 - liftLiftPx);
+    ctx.moveTo(gateRight - 24, ctrlH); ctx.lineTo(gateRight - 24, height * 0.55 - liftLiftPx);
+    ctx.stroke();
+
+    // 6. 거대한 푸른색 강철 수문 (Shibaura Blue Steel Gate)
+    const gateTop = height * 0.22 - liftLiftPx;
+    const gateBottom = height * 0.55 - liftLiftPx;
+    const gateH = gateBottom - gateTop;
+
+    const steelGrad = ctx.createLinearGradient(gateLeft, 0, gateRight, 0);
+    steelGrad.addColorStop(0, '#0e3a47');
+    steelGrad.addColorStop(0.4, '#155e75');
+    steelGrad.addColorStop(0.8, '#083344');
+    ctx.fillStyle = steelGrad;
+    ctx.fillRect(gateLeft, gateTop, gateW, gateH);
+
+    // 수문 리벳 및 격자 프레임
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(gateLeft, gateTop, gateW, gateH);
+    ctx.beginPath();
+    ctx.moveTo(gateLeft, gateTop + gateH * 0.33); ctx.lineTo(gateRight, gateTop + gateH * 0.33);
+    ctx.moveTo(gateLeft, gateTop + gateH * 0.66); ctx.lineTo(gateRight, gateTop + gateH * 0.66);
+    ctx.stroke();
+
+    // 수문 하단 녹슬고 거친 엣지
+    ctx.fillStyle = '#04161d';
+    ctx.fillRect(gateLeft, gateBottom - 8, gateW, 8);
+
+    // 7. 검은 운하 수면 ('배출구' The Heap) & 물결
+    const canalY = height * 0.52;
+    const waterGrad = ctx.createLinearGradient(0, canalY, 0, height);
+    waterGrad.addColorStop(0, '#061320');
+    waterGrad.addColorStop(0.4, '#030811');
+    waterGrad.addColorStop(1, '#010307');
+    ctx.fillStyle = waterGrad;
+    ctx.fillRect(0, canalY, width, height - canalY);
+
+    // 수문 아래 방류 틈새로 쏟아져 나오는 수류 거품 & 소용돌이
+    if (gateHeightCm > 0) {
+      const flowAlpha = Math.min(0.8, gateHeightCm / 30);
+      ctx.fillStyle = `rgba(56, 189, 248, ${flowAlpha * 0.25})`;
+      ctx.fillRect(gateLeft + 10, canalY, gateW - 20, 24);
+
+      // 소용돌이 포말 라인
+      ctx.strokeStyle = `rgba(186, 230, 253, ${flowAlpha * 0.35})`;
+      ctx.lineWidth = 1.2;
+      for (let f = 0; f < 5; f++) {
+        const fy = canalY + 4 + f * 4;
+        const waveOffset = Math.sin(timeTick * 6 + f * 1.5) * 8;
+        ctx.beginPath();
+        ctx.moveTo(gateLeft + 20, fy);
+        ctx.quadraticCurveTo(width * 0.5 + waveOffset, fy + 8, gateRight - 20, fy);
+        ctx.stroke();
+      }
+    }
+
+    // 검은 유기 냉각수 물결 쉐이더 라인
+    ctx.strokeStyle = 'rgba(14, 165, 233, 0.12)';
+    ctx.lineWidth = 1;
+    for (let wy = canalY + 30; wy < height - 30; wy += 26) {
+      const wave = Math.sin(timeTick * 2 + wy * 0.05) * 6;
+      ctx.beginPath();
+      ctx.moveTo(0, wy + wave);
+      ctx.quadraticCurveTo(width * 0.5, wy - wave, width, wy + wave);
+      ctx.stroke();
+    }
+
+    // 8. 둥실 떠내려오는 가비지 컬렉션 파편 (Debris Update & Render)
+    for (let i = debrisList.length - 1; i >= 0; i--) {
+      const p = debrisList[i];
+      p.y += p.vy;
+      p.x += p.vx + Math.sin(timeTick * 2 + p.y * 0.02) * 0.3;
+      p.rot += p.vRot;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+
+      if (p.type === 'faceplate') {
+        // 하얀 안면 플레이트 (White Porcelain Faceplate)
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 텅 빈 눈자위 2개
+        ctx.fillStyle = '#090d16';
+        ctx.beginPath();
+        ctx.ellipse(-4, -3, 2, 3.5, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(4, -3, 2, 3.5, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 물결 잔물결 링
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (p.type === 'eye') {
+        // 경련하는 붉은 안구 모듈 (Red LED Eye)
+        const blink = Math.sin(timeTick * 8 + p.blinkTimer) > 0.1;
+        ctx.fillStyle = blink ? '#ef4444' : '#7f1d1d';
+        ctx.shadowColor = blink ? '#f43f5e' : 'transparent';
+        ctx.shadowBlur = blink ? 10 : 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (p.type === 'cable') {
+        // 은빛 광섬유 다발 케이블 (Silver Fiber Cable)
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-12, 0);
+        ctx.quadraticCurveTo(0, Math.sin(timeTick * 4) * 8, 12, 0);
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(-12, -1, 3, 3);
+        ctx.fillRect(10, -1, 3, 3);
+      } else if (p.type === 'limb') {
+        // 폴리우레탄 관절 구체 파츠
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
+      // 화면 하단 벗어난 파편 정리
+      if (p.y > height + 40) {
+        debrisList.splice(i, 1);
+      }
+    }
+
+    // 9. 전경: 하얗게 칠해진 차가운 철제 난간 (White Industrial Railing)
+    const railY = height * 0.91;
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, railY, width, 8);
+    // 난간 하부 지지대
+    for (let rx = 30; rx < width; rx += 70) {
+      ctx.fillRect(rx, railY + 8, 6, height - railY - 8);
+    }
+    // 난간 그림자
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(0, railY + 8, width, 4);
+
+    requestAnimationFrame(render);
+  }
+
+  function resizeCanvas() {
+    width = canvas.width = canvas.parentElement.clientWidth || 600;
+    height = canvas.height = canvas.parentElement.clientHeight || 700;
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  resizeCanvas();
+  requestAnimationFrame(render);
+</script>
+
+</body>
+</html>
