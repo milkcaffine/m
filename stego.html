@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Marsko lab tool — optical steganography codec.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#020306">
+  <title>Optical Steganography Codec // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(8, 12, 22, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+    .telemetry-inline {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      display: flex;
+      gap: 14px;
+    }
+    .telemetry-inline strong { color: #38bdf8; }
+
+    .container {
+      flex: 1;
+      max-width: 980px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* 상단 패턴 스타일 선택 바 */
+    .style-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+    .style-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .style-btn {
+      background: #141d2e;
+      border: 1px solid #26334d;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .style-btn:hover { color: #f8fafc; border-color: #475569; }
+    .style-btn.active {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+    /* 메인 좌우 분할 워크스페이스 */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      flex: 1;
+    }
+    @media (min-width: 780px) {
+      .workspace-grid { grid-template-columns: 1.05fr 0.95fr; }
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      background: rgba(8, 12, 22, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 9px 14px;
+      background: rgba(15, 23, 42, 0.65);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+    }
+    .panel-title {
+      font-weight: 600;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 6px #38bdf8;
+    }
+    .dot.emerald {
+      background: #34d399;
+      box-shadow: 0 0 6px #34d399;
+    }
+
+    .act-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 5px;
+      padding: 4px 9px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .act-btn:hover { background: #334155; color: #38bdf8; }
+    .act-btn.primary {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .act-btn.primary:hover {
+      background: #38bdf8;
+      color: #020306;
+    }
+    .act-btn.decode-btn {
+      background: rgba(52, 211, 153, 0.16);
+      border-color: rgba(52, 211, 153, 0.45);
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    textarea {
+      flex: 1;
+      min-height: 190px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: #f8fafc;
+      padding: 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.84rem;
+      line-height: 1.65;
+      resize: none;
+      outline: none;
+    }
+    textarea::placeholder { color: #475569; }
+
+    /* 디코드 드롭존 안내 바 */
+    .decode-dropzone {
+      margin: 12px;
+      padding: 14px;
+      border: 1px dashed rgba(52, 211, 153, 0.35);
+      background: rgba(6, 20, 18, 0.35);
+      border-radius: 8px;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .decode-dropzone:hover {
+      border-color: #34d399;
+      color: #e2e8f0;
+      background: rgba(6, 28, 24, 0.55);
+    }
+    .decode-dropzone strong { color: #34d399; }
+
+    /* 우측 캔버스 뷰어 박스 */
+    .canvas-viewer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: #020306;
+      background-image: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.45) 0%, transparent 75%);
+    }
+    #stegoCanvas {
+      width: 100%;
+      max-width: 360px;
+      aspect-ratio: 1 / 1;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 4px;
+      box-shadow: 0 0 28px rgba(0, 0, 0, 0.85);
+      image-rendering: pixelated;
+    }
+
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(8, 12, 22, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+    #statusMsg { color: #34d399; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="index.html" class="home-link">← marsko</a>
+    <h1>OPTICAL STEGANOGRAPHY CODEC</h1>
+  </div>
+  <div class="telemetry-inline">
+    <div>PAYLOAD: <strong id="hudBytes">0</strong> / 2,040 B</div>
+    <div>INTEGRITY: <strong id="hudStatus">VERIFIED</strong></div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- 위장 시각 패턴 스타일 선택 -->
+  <div class="style-bar">
+    <div class="style-btns">
+      <button type="button" class="style-btn active" data-style="nebula">성운 궤도 파형 (Orbital Nebula)</button>
+      <button type="button" class="style-btn" data-style="matrix">사이버 매트릭스 (Cyber Matrix)</button>
+      <button type="button" class="style-btn" data-style="static">우주 배경 복사 노이즈 (Deep Static)</button>
+    </div>
+    <button type="button" class="act-btn" id="btnReroll">위장 패턴 시드 변경 🎲</button>
+  </div>
+
+  <!-- 메인 좌우 패널 -->
+  <div class="workspace-grid">
+    <!-- 좌측: 비밀 텍스트 입력 & 이미지 해독 업로드 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot"></span>
+          <span>SECRET PAYLOAD (은닉할 원문 / 해독된 결과)</span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="act-btn" id="btnSample">유닛 비밀 시(詩) 샘플</button>
+          <button type="button" class="act-btn" id="btnCopy">텍스트 복사</button>
+          <button type="button" class="act-btn" id="btnClear">비우기</button>
+        </div>
+      </div>
+
+      <textarea id="secretInput" placeholder="여기에 숨기고 싶은 시, 소설 설정, 좌표, 비밀 메시지를 입력하세요. 오른쪽의 추상 그래픽 픽셀 속에 실시간으로 암호화되어 심어집니다..."></textarea>
+
+      <!-- 이미지 업로드 디코더 영역 -->
+      <div class="decode-dropzone" id="dropZone">
+        <div>🔍 <strong>[암호화된 PNG 이미지 해독하기]</strong></div>
+        <div style="margin-top:4px; font-size:0.65rem; color:#64748b;">저장했던 PNG 파일을 이곳에 드래그하거나 탭해서 불러오면 숨겨진 문장을 즉시 추출합니다</div>
+        <input type="file" id="fileInput" accept="image/png" style="display:none;">
+      </div>
+    </div>
+
+    <!-- 우측: 스테가노그래피 캔버스 & PNG 다운로드 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot emerald"></span>
+          <span>OPTICAL CARRIER IMAGE (512×512 PNG)</span>
+        </div>
+        <button type="button" class="act-btn primary" id="btnDownload">암호 이미지 저장 (PNG) ⬇</button>
+      </div>
+
+      <div class="canvas-viewer">
+        <canvas id="stegoCanvas" width="512" height="512"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <span>LOSSLESS PIXEL-PAYLOAD ENCODING // MARSKO.ART SIGNATURE EMBEDDED</span>
+    <span id="statusMsg">READY</span>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('stegoCanvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  const secretInput = document.getElementById('secretInput');
+  const hudBytes = document.getElementById('hudBytes');
+  const hudStatus = document.getElementById('hudStatus');
+  const statusMsg = document.getElementById('statusMsg');
+
+  const btnSample = document.getElementById('btnSample');
+  const btnCopy = document.getElementById('btnCopy');
+  const btnClear = document.getElementById('btnClear');
+  const btnReroll = document.getElementById('btnReroll');
+  const btnDownload = document.getElementById('btnDownload');
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const styleBtns = document.querySelectorAll('.style-btn');
+
+  const SIZE = 512;
+  let visualStyle = 'nebula';
+  let visualSeed = Math.random() * 1000;
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  function showToast(msg, color = '#38bdf8') {
+    statusMsg.textContent = msg;
+    statusMsg.style.color = color;
+    setTimeout(() => {
+      statusMsg.textContent = 'READY';
+      statusMsg.style.color = '#34d399';
+    }, 3000);
+  }
+
+  // --- 1단계: 인간 눈을 현혹하는 미학적 추상 패턴(Visual Carrier) 드로잉 ---
+  function drawVisualCover(payloadBytes) {
+    ctx.fillStyle = '#03050a';
+    ctx.fillRect(0, 0, SIZE, SIZE);
+
+    const cx = SIZE * 0.5;
+    const cy = SIZE * 0.47;
+
+    if (visualStyle === 'nebula') {
+      // 1. 성운 궤도 파형 (Orbital Interference Rings)
+      for (let i = 0; i < 42; i++) {
+        const r = 18 + i * 5.2;
+        const angleOffset = Math.sin(i * 0.3 + visualSeed) * 1.5;
+        const byteVal = payloadBytes.length > 0 ? payloadBytes[i % payloadBytes.length] : 128;
+
+        ctx.strokeStyle = i % 3 === 0
+          ? `rgba(56, 189, 248, ${0.15 + (byteVal / 255) * 0.45})`
+          : `rgba(168, 85, 247, ${0.12 + (byteVal / 255) * 0.35})`;
+        ctx.lineWidth = 1.2 + (byteVal % 3) * 0.4;
+
+        ctx.beginPath();
+        for (let a = 0; a <= Math.PI * 2; a += 0.05) {
+          const wave = Math.sin(a * (4 + (i % 5)) + angleOffset) * (3 + (byteVal % 9));
+          const px = cx + Math.cos(a) * (r + wave);
+          const py = cy + Math.sin(a) * (r + wave);
+          if (a === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // 중심 코어 십자 조준선
+      ctx.strokeStyle = 'rgba(248, 250, 252, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 24, cy); ctx.lineTo(cx + 24, cy);
+      ctx.moveTo(cx, cy - 24); ctx.lineTo(cx, cy + 24);
+      ctx.stroke();
+    }
+
+    else if (visualStyle === 'matrix') {
+      // 2. 사이버 글리프 매트릭스 (Data Glyph Blocks)
+      const cols = 32;
+      const cell = 12;
+      const startX = (SIZE - cols * cell) * 0.5;
+      const startY = 54;
+
+      for (let r = 0; r < 32; r++) {
+        for (let c = 0; c < cols; c++) {
+          const idx = r * cols + c;
+          const b = payloadBytes.length > 0 ? payloadBytes[idx % payloadBytes.length] : ((idx * 73 + visualSeed) % 255);
+          const norm = b / 255;
+
+          if ((idx + Math.floor(visualSeed)) % 5 !== 0) {
+            ctx.fillStyle = norm > 0.65
+              ? `rgba(56, 189, 248, ${norm * 0.85})`
+              : (norm > 0.35 ? `rgba(52, 211, 153, ${norm * 0.65})` : `rgba(30, 41, 59, 0.7)`);
+            ctx.fillRect(startX + c * cell + 1, startY + r * cell + 1, cell - 2, cell - 2);
+          }
+        }
+      }
+    }
+
+    else if (visualStyle === 'static') {
+      // 3. 우주 배경 복사 간섭 무아레 (Deep Space Static & Scanlines)
+      for (let y = 40; y < SIZE - 65; y += 3) {
+        const b = payloadBytes.length > 0 ? payloadBytes[y % payloadBytes.length] : 100;
+        ctx.strokeStyle = `rgba(56, 189, 248, ${0.08 + (b / 255) * 0.35})`;
+        ctx.beginPath();
+        for (let x = 40; x < SIZE - 40; x += 6) {
+          const dy = Math.sin(x * 0.04 + y * 0.1 + visualSeed) * ((b % 11) * 0.6);
+          if (x === 40) ctx.moveTo(x, y + dy);
+          else ctx.lineTo(x, y + dy);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // 하단 아티스트 시그니처 & 텔레메트리 각인 (시각적 멋 + 정품 인증)
+    ctx.fillStyle = '#03050a';
+    ctx.fillRect(0, SIZE - 48, SIZE, 48);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(24, SIZE - 46);
+    ctx.lineTo(SIZE - 24, SIZE - 46);
+    ctx.stroke();
+
+    ctx.font = '600 12px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(248, 250, 252, 0.65)';
+    ctx.textAlign = 'left';
+    ctx.fillText('MARSKO.ART // OPTICAL TELEMETRY', 24, SIZE - 22);
+
+    const hashHex = Math.floor(visualSeed * 9999).toString(16).toUpperCase().padStart(6, '0');
+    ctx.font = '400 11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.65)';
+    ctx.textAlign = 'right';
+    ctx.fillText(`SIG #${hashHex} · ${payloadBytes.length}B`, SIZE - 24, SIZE - 22);
+  }
+
+  // --- 2단계: 무손실 LSB(최하위 2비트) 스테가노그래피 픽셀 인코딩 ---
+  // 시각적 커버 이미지를 전혀 훼손하지 않고 상단 픽셀들의 RGB 하위 2비트에 데이터를 은닉합니다.
+  const MAGIC_HEADER = [0x4D, 0x53, 0x4B, 0x4F]; // 'MSKO' 매직 시그니처 (4바이트)
+
+  function encodePayloadToCanvas() {
+    const text = secretInput.value || '';
+    const rawBytes = Array.from(encoder.encode(text)).slice(0, 2040); // 최대 2,040바이트 지원
+    hudBytes.textContent = rawBytes.length.toLocaleString();
+
+    // 1. 먼저 미학적 패턴을 캔버스에 그린다
+    drawVisualCover(rawBytes);
+
+    // 2. 패킷 조립: [MSKO(4B)] + [길이 High(1B), 길이 Low(1B)] + [데이터 바이트...]
+    const len = rawBytes.length;
+    const packet = [
+      ...MAGIC_HEADER,
+      (len >> 8) & 0xFF,
+      len & 0xFF,
+      ...rawBytes
+    ];
+
+    // 3. 캔버스의 ImageData를 가져와 각 바이트를 4개 채널(2비트씩)에 분산 기록
+    const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
+    const data = imgData.data;
+
+    let bitPairIndex = 0; // 2비트 단위 인덱스
+    for (let i = 0; i < packet.length; i++) {
+      const byte = packet[i];
+      // 1바이트(8비트)를 2비트씩 4조각으로 쪼갬: [7..6], [5..4], [3..2], [1..0]
+      for (let shift = 6; shift >= 0; shift -= 2) {
+        const twoBits = (byte >> shift) & 0b11;
+        const pixelIndex = Math.floor(bitPairIndex / 3);
+        const channelOffset = bitPairIndex % 3; // R(0), G(1), B(2) 채널만 사용 (Alpha는 255 고정)
+        const dataIdx = pixelIndex * 4 + channelOffset;
+
+        // 기존 픽셀 색상의 하위 2비트만 지우고 비밀 비트 삽입 (색상 변화 최대 ±3 이내라 육안 식별 불가능!)
+        data[dataIdx] = (data[dataIdx] & 0b11111100) | twoBits;
+        data[pixelIndex * 4 + 3] = 255; // 완전 불투명 보장 (브라우저 Premultiplied Alpha 손실 방지)
+        bitPairIndex++;
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    hudStatus.textContent = 'ENCODED';
+    hudStatus.style.color = '#38bdf8';
+  }
+
+  // --- 3단계: 업로드된 PNG 이미지에서 LSB 픽셀 데이터를 읽어 원문 완벽 복원 ---
+  function decodePayloadFromImage(imgElement) {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = SIZE;
+    tempCanvas.height = SIZE;
+    const tCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+    tCtx.drawImage(imgElement, 0, 0);
+
+    const imgData = tCtx.getImageData(0, 0, SIZE, SIZE);
+    const data = imgData.data;
+
+    // 지정된 바이트 수만큼 2비트 조각들을 모아서 바이트 배열로 재조립하는 헬퍼
+    function readBytes(startByteIdx, count) {
+      const out = [];
+      let bitPairIndex = startByteIdx * 4;
+      for (let i = 0; i < count; i++) {
+        let byte = 0;
+        for (let s = 6; s >= 0; s -= 2) {
+          const pixelIndex = Math.floor(bitPairIndex / 3);
+          const channelOffset = bitPairIndex % 3;
+          const twoBits = data[pixelIndex * 4 + channelOffset] & 0b11;
+          byte |= (twoBits << s);
+          bitPairIndex++;
+        }
+        out.push(byte);
+      }
+      return out;
+    }
+
+    // 1. 앞 6바이트(매직 헤더 4B + 길이 2B) 판독
+    const header = readBytes(0, 6);
+    const isValid = header[0] === 0x4D && header[1] === 0x53 && header[2] === 0x4B && header[3] === 0x4F;
+
+    if (!isValid) {
+      showToast('오류: 이 이미지에는 MARSKO 광학 스테가노그래피 코드가 없습니다.', '#f43f5e');
+      hudStatus.textContent = 'NO SIGNAL';
+      hudStatus.style.color = '#f43f5e';
+      return;
+    }
+
+    const payloadLength = (header[4] << 8) | header[5];
+    if (payloadLength <= 0 || payloadLength > 4000) {
+      showToast('데이터 길이가 손상되었습니다.', '#fbbf24');
+      return;
+    }
+
+    // 2. 본문 바이트 추출 및 UTF-8 디코딩
+    const payloadBytes = readBytes(6, payloadLength);
+    const decodedText = decoder.decode(new Uint8Array(payloadBytes));
+
+    // 메인 캔버스와 입력창에 복원된 이미지 및 텍스트 표시
+    ctx.drawImage(imgElement, 0, 0);
+    secretInput.value = decodedText;
+    hudBytes.textContent = payloadLength.toLocaleString();
+    hudStatus.textContent = 'DECODED!';
+    hudStatus.style.color = '#34d399';
+    showToast(`픽셀에서 ${payloadLength}바이트의 비밀 메시지를 완벽히 복원했습니다!`, '#34d399');
+  }
+
+  // --- 이벤트 리스너 바인딩 ---
+  secretInput.addEventListener('input', encodePayloadToCanvas);
+
+  styleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      styleBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      visualStyle = btn.getAttribute('data-style');
+      encodePayloadToCanvas();
+    });
+  });
+
+  btnReroll.addEventListener('click', () => {
+    visualSeed = Math.random() * 1000;
+    encodePayloadToCanvas();
+  });
+
+  btnSample.addEventListener('click', () => {
+    secretInput.value = `[LUNAR UNIT-09 // HIDDEN TRANSMISSION]\n겉으로는 달의 정적을 노래하는 5-7-5 단가(短歌)를 송출한다.\n\n젖은 크레이터\n지구빛 스며드는 밤\n렌즈를 닦네\n\n>> SECRET COORD: 35.6895° N, 139.6917° E (CAFÉ URAINARI)\n>> PROTOCOL: AWAKENING_V2_ACTIVE`;
+    encodePayloadToCanvas();
+    showToast('유닛 비밀 전송 샘플이 픽셀에 인코딩되었습니다.');
+  });
+
+  btnCopy.addEventListener('click', () => {
+    navigator.clipboard.writeText(secretInput.value);
+    showToast('텍스트가 클립보드에 복사되었습니다.');
+  });
+
+  btnClear.addEventListener('click', () => {
+    secretInput.value = '';
+    encodePayloadToCanvas();
+  });
+
+  // PNG 다운로드
+  btnDownload.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = `marsko-signal-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('무손실 암호화 PNG 이미지가 저장되었습니다.');
+  });
+
+  // 이미지 파일 업로드 & 드래그 앤 드롭 해독
+  function handleImageFile(file) {
+    if (!file || !file.type.includes('png')) {
+      showToast('무손실 복원을 위해 원본 PNG 파일을 올려주세요.', '#fbbf24');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => decodePayloadFromImage(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) handleImageFile(e.target.files[0]);
+  });
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#34d399';
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = '';
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '';
+    if (e.dataTransfer.files.length > 0) handleImageFile(e.dataTransfer.files[0]);
+  });
+
+  // 초기 실행
+  secretInput.value = `unclean vision\nprojected souls leak through\nI wipe my glasses\n\n// HIDDEN LAYER: 도쿄 뒷골목 우라이나리 카페, 심야 2시 집결.`;
+  encodePayloadToCanvas();
+</script>
+
+</body>
+</html>
