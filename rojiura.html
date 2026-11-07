@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#030407">
-  <meta name="description" content="Marsko lab tool — rojiura. 도쿄 폭 1m 비유클리드 빗속 골목길과 숨겨진 심야 카페 [우라이나리] 탐색 텍스트-비주얼 인터랙티브.">
-  <title>Rojiura 1.0m // Café Urainari // marsko</title>
+  <meta name="description" content="Marsko lab tool — rojiura. 도쿄 아키하바라·긴자 경계의 폭 0.98m 비유클리드 빗속 골목길과 숨겨진 심야 다방 [우라이나리(裏稲荷)] 탐색.">
+  <title>Rojiura 1.0m // 裏稲荷 // marsko</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/marsko-hud.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
       background: #020306;
       color: #cbd5e1;
       overflow: hidden;
@@ -32,7 +32,6 @@
       width: 100%;
       height: 100%;
       display: block;
-      touch-action: none;
     }
 
     /* 상단 헤더 HUD */
@@ -79,7 +78,7 @@
       position: absolute;
       top: 14px;
       right: 16px;
-      background: rgba(8, 12, 22, 0.82);
+      background: rgba(8, 12, 22, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       padding: 10px 14px;
@@ -95,32 +94,68 @@
     .telemetry-card strong { color: #38bdf8; }
     .telemetry-card .amber { color: #fbbf24; text-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
 
+    /* 도착 시 뜨는 우라이나리 프로필 카드 */
+    .cafe-card {
+      position: absolute;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(12, 10, 8, 0.92);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      border-radius: 12px;
+      padding: 14px 20px;
+      text-align: center;
+      z-index: 15;
+      display: none;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(251, 191, 36, 0.15);
+      width: 90%;
+      max-width: 360px;
+      animation: fadeIn 0.5s ease;
+    }
+    .cafe-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fbbf24;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+    .cafe-tags {
+      font-size: 0.78rem;
+      color: #f8fafc;
+      line-height: 1.8;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, -8px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
     /* 하단 내러티브 독백 캡션 */
     .narrative-box {
       position: absolute;
-      bottom: 84px;
+      bottom: 82px;
       left: 50%;
       transform: translateX(-50%);
-      width: 90%;
-      max-width: 460px;
-      background: rgba(6, 9, 16, 0.85);
+      width: 92%;
+      max-width: 480px;
+      background: rgba(6, 9, 16, 0.88);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-left: 3px solid #fbbf24;
       border-radius: 8px;
       padding: 10px 14px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       color: #e2e8f0;
       line-height: 1.55;
       backdrop-filter: blur(8px);
       z-index: 10;
       pointer-events: none;
-      transition: all 0.25s ease;
     }
     .narrative-sub {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.65rem;
-      color: #64748b;
-      margin-top: 4px;
+      color: #94a3b8;
+      margin-top: 5px;
     }
 
     /* 하단 이동 컨트롤 독 */
@@ -138,16 +173,14 @@
       gap: 10px;
       backdrop-filter: blur(10px);
       z-index: 10;
-      max-width: 96%;
-      overflow-x: auto;
     }
     .nav-btn {
       background: #1e293b;
       border: 1px solid #334155;
       color: #f8fafc;
       border-radius: 8px;
-      padding: 8px 16px;
-      font-size: 0.78rem;
+      padding: 8px 15px;
+      font-size: 0.76rem;
       font-family: 'IBM Plex Mono', monospace;
       font-weight: 600;
       cursor: pointer;
@@ -159,11 +192,9 @@
       border-color: #fbbf24;
       color: #fbbf24;
     }
-    .nav-btn:active {
-      transform: scale(0.96);
-    }
-    .nav-btn.coffee-btn {
-      background: rgba(251, 191, 36, 0.2);
+    .nav-btn:active { transform: scale(0.96); }
+    .nav-btn.udon-btn {
+      background: rgba(251, 191, 36, 0.18);
       border-color: #fbbf24;
       color: #fbbf24;
       display: none;
@@ -178,14 +209,8 @@
       }
       .narrative-box {
         bottom: 74px;
-        font-size: 0.72rem;
-        padding: 8px 12px;
-        max-width: 92%;
-      }
-      .control-dock {
-        bottom: 10px;
-        padding: 6px 10px;
-        gap: 6px;
+        padding: 10px 14px;
+        font-size: 0.74rem;
       }
       .nav-btn {
         padding: 6px 10px;
@@ -198,29 +223,39 @@
 
 <header>
   <a href="index.html" class="home-link">← marsko</a>
-  <h1>ROJIURA 1.0m // URAINARI</h1>
-  <div class="hud-meta">NON-EUCLIDEAN BACK ALLEY · FIND THE HIDDEN CAFÉ</div>
+  <h1>ROJIURA 1.0m // 裏稲荷</h1>
+  <div class="hud-meta">📍 秋葉原・銀座界隈 · ⛩️ 稲荷神社 / 怪談 / ドール / 読書</div>
 </header>
 
 <div class="telemetry-card">
+  <div>AREA: <strong>AKIBA · GINZA BORDER</strong></div>
   <div>ALLEY WIDTH: <strong>0.98 m</strong></div>
-  <div>SIGNAL SYNC: <strong id="hudDepth" class="amber">0 / 6</strong></div>
-  <div>STEPS TAKEN: <strong id="hudSteps">0</strong></div>
-  <div>AMBIENT: <strong id="hudWeather">RAIN · 02:14 AM</strong></div>
+  <div>TORII SYNC: <strong id="hudDepth" class="amber">0 / 6</strong></div>
+  <div>STEPS: <strong id="hudSteps">0</strong></div>
+</div>
+
+<!-- 우라이나리 도착 시 오픈되는 시그니처 보드 -->
+<div class="cafe-card" id="cafeCard">
+  <div class="cafe-title">⛩️ 深夜茶房・裏稲荷 🦊</div>
+  <div class="cafe-tags">
+    🍜 きつねうどん 🦊 & 深煎り珈琲<br>
+    📍 秋葉原・銀座界隈 (幅0.98m 路地裏)<br>
+    ⛩️ 稲荷神社 / 怪談・ホラー / ドール / 読書 / 多趣味
+  </div>
 </div>
 
 <canvas id="alleyCanvas"></canvas>
 
 <div class="narrative-box" id="narrativeBox">
-  <div id="narrativeText">비에 젖은 폭 1미터의 좁은 골목이다. 호박색 불빛이나 여우 석상의 시선이 가리키는 쪽을 따라가야 길을 잃지 않는다.</div>
-  <div class="narrative-sub" id="narrativeHint">CLUE: 바닥 물웅덩이나 전선, 여우 석상의 방향을 관찰하세요 [← / ↑ / →]</div>
+  <div id="narrativeText">아키하바라의 전자 부품 냄새와 긴자의 오래된 네온이 뒤섞이는 폭 1m의 뒷골목. 여우 석상이나 호박색 불빛이 이끄는 방향을 따라가야 『우라이나리』에 닿을 수 있다.</div>
+  <div class="narrative-sub" id="narrativeHint">⛩️ 稲荷神社 · 怪談 · ドール · 読書 // 단서가 가리키는 길을 선택하세요 [← / ↑ / →]</div>
 </div>
 
 <div class="control-dock">
   <button type="button" class="nav-btn" id="btnLeft">← 좌측 골목</button>
   <button type="button" class="nav-btn" id="btnForward">↑ 직진</button>
   <button type="button" class="nav-btn" id="btnRight">우측 골목 →</button>
-  <button type="button" class="nav-btn coffee-btn" id="btnReset">☕ 다시 골목 입구로</button>
+  <button type="button" class="nav-btn udon-btn" id="btnReset">🍜 きつねうどん 한 그릇 먹고 다시 골목으로</button>
 </div>
 
 <script>
@@ -231,6 +266,7 @@
   const hudSteps = document.getElementById('hudSteps');
   const narrativeText = document.getElementById('narrativeText');
   const narrativeHint = document.getElementById('narrativeHint');
+  const cafeCard = document.getElementById('cafeCard');
 
   const btnLeft = document.getElementById('btnLeft');
   const btnForward = document.getElementById('btnForward');
@@ -240,7 +276,7 @@
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
 
-  // --- Web Audio API 프로시저럴 빗소리 & 발소리 & 풍경(풍령) 소리 ---
+  // --- Web Audio API 사운드 엔진 ---
   let audioCtx = null;
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -251,7 +287,6 @@
     initAudio();
     const now = audioCtx.currentTime;
 
-    // 1. 젖은 아스팔트 웅덩이 발소리 (Filtered Noise)
     const bufferSize = audioCtx.sampleRate * 0.09;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -263,7 +298,7 @@
 
     const filter = audioCtx.createBiquadFilter();
     filter.type = 'bandpass';
-    filter.frequency.value = isCorrect ? 950 : 420;
+    filter.frequency.value = isCorrect ? 950 : 400;
 
     const gain = audioCtx.createGain();
     gain.gain.value = 0.25;
@@ -272,14 +307,14 @@
     gain.connect(audioCtx.destination);
     noise.start(now);
 
-    // 2. 올바른 길일 때 은은하게 울리는 신사 풍경/재즈 화음 공명
+    // 일본 전통 음계(미야코부시/요나누키) 느낌의 신비로운 방울 공명음
     if (isCorrect) {
       const osc = audioCtx.createOscillator();
       const oGain = audioCtx.createGain();
       osc.type = 'sine';
-      const notes = [523.25, 659.25, 783.99, 987.77, 1046.5, 1318.5];
-      osc.frequency.setValueAtTime(notes[Math.min(5, depth)], now + 0.05);
-      oGain.gain.setValueAtTime(0.08, now + 0.05);
+      const scale = [440.0, 493.88, 523.25, 659.25, 698.46, 880.0];
+      osc.frequency.setValueAtTime(scale[Math.min(5, depth)], now + 0.05);
+      oGain.gain.setValueAtTime(0.09, now + 0.05);
       oGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
       osc.connect(oGain);
       oGain.connect(audioCtx.destination);
@@ -291,22 +326,21 @@
   function playArrivalChord() {
     initAudio();
     const now = audioCtx.currentTime;
-    // 따뜻한 재즈 메이저 세븐스 코드 (Fmaj7)
     [349.23, 440.00, 523.25, 659.25].forEach((freq, idx) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-      gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+      osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+      gain.gain.setValueAtTime(0.12, now + idx * 0.09);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start(now + idx * 0.08);
+      osc.start(now + idx * 0.09);
       osc.stop(now + 2.5);
     });
   }
 
-  // --- 게임 상태 ---
+  // --- 상태 변수 ---
   const TARGET_DEPTH = 6;
   let depth = 0;
   let steps = 0;
@@ -315,9 +349,7 @@
   let currentNode = {
     answer: 'forward',
     clueType: 'fox',
-    pipesLeft: true,
-    vendingRight: false,
-    seed: 0
+    pipesLeft: true
   };
 
   let walkAnim = 0;
@@ -344,24 +376,33 @@
     currentNode = {
       answer: dirs[Math.floor(Math.random() * dirs.length)],
       clueType: clues[Math.floor(Math.random() * clues.length)],
-      pipesLeft: Math.random() > 0.3,
-      vendingRight: Math.random() > 0.4,
-      seed: Math.random()
+      pipesLeft: Math.random() > 0.3
     };
 
     if (arrived) {
-      narrativeText.textContent = '마침내 골목 끝에서 따뜻한 커피 향과 진공관 앰프의 재즈 선율이 새어 나온다. [카페 우라이나리]에 도착했다.';
-      narrativeHint.textContent = 'ARRIVED AT CAFÉ URAINARI · TOKYO BACK ALLEY';
+      narrativeText.textContent = '달콤짭짤한 유부를 얹은 키츠네 우동(きつねうどん) 국물 향기가 골목을 메운다. 창가에는 아름다운 인형과 괴담 고서들이 조용히 손님을 맞이한다.';
+      narrativeHint.textContent = '🍜 きつねうどん 🦊 · 📍 秋葉原・銀座界隈 · ⛩️ 稲荷神社 / 怪談 / ドール / 読書';
       return;
     }
 
-    const clueDesc = {
-      fox: '이끼 낀 작은 여우 석상(稲荷)의 호박색 눈동자가 한쪽 골목을 가만히 응시하고 있다.',
-      puddle: '발밑의 빗물 고인 웅덩이 위로 어디선가 새어 나온 따뜻한 호박색 네온이 한쪽에만 비친다.',
-      wire: '머리 위 좁게 얽힌 전깃줄 사이로 작은 여우불 전구 하나가 갈림길 한쪽에서 깜빡인다.'
+    const clueTexts = {
+      fox: [
+        '⛩️ 이나리 신사(稲荷神社)의 작은 여우 석상이 비에 젖은 채 한쪽 골목을 응시하고 있다.',
+        '🦊 여우 가면을 쓴 그림자가 스치더니 작은 붉은 도리이 너머로 방향을 가리킨다.'
+      ],
+      puddle: [
+        '📍 아키하바라 뒷골목의 빗물 웅덩이 위로 오래된 유리가게와 인형 공방의 호박색 네온이 한쪽에만 비친다.',
+        '📖 젖은 아스팔트 웅덩이 속에 누군가 흘린 괴담 문고본 표지와 따뜻한 등불이 한쪽 골목을 비춘다.'
+      ],
+      wire: [
+        '🍜 얽힌 전깃줄 사이로 달콤한 유부 다시(出汁) 냄새와 함께 여우불 같은 전구가 한쪽에서 깜빡인다.',
+        '🎎 좁은 처마 밑 전선 위로 오래된 구체관절인형의 유리 안구처럼 반짝이는 호박색 불빛이 매달려 있다.'
+      ]
     };
-    narrativeText.textContent = clueDesc[currentNode.clueType];
-    narrativeHint.textContent = `SYNC LEVEL: ${depth} / ${TARGET_DEPTH} · 단서가 가리키는 방향을 선택하세요`;
+
+    const list = clueTexts[currentNode.clueType];
+    narrativeText.textContent = list[Math.floor(Math.random() * list.length)];
+    narrativeHint.textContent = `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 단서가 있는 방향을 선택하세요`;
   }
 
   function makeMove(choice) {
@@ -381,6 +422,7 @@
         if (depth >= TARGET_DEPTH) {
           arrived = true;
           playArrivalChord();
+          cafeCard.style.display = 'block';
           btnLeft.style.display = 'none';
           btnForward.style.display = 'none';
           btnRight.style.display = 'none';
@@ -388,19 +430,19 @@
         }
       } else {
         depth = Math.max(0, depth - 1);
-        narrativeText.textContent = '발소리가 기묘하게 메아리치더니 방금 지나온 골목으로 되돌아와 버렸다... 단서를 다시 살펴보자.';
+        narrativeText.textContent = '괴담 속 골목처럼 안개가 자욱해지더니 아키하바라·긴자 경계 초입으로 되돌아와 버렸다... 단서를 다시 읽자.';
       }
       hudDepth.textContent = `${depth} / ${TARGET_DEPTH}`;
       if (!arrived && isCorrect) generateNextNode();
       else if (!arrived && !isCorrect) {
-        setTimeout(() => generateNextNode(), 600);
+        setTimeout(() => generateNextNode(), 650);
       } else if (arrived) {
         generateNextNode();
       }
     }, 320);
   }
 
-  // --- 1인칭 폭 1m 골목 와이어프레임 & 단서 렌더링 ---
+  // --- 메인 렌더링 루프 ---
   function render() {
     ctx.fillStyle = '#020306';
     ctx.fillRect(0, 0, width, height);
@@ -412,7 +454,7 @@
 
     const bobY = Math.sin((1 - walkAnim) * Math.PI * 2) * (walkAnim > 0 ? 10 : Math.sin(timeTick * 1.5) * 2);
     const vanishX = width * 0.5 - turnDir * (1 - walkAnim) * (walkAnim > 0 ? 45 : 0);
-    const vanishY = height * 0.44 + bobY;
+    const vanishY = height * 0.46 + bobY;
 
     const alleyHalfW = Math.min(width * 0.36, 260);
     const leftWallX = width * 0.5 - alleyHalfW;
@@ -420,6 +462,7 @@
 
     ctx.save();
 
+    // 1. 깊이별 1인칭 골목 원근 그리드
     const slices = 7;
     const zoomOffset = walkAnim > 0 ? (1 - walkAnim) : 0;
 
@@ -449,6 +492,7 @@
       ctx.stroke();
     }
 
+    // 2. 좌우 골목 모서리 원근 사선
     ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -458,56 +502,65 @@
     ctx.moveTo(rightWallX, height * 0.9); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY + height * 0.08);
     ctx.stroke();
 
+    // 3-A. [도착: 심야 다방·식당 '우라이나리(裏稲荷)']
     if (arrived) {
-      const cw = alleyHalfW * 0.55;
-      const ch = height * 0.26;
+      const cw = alleyHalfW * 0.58;
+      const ch = height * 0.25;
       const cx = vanishX;
-      const cy = vanishY;
+      const cy = vanishY + height * 0.05;
 
-      const cafeGlow = ctx.createRadialGradient(cx, cy, 5, cx, cy, cw * 1.8);
+      // 호박색 후광
+      const cafeGlow = ctx.createRadialGradient(cx, cy, 5, cx, cy, cw * 1.9);
       cafeGlow.addColorStop(0, 'rgba(251, 191, 36, 0.55)');
-      cafeGlow.addColorStop(0.5, 'rgba(245, 158, 11, 0.2)');
+      cafeGlow.addColorStop(0.5, 'rgba(245, 158, 11, 0.22)');
       cafeGlow.addColorStop(1, 'transparent');
       ctx.fillStyle = cafeGlow;
       ctx.beginPath();
-      ctx.arc(cx, cy, cw * 1.8, 0, Math.PI * 2);
+      ctx.arc(cx, cy, cw * 1.9, 0, Math.PI * 2);
       ctx.fill();
 
+      // 목조 미닫이문 & 격자 창문
       ctx.fillStyle = '#1c1208';
       ctx.strokeStyle = '#fbbf24';
       ctx.lineWidth = 2;
       ctx.fillRect(cx - cw * 0.5, cy - ch * 0.5, cw, ch);
       ctx.strokeRect(cx - cw * 0.5, cy - ch * 0.5, cw, ch);
 
-      ctx.fillStyle = 'rgba(251, 191, 36, 0.82)';
-      ctx.fillRect(cx - cw * 0.38, cy - ch * 0.35, cw * 0.32, ch * 0.45);
-      ctx.fillRect(cx + cw * 0.06, cy - ch * 0.35, cw * 0.32, ch * 0.45);
+      // 실내 창문 불빛
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
+      ctx.fillRect(cx - cw * 0.38, cy - ch * 0.32, cw * 0.32, ch * 0.45);
+      ctx.fillRect(cx + cw * 0.06, cy - ch * 0.32, cw * 0.32, ch * 0.45);
 
+      // 노렌(暖簾) 천 간판
       ctx.fillStyle = '#0f172a';
       ctx.strokeStyle = '#f8fafc';
       ctx.lineWidth = 1.2;
-      ctx.fillRect(cx - cw * 0.42, cy - ch * 0.48, cw * 0.84, ch * 0.24);
-      ctx.strokeRect(cx - cw * 0.42, cy - ch * 0.48, cw * 0.84, ch * 0.24);
+      ctx.fillRect(cx - cw * 0.44, cy - ch * 0.48, cw * 0.88, ch * 0.24);
+      ctx.strokeRect(cx - cw * 0.44, cy - ch * 0.48, cw * 0.88, ch * 0.24);
 
-      ctx.font = '700 13px "IBM Plex Mono", sans-serif';
+      ctx.font = '700 13px sans-serif';
       ctx.fillStyle = '#fbbf24';
       ctx.textAlign = 'center';
-      ctx.fillText('裏 稲 荷', cx, cy - ch * 0.32);
+      ctx.fillText('⛩️ 裏 稲 荷 🦊', cx, cy - ch * 0.32);
 
+      // 우측 둥근 초롱등 (きつねうどん)
       const lx = cx + cw * 0.68;
-      const ly = cy - ch * 0.15;
-      ctx.fillStyle = '#fbbf24';
-      ctx.shadowColor = '#fbbf24';
+      const ly = cy - ch * 0.1;
+      ctx.fillStyle = '#f43f5e';
+      ctx.shadowColor = '#f43f5e';
       ctx.shadowBlur = 16;
       ctx.beginPath();
-      ctx.ellipse(lx, ly, 12, 18, 0, 0, Math.PI * 2);
+      ctx.ellipse(lx, ly, 13, 20, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      ctx.font = '700 10px sans-serif';
-      ctx.fillStyle = '#020306';
-      ctx.fillText('珈琲', lx, ly + 4);
-    } else {
+      ctx.font = '700 9px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('饂飩', lx, ly + 3);
+    }
+
+    // 3-B. [탐색 중: 3대 단서]
+    else {
       const dirSign = currentNode.answer === 'left' ? -1 : (currentNode.answer === 'right' ? 1 : 0);
 
       const doorW = alleyHalfW * 0.22;
@@ -591,6 +644,7 @@
       }
     }
 
+    // 4. 골목 빗줄기
     ctx.strokeStyle = 'rgba(186, 230, 253, 0.22)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -607,6 +661,7 @@
     });
     ctx.stroke();
 
+    // 5. 양옆 폭 1m 벽면 차폐
     ctx.fillStyle = '#010204';
     ctx.fillRect(0, 0, leftWallX, height);
     ctx.fillRect(rightWallX, 0, width - rightWallX, height);
@@ -633,6 +688,7 @@
     arrived = false;
     hudDepth.textContent = `0 / ${TARGET_DEPTH}`;
     hudSteps.textContent = '0';
+    cafeCard.style.display = 'none';
     btnLeft.style.display = 'inline-block';
     btnForward.style.display = 'inline-block';
     btnRight.style.display = 'inline-block';
