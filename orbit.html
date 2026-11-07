@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#030407">
+  <meta name="description" content="Kepler & Earth Orbit Observatory: heliocentric solar system (Earth–Mars Hohmann transfers, Lagrange points) and geocentric cislunar system (LEO/GEO satellites, Moon phase).">
+  <title>Kepler & Earth Orbit Observatory // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #orbitCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #orbitCanvas:active { cursor: grabbing; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+    }
+
+    /* 우측 텔레메트리 HUD */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(10, 15, 26, 0.84);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.58;
+      text-align: right;
+      z-index: 10;
+      max-width: min(48vw, 240px);
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .mars-txt { color: #f43f5e; }
+    .telemetry-card .moon-txt { color: #e2e8f0; }
+    .telemetry-card .leo-txt { color: #34d399; }
+    .telemetry-card .geo-txt { color: #fbbf24; }
+    .telemetry-card .probe-txt { color: #e879f9; }
+    .telemetry-card .win-open {
+      color: #34d399;
+      text-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+    }
+    .telemetry-card .win-wait { color: #fbbf24; }
+    .hud-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 5px 0;
+    }
+
+    /* 좌측 하단 범례 카드 */
+    .legend-card {
+      position: absolute;
+      bottom: 84px;
+      left: 16px;
+      background: rgba(10, 15, 26, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.64rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      z-index: 10;
+      line-height: 1.6;
+    }
+    .dot-icon {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    /* 하단 플로팅 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 15, 26, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      max-width: 96%;
+    }
+    .dock-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .dock-mode-switch {
+      display: inline-flex;
+      background: #090e1a;
+      padding: 2px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      gap: 2px;
+    }
+    .mode-tab {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .mode-tab.active {
+      background: #1e293b;
+      color: #38bdf8;
+      font-weight: 600;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+    }
+    .mode-tab:hover:not(.active) {
+      color: #e2e8f0;
+    }
+
+    .date-input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      outline: none;
+      cursor: pointer;
+      color-scheme: dark;
+    }
+    .date-input:focus { border-color: #38bdf8; }
+
+    .launch-btn {
+      background: rgba(232, 121, 249, 0.15);
+      border-color: rgba(232, 121, 249, 0.4);
+      color: #f0abfc;
+    }
+    .launch-btn:hover { background: #e879f9; color: #020306; }
+    .warp-btn {
+      background: rgba(251, 191, 36, 0.15);
+      border-color: rgba(251, 191, 36, 0.4);
+      color: #fde047;
+    }
+    .warp-btn:hover { background: #fbbf24; color: #020306; }
+
+    @media (max-width: 680px) {
+      h1 { font-size: 0.82rem; }
+      .telemetry-card {
+        font-size: 0.6rem;
+        padding: 6px 8px;
+        max-width: min(48vw, 175px);
+      }
+      .legend-card {
+        bottom: 96px;
+        max-width: calc(100% - 32px);
+        font-size: 0.58rem;
+      }
+      .slider-group input[type="range"] { width: 52px; }
+      .control-dock { padding: 6px 10px; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="home-link">← marsko</a>
+  <h1 id="headerTitle">KEPLER &amp; ORBIT OBSERVATORY</h1>
+  <div class="hud-meta" id="headerMeta">HELIOCENTRIC ECLIPTIC · HOHMANN TRANSFER · LAGRANGE POINTS</div>
+</header>
+
+<!-- 우측 상단 텔레메트리 카드 -->
+<div class="telemetry-card" id="telemetryCard">
+  <div>EPOCH: <strong id="hudDate">2026-11-07</strong></div>
+  
+  <!-- 태양계 모드 블록 -->
+  <div id="telemetrySolar">
+    <div>EARTH r / θ: <strong id="hudEarth">1.000 AU / 45.2°</strong></div>
+    <div>MARS r / θ: <strong id="hudMars" class="mars-txt">1.524 AU / 120.4°</strong></div>
+    <div>PHASE (M - E): <strong id="hudElong">+75.2°</strong></div>
+    <div class="hud-divider"></div>
+    <div>HOHMANN TOF: <strong id="hudTOF">258.8 DAYS</strong></div>
+    <div>RENDEZVOUS Δθ: <strong id="hudMiss">38.2° OFF</strong></div>
+    <div>LAUNCH WINDOW: <strong id="hudWindow" class="win-wait">STANDBY</strong></div>
+    <div id="probeHudBlock" style="display: none;">
+      <div class="hud-divider"></div>
+      <div>MISSION: <strong id="hudMissionTime" class="probe-txt">T+0.0d</strong></div>
+      <div>PROBE VEL: <strong id="hudProbeVel" class="probe-txt">32.7 km/s</strong></div>
+      <div>MARS DIST: <strong id="hudMarsDist" class="probe-txt">0.542 AU</strong></div>
+    </div>
+  </div>
+
+  <!-- 지구계 모드 블록 -->
+  <div id="telemetryEarth" style="display: none;">
+    <div>LEO (400km): <strong id="hudLeo" class="leo-txt">ISS / TIANGONG</strong></div>
+    <div>GEO (35,786km): <strong id="hudGeo" class="geo-txt">SYNCHRONOUS</strong></div>
+    <div class="hud-divider"></div>
+    <div>MOON DIST: <strong id="hudMoonDist" class="moon-txt">384,400 km</strong></div>
+    <div>MOON PHASE: <strong id="hudMoonPhase" class="moon-txt">WAXING (68%)</strong></div>
+    <div>L-POINTS: <strong id="hudLPoints">EM L1~L5 / SE L1·L2</strong></div>
+  </div>
+</div>
+
+<!-- 좌측 하단 범례 카드 -->
+<div class="legend-card" id="legendCard">
+  <div id="legendSolar">
+    <div><span class="dot-icon" style="background:#fbbf24;"></span>Sun</div>
+    <div><span class="dot-icon" style="background:#38bdf8;"></span>Earth · SE L1~L5</div>
+    <div><span class="dot-icon" style="background:#f43f5e;"></span>Mars · SM L1~L5</div>
+    <div><span class="dot-icon" style="background:#34d399;"></span>Hohmann Orbit</div>
+    <div><span class="dot-icon" style="background:#e879f9;"></span>Mars Probe</div>
+  </div>
+  <div id="legendEarth" style="display: none;">
+    <div><span class="dot-icon" style="background:#38bdf8;"></span>Earth · Atmosphere</div>
+    <div><span class="dot-icon" style="background:#34d399;"></span>LEO (400 km)</div>
+    <div><span class="dot-icon" style="background:#fbbf24;"></span>GEO (35,786 km)</div>
+    <div><span class="dot-icon" style="background:#e2e8f0;"></span>Moon Orbit</div>
+    <div><span class="dot-icon" style="background:#67e8f9;"></span>SE L1/L2 · EM L1~L5</div>
+  </div>
+</div>
+
+<canvas id="orbitCanvas" aria-label="Kepler and Earth Orbit visualization"></canvas>
+
+<!-- 하단 플로팅 컨트롤 독 -->
+<div class="control-dock" id="controlDock">
+  <!-- 상단 줄: 스케일 모드 전환 탭 + 기본 조작 -->
+  <div class="dock-row">
+    <div class="dock-mode-switch" role="tablist" aria-label="관측 스케일 선택">
+      <button type="button" class="mode-tab active" id="tabSolar" role="tab" aria-selected="true">☉ 태양계 (화성·전이궤도)</button>
+      <button type="button" class="mode-tab" id="tabEarth" role="tab" aria-selected="false">⊕ 지구계 (위성·달·저궤도)</button>
+    </div>
+
+    <div class="dock-sep"></div>
+
+    <input type="date" id="datePicker" class="date-input" aria-label="관측 날짜">
+    <button type="button" class="dock-btn" id="btnToday">오늘</button>
+    <button type="button" class="dock-btn" id="btnPlay" aria-pressed="false">▶ 자동 공전</button>
+  </div>
+
+  <!-- 하단 줄: 모드별 상세 옵션 -->
+  <div class="dock-row">
+    <div class="slider-group">
+      <label for="dayScrub">날짜 스크럽</label>
+      <input type="range" id="dayScrub" min="-365" max="365" value="0">
+    </div>
+
+    <!-- 태양계 전용 버튼들 -->
+    <div id="controlsSolar" class="dock-row">
+      <button type="button" class="dock-btn launch-btn" id="btnLaunchProbe">탐사선 발사 🛰️</button>
+      <button type="button" class="dock-btn warp-btn" id="btnNextWindow">발사 창 탐색 🚀</button>
+      <button type="button" class="dock-btn active" id="btnToggleHohmann">전이선</button>
+      <button type="button" class="dock-btn active" id="btnToggleSEL">SE-L</button>
+      <button type="button" class="dock-btn active" id="btnToggleSML">SM-L</button>
+      <button type="button" class="dock-btn active" id="btnToggleGrid">삼각망</button>
+    </div>
+
+    <!-- 지구계 전용 버튼들 -->
+    <div id="controlsEarth" class="dock-row" style="display: none;">
+      <button type="button" class="dock-btn warp-btn" id="btnWarp" title="시간 배속">배속 ×10</button>
+      <button type="button" class="dock-btn active" id="btnToggleSatellites">인공위성</button>
+      <button type="button" class="dock-btn active" id="btnToggleEML">EM-L</button>
+      <button type="button" class="dock-btn active" id="btnToggleSEnear">SE-L1/L2</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('orbitCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // HUD 요소
+  const headerTitle = document.getElementById('headerTitle');
+  const headerMeta = document.getElementById('headerMeta');
+  const hudDate = document.getElementById('hudDate');
+  const hudEarth = document.getElementById('hudEarth');
+  const hudMars = document.getElementById('hudMars');
+  const hudElong = document.getElementById('hudElong');
+  const hudTOF = document.getElementById('hudTOF');
+  const hudMiss = document.getElementById('hudMiss');
+  const hudWindow = document.getElementById('hudWindow');
+  const probeHudBlock = document.getElementById('probeHudBlock');
+  const hudMissionTime = document.getElementById('hudMissionTime');
+  const hudProbeVel = document.getElementById('hudProbeVel');
+  const hudMarsDist = document.getElementById('hudMarsDist');
+
+  const hudLeo = document.getElementById('hudLeo');
+  const hudGeo = document.getElementById('hudGeo');
+  const hudMoonDist = document.getElementById('hudMoonDist');
+  const hudMoonPhase = document.getElementById('hudMoonPhase');
+  const hudLPoints = document.getElementById('hudLPoints');
+
+  const telemetrySolar = document.getElementById('telemetrySolar');
+  const telemetryEarth = document.getElementById('telemetryEarth');
+  const legendSolar = document.getElementById('legendSolar');
+  const legendEarth = document.getElementById('legendEarth');
+  const controlsSolar = document.getElementById('controlsSolar');
+  const controlsEarth = document.getElementById('controlsEarth');
+
+  // 컨트롤 탭 & 버튼
+  const tabSolar = document.getElementById('tabSolar');
+  const tabEarth = document.getElementById('tabEarth');
+  const datePicker = document.getElementById('datePicker');
+  const btnToday = document.getElementById('btnToday');
+  const btnPlay = document.getElementById('btnPlay');
+  const dayScrub = document.getElementById('dayScrub');
+
+  const btnLaunchProbe = document.getElementById('btnLaunchProbe');
+  const btnNextWindow = document.getElementById('btnNextWindow');
+  const btnToggleHohmann = document.getElementById('btnToggleHohmann');
+  const btnToggleSEL = document.getElementById('btnToggleSEL');
+  const btnToggleSML = document.getElementById('btnToggleSML');
+  const btnToggleGrid = document.getElementById('btnToggleGrid');
+
+  const btnWarp = document.getElementById('btnWarp');
+  const btnToggleSatellites = document.getElementById('btnToggleSatellites');
+  const btnToggleEML = document.getElementById('btnToggleEML');
+  const btnToggleSEnear = document.getElementById('btnToggleSEnear');
+
+  // 물리 상수
+  const DEG = Math.PI / 180;
+  const RAD = 180 / Math.PI;
+  const AU_KM = 149597870.7;
+  const J2000 = Date.UTC(2000, 0, 1, 12, 0, 0);
+
+  // 천체 궤도 파라미터 (J2000 근사)
+  const EARTH = { a: 1.000001, e: 0.01671, L0: 100.464, n: 0.985609, wBar: 102.937, color: '#38bdf8' };
+  const MARS  = { a: 1.523662, e: 0.09341, L0: 355.453, n: 0.524021, wBar: 336.040, color: '#f43f5e' };
+  const MOON  = { aKm: 384400, e: 0.0549,  L0: 218.316, n: 13.17639, wBar: 83.353,   color: '#e2e8f0' };
+
+  // 상태 관리
+  let currentScale = 'solar'; // 'solar' or 'earth'
+  let baseDate = new Date();
+  baseDate.setHours(12, 0, 0, 0);
+  let scrubDays = 0;
+  let playing = false;
+  let warpMultiplier = 1;
+
+  // 태양계 모드 옵션
+  let showHohmann = true;
+  let showSEL = true;
+  let showSML = true;
+  let showGrid = true;
+  let activeProbe = null; // 탐사선 상태
+
+  // 지구계 모드 옵션
+  let showSatellites = true;
+  let showEML = true;
+  let showSEnear = true;
+
+  // 캔버스 & 뷰 제어
+  let width = 0, height = 0, dpr = 1;
+  let panX = 0, panY = 0;
+  let zoom = 1.0;
+  let dragging = false, lastX = 0, lastY = 0;
+  let stars = [];
+
+  // 인공위성 (LEO 400km, GEO 35,786km)
+  const satellites = [
+    { id: 'ISS',  type: 'leo', phase0: 0.2, speed: 0.045, color: '#34d399', label: 'ISS (400km)' },
+    { id: 'TIAN', type: 'leo', phase0: 3.4, speed: 0.045, color: '#6ee7b7', label: 'CSS (400km)' },
+    { id: 'GEO1', type: 'geo', phase0: 1.1, speed: 0.008, color: '#fbbf24', label: 'GEO-1' },
+    { id: 'GEO2', type: 'geo', phase0: 4.2, speed: 0.008, color: '#f59e0b', label: 'GEO-2' }
+  ];
+
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 220; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: Math.random() * 1.3 + 0.3,
+        alpha: Math.random() * 0.7 + 0.15
+      });
+    }
+  }
+
+  // URL 쿼리 파라미터 감지 (?scale=earth or ?scale=sun)
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialScale = urlParams.get('scale');
+  if (initialScale === 'earth' || initialScale === 'geocentric') {
+    currentScale = 'earth';
+  }
+
+  function setScale(scale) {
+    currentScale = scale;
+    tabSolar.classList.toggle('active', scale === 'solar');
+    tabEarth.classList.toggle('active', scale === 'earth');
+    tabSolar.setAttribute('aria-selected', scale === 'solar' ? 'true' : 'false');
+    tabEarth.setAttribute('aria-selected', scale === 'earth' ? 'true' : 'false');
+
+    telemetrySolar.style.display = scale === 'solar' ? 'block' : 'none';
+    telemetryEarth.style.display = scale === 'earth' ? 'block' : 'none';
+    legendSolar.style.display = scale === 'solar' ? 'block' : 'none';
+    legendEarth.style.display = scale === 'earth' ? 'block' : 'none';
+    controlsSolar.style.display = scale === 'solar' ? 'flex' : 'none';
+    controlsEarth.style.display = scale === 'earth' ? 'flex' : 'none';
+
+    if (scale === 'solar') {
+      headerTitle.textContent = 'KEPLER & SOLAR ORBIT OBSERVATORY';
+      headerMeta.textContent = 'HELIOCENTRIC ECLIPTIC · HOHMANN TRANSFER · SE/SM L-POINTS';
+      dayScrub.min = "-365";
+      dayScrub.max = "365";
+    } else {
+      headerTitle.textContent = 'EARTH & CISLUNAR OBSERVATORY';
+      headerMeta.textContent = 'GEOCENTRIC CISLUNAR · LEO/GEO SATELLITES · MOON PHASE · EM L-POINTS';
+      dayScrub.min = "-90";
+      dayScrub.max = "90";
+    }
+
+    // 뷰포트 센터 리셋
+    panX = 0;
+    panY = 0;
+    zoom = 1.0;
+  }
+
+  // 천체 역학 계산 함수
+  function daysSinceJ2000(d) {
+    return (d.getTime() - J2000) / 86400000;
+  }
+
+  function solveKepler(M, e) {
+    let E = M;
+    for (let i = 0; i < 8; i++) {
+      E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    }
+    return E;
+  }
+
+  function getOrbitPos(elem, tDays) {
+    const M = ((elem.L0 - elem.wBar + elem.n * tDays) % 360 + 360) % 360 * DEG;
+    const E = solveKepler(M, elem.e);
+    const nu = 2 * Math.atan2(Math.sqrt(1 + elem.e) * Math.sin(E / 2), Math.sqrt(1 - elem.e) * Math.cos(E / 2));
+    const r = elem.a ? (elem.a * (1 - elem.e * elem.e)) / (1 + elem.e * Math.cos(nu))
+                     : (elem.aKm * (1 - elem.e * elem.e)) / (1 + elem.e * Math.cos(nu));
+    const theta = nu + elem.wBar * DEG;
+    return { r, theta, x: r * Math.cos(theta), y: r * Math.sin(theta) };
+  }
+
+  function getMoonPos(tDays) {
+    const M = ((MOON.L0 - MOON.wBar + MOON.n * tDays) % 360 + 360) % 360 * DEG;
+    const E = solveKepler(M, MOON.e);
+    const nu = 2 * Math.atan2(Math.sqrt(1 + MOON.e) * Math.sin(E / 2), Math.sqrt(1 - MOON.e) * Math.cos(E / 2));
+    const r = (MOON.aKm * (1 - MOON.e * MOON.e)) / (1 + MOON.e * Math.cos(nu));
+    const theta = nu + MOON.wBar * DEG;
+    return { r, theta, x: r * Math.cos(theta), y: r * Math.sin(theta) };
+  }
+
+  function currentDate() {
+    const d = new Date(baseDate.getTime());
+    d.setTime(d.getTime() + scrubDays * 86400000);
+    return d;
+  }
+
+  function syncDatePicker(d) {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    datePicker.value = `${y}-${m}-${day}`;
+    hudDate.textContent = `${y}-${m}-${day}`;
+  }
+
+  // --- 메인 렌더 함수 ---
+  function render() {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, width, height);
+
+    // 배경 별빛
+    ctx.fillStyle = '#f8fafc';
+    stars.forEach(s => {
+      ctx.globalAlpha = s.alpha;
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    });
+    ctx.globalAlpha = 1.0;
+
+    const curD = currentDate();
+    const tDays = daysSinceJ2000(curD);
+    syncDatePicker(curD);
+
+    const earthPos = getOrbitPos(EARTH, tDays);
+    const marsPos = getOrbitPos(MARS, tDays);
+    const moonPos = getMoonPos(tDays);
+
+    ctx.save();
+    ctx.translate(width / 2 + panX, height / 2 + panY);
+    ctx.scale(zoom, zoom);
+
+    if (currentScale === 'solar') {
+      renderSolarSystem(earthPos, marsPos, tDays);
+    } else {
+      renderEarthCislunar(earthPos, moonPos, tDays);
+    }
+
+    ctx.restore();
+
+    // 자동 공전 재생
+    if (playing) {
+      scrubDays += (currentScale === 'solar' ? 0.35 : 0.12) * warpMultiplier;
+      dayScrub.value = Math.round(scrubDays);
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  // --- 1. 태양계 모드 렌더링 (구 lagrange) ---
+  function renderSolarSystem(earth, mars, tDays) {
+    const baseR = Math.min(width, height) * 0.28;
+
+    // 태양 중심 그리드 & 방위선
+    if (showGrid) {
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.lineWidth = 1;
+      for (let r = 0.5; r <= 2.0; r += 0.5) {
+        ctx.beginPath();
+        ctx.arc(0, 0, r * baseR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // 지구 & 화성 궤도선
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, EARTH.a * baseR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)';
+    ctx.beginPath();
+    ctx.arc(0, 0, MARS.a * baseR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 태양 본체
+    const sunGrad = ctx.createRadialGradient(0, 0, 3, 0, 0, 18);
+    sunGrad.addColorStop(0, '#fef08a');
+    sunGrad.addColorStop(0.4, '#fbbf24');
+    sunGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 지구 & 화성 화면 위치
+    const ex = earth.x * baseR, ey = earth.y * baseR;
+    const mx = mars.x * baseR, my = mars.y * baseR;
+
+    // 호만 전이 궤도 (Hohmann Orbit)
+    const aH = (earth.r + mars.r) / 2;
+    const tofDays = Math.PI * Math.sqrt(Math.pow(aH, 3)) * 365.256 / 2;
+    const marsMove = MARS.n * tofDays * DEG;
+    const missAngle = ((mars.theta - earth.theta - Math.PI + marsMove) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    const missDeg = ((missAngle * RAD + 180) % 360) - 180;
+    const isLaunchWindow = Math.abs(missDeg) < 8.0;
+
+    if (showHohmann) {
+      ctx.strokeStyle = isLaunchWindow ? 'rgba(52, 211, 153, 0.7)' : 'rgba(52, 211, 153, 0.25)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = isLaunchWindow ? 1.8 : 1.2;
+      ctx.beginPath();
+      // 지구 위치에서 시작하는 타원 호만 궤도
+      const cxH = (earth.x - mars.x * (earth.r / mars.r)) * 0.25 * baseR;
+      const cyH = (earth.y - mars.y * (earth.r / mars.r)) * 0.25 * baseR;
+      ctx.ellipse(cxH, cyH, aH * baseR, aH * 0.96 * baseR, earth.theta, 0, Math.PI);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 태양-지구 L1~L5 (SE-L)
+    if (showSEL) {
+      drawLagrangePoints(0, 0, ex, ey, '#38bdf8', 'SE-L');
+    }
+    // 태양-화성 L1~L5 (SM-L)
+    if (showSML) {
+      drawLagrangePoints(0, 0, mx, my, '#f43f5e', 'SM-L');
+    }
+
+    // 지구 드로잉
+    ctx.fillStyle = '#38bdf8';
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#bae6fd';
+    ctx.fillText('EARTH', ex + 8, ey + 3);
+
+    // 화성 드로잉
+    ctx.fillStyle = '#f43f5e';
+    ctx.shadowColor = '#f43f5e';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(mx, my, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fecdd3';
+    ctx.fillText('MARS', mx + 7, my + 3);
+
+    // 탐사선 렌더링
+    if (activeProbe) {
+      const probeElapsed = (tDays - activeProbe.launchT);
+      const progress = Math.max(0, Math.min(1, probeElapsed / activeProbe.tof));
+      const pAngle = activeProbe.startTheta + progress * Math.PI;
+      const pR = activeProbe.startR + (activeProbe.targetR - activeProbe.startR) * Math.sin(progress * Math.PI * 0.5);
+      const px = pR * Math.cos(pAngle) * baseR;
+      const py = pR * Math.sin(pAngle) * baseR;
+
+      ctx.fillStyle = '#e879f9';
+      ctx.shadowColor = '#e879f9';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#f5d0fe';
+      ctx.fillText('PROBE', px + 7, py + 3);
+
+      probeHudBlock.style.display = 'block';
+      hudMissionTime.textContent = `T+${probeElapsed.toFixed(1)}d (${Math.round(progress * 100)}%)`;
+      const dMars = Math.hypot(px - mx, py - my) / baseR;
+      hudMarsDist.textContent = `${dMars.toFixed(3)} AU`;
+    } else {
+      probeHudBlock.style.display = 'none';
+    }
+
+    // 텔레메트리 업데이트
+    hudEarth.textContent = `${earth.r.toFixed(3)} AU / ${(earth.theta * RAD % 360).toFixed(1)}°`;
+    hudMars.textContent = `${mars.r.toFixed(3)} AU / ${(mars.theta * RAD % 360).toFixed(1)}°`;
+    const elongDeg = (((mars.theta - earth.theta) * RAD % 360) + 360) % 360;
+    hudElong.textContent = `+${elongDeg.toFixed(1)}° (OPT: +44.3°)`;
+    hudTOF.textContent = `${tofDays.toFixed(1)} DAYS`;
+    hudMiss.textContent = `${Math.abs(missDeg).toFixed(1)}° ${missDeg >= 0 ? 'LEAD' : 'LAG'}`;
+    hudWindow.textContent = isLaunchWindow ? 'OPEN (최적 발사창!)' : 'STANDBY (대기)';
+    hudWindow.className = isLaunchWindow ? 'win-open' : 'win-wait';
+  }
+
+  // --- 2. 지구계 모드 렌더링 (구 earth-orbit) ---
+  function renderEarthCislunar(earth, moon, tDays) {
+    const scalePxPerKm = (Math.min(width, height) * 0.38) / (MOON.aKm * 1.15);
+
+    // 지구 중심 본체
+    const rEarthPx = Math.max(9, 6371 * scalePxPerKm * 4.5); // 시각적 인지 보정
+    const eGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, rEarthPx * 1.4);
+    eGrad.addColorStop(0, '#bae6fd');
+    eGrad.addColorStop(0.5, '#0284c7');
+    eGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = eGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, rEarthPx * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#0369a1';
+    ctx.beginPath();
+    ctx.arc(0, 0, rEarthPx, 0, Math.PI * 2);
+    ctx.fill();
+
+    // LEO 궤도 (400km) & GEO 궤도 (35,786km)
+    const rLeoPx = rEarthPx + 400 * scalePxPerKm * 16;
+    const rGeoPx = rEarthPx + 35786 * scalePxPerKm * 3.5;
+
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, rLeoPx, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.arc(0, 0, rGeoPx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 인공위성 회전 애니메이션
+    if (showSatellites) {
+      const sec = performance.now() * 0.001;
+      satellites.forEach(sat => {
+        const rad = sat.type === 'leo' ? rLeoPx : rGeoPx;
+        const ang = sat.phase0 + sec * sat.speed * (playing ? warpMultiplier : 1);
+        const sx = rad * Math.cos(ang), sy = rad * Math.sin(ang);
+
+        ctx.fillStyle = sat.color;
+        ctx.beginPath();
+        ctx.arc(sx, sy, sat.type === 'leo' ? 2.5 : 3.0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '9px "IBM Plex Mono", monospace';
+        ctx.fillStyle = sat.color;
+        ctx.fillText(sat.label, sx + 5, sy + 3);
+      });
+    }
+
+    // 달 타원 궤도선
+    ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, MOON.aKm * scalePxPerKm, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 달 위치 계산
+    const mx = moon.x * scalePxPerKm;
+    const my = moon.y * scalePxPerKm;
+
+    // 지구-달 L1~L5 (EM-L)
+    if (showEML) {
+      drawLagrangePoints(0, 0, mx, my, '#fde047', 'EM-L');
+    }
+
+    // 태양-지구 L1/L2 (150만 km JWST 위치 대략)
+    if (showSEnear) {
+      const seAngle = earth.theta;
+      const seL1Dist = MOON.aKm * 1.05 * scalePxPerKm;
+      const l1x = -Math.cos(seAngle) * seL1Dist;
+      const l1y = -Math.sin(seAngle) * seL1Dist;
+      const l2x = Math.cos(seAngle) * seL1Dist;
+      const l2y = Math.sin(seAngle) * seL1Dist;
+
+      ctx.fillStyle = '#67e8f9';
+      ctx.font = '9px "IBM Plex Mono", monospace';
+      ctx.fillText('SE-L1(SOHO)', l1x + 4, l1y + 3);
+      ctx.fillText('SE-L2(JWST)', l2x + 4, l2y + 3);
+      ctx.fillRect(l1x - 2, l1y - 2, 4, 4);
+      ctx.fillRect(l2x - 2, l2y - 2, 4, 4);
+    }
+
+    // 달 본체 & 위상
+    ctx.fillStyle = '#e2e8f0';
+    ctx.shadowColor = '#e2e8f0';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(mx, my, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('MOON', mx + 7, my + 3);
+
+    // 달 위상 각도 (태양 방향 대비 달 각도)
+    const phaseAngle = ((moon.theta - earth.theta) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    const illum = Math.round((1 - Math.cos(phaseAngle)) / 2 * 100);
+    let pName = illum > 90 ? 'FULL MOON (망)' : (illum < 10 ? 'NEW MOON (삭)' : (phaseAngle < Math.PI ? 'WAXING (상현)' : 'WANING (하현)'));
+
+    hudMoonDist.textContent = `${Math.round(moon.r).toLocaleString()} km`;
+    hudMoonPhase.textContent = `${pName} (${illum}%)`;
+  }
+
+  // 라그랑주 포인트 5개 렌더링 헬퍼
+  function drawLagrangePoints(cx1, cy1, cx2, cy2, color, prefix) {
+    const dx = cx2 - cx1, dy = cy2 - cy1;
+    const dist = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+
+    // L1, L2, L3, L4, L5
+    const pts = [
+      { name: 'L1', x: cx1 + Math.cos(angle) * (dist * 0.84), y: cy1 + Math.sin(angle) * (dist * 0.84) },
+      { name: 'L2', x: cx1 + Math.cos(angle) * (dist * 1.16), y: cy1 + Math.sin(angle) * (dist * 1.16) },
+      { name: 'L3', x: cx1 - Math.cos(angle) * (dist * 1.00), y: cy1 - Math.sin(angle) * (dist * 1.00) },
+      { name: 'L4', x: cx1 + Math.cos(angle + Math.PI / 3) * dist, y: cy1 + Math.sin(angle + Math.PI / 3) * dist },
+      { name: 'L5', x: cx1 + Math.cos(angle - Math.PI / 3) * dist, y: cy1 + Math.sin(angle - Math.PI / 3) * dist }
+    ];
+
+    ctx.fillStyle = color;
+    ctx.font = '9px "IBM Plex Mono", monospace';
+    pts.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText(`${prefix}-${p.name}`, p.x + 5, p.y + 3);
+    });
+  }
+
+  // --- 이벤트 리스너 ---
+  tabSolar.addEventListener('click', () => setScale('solar'));
+  tabEarth.addEventListener('click', () => setScale('earth'));
+
+  datePicker.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val) {
+      baseDate = new Date(val + 'T12:00:00Z');
+      scrubDays = 0;
+      dayScrub.value = 0;
+    }
+  });
+
+  btnToday.addEventListener('click', () => {
+    baseDate = new Date();
+    baseDate.setHours(12, 0, 0, 0);
+    scrubDays = 0;
+    dayScrub.value = 0;
+  });
+
+  dayScrub.addEventListener('input', (e) => {
+    scrubDays = parseFloat(e.target.value);
+  });
+
+  btnPlay.addEventListener('click', () => {
+    playing = !playing;
+    btnPlay.classList.toggle('active', playing);
+    btnPlay.textContent = playing ? '⏸ 정지' : '▶ 자동 공전';
+  });
+
+  // 태양계 전용 버튼 이벤트
+  btnToggleHohmann.addEventListener('click', () => {
+    showHohmann = !showHohmann;
+    btnToggleHohmann.classList.toggle('active', showHohmann);
+  });
+  btnToggleSEL.addEventListener('click', () => {
+    showSEL = !showSEL;
+    btnToggleSEL.classList.toggle('active', showSEL);
+  });
+  btnToggleSML.addEventListener('click', () => {
+    showSML = !showSML;
+    btnToggleSML.classList.toggle('active', showSML);
+  });
+  btnToggleGrid.addEventListener('click', () => {
+    showGrid = !showGrid;
+    btnToggleGrid.classList.toggle('active', showGrid);
+  });
+
+  btnLaunchProbe.addEventListener('click', () => {
+    const curD = currentDate();
+    const tDays = daysSinceJ2000(curD);
+    const ePos = getOrbitPos(EARTH, tDays);
+    const mPos = getOrbitPos(MARS, tDays);
+    const aH = (ePos.r + mPos.r) / 2;
+    const tof = Math.PI * Math.sqrt(Math.pow(aH, 3)) * 365.256 / 2;
+
+    if (!activeProbe) {
+      activeProbe = {
+        launchT: tDays,
+        tof: tof,
+        startTheta: ePos.theta,
+        startR: ePos.r,
+        targetR: mPos.r
+      };
+      btnLaunchProbe.textContent = '미션 종료 ✕';
+      btnLaunchProbe.classList.add('active');
+    } else {
+      activeProbe = null;
+      btnLaunchProbe.textContent = '탐사선 발사 🛰️';
+      btnLaunchProbe.classList.remove('active');
+    }
+  });
+
+  btnNextWindow.addEventListener('click', () => {
+    // 다음 최적 발사창으로 날짜 워프
+    let d = new Date(currentDate().getTime());
+    for (let day = 1; day < 1000; day++) {
+      const t = daysSinceJ2000(new Date(d.getTime() + day * 86400000));
+      const ep = getOrbitPos(EARTH, t);
+      const mp = getOrbitPos(MARS, t);
+      const aH = (ep.r + mp.r) / 2;
+      const tof = Math.PI * Math.sqrt(Math.pow(aH, 3)) * 365.256 / 2;
+      const marsMove = MARS.n * tof * DEG;
+      const miss = ((mp.theta - ep.theta - Math.PI + marsMove) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      const missDeg = ((miss * RAD + 180) % 360) - 180;
+      if (Math.abs(missDeg) < 3.0) {
+        scrubDays += day;
+        dayScrub.value = Math.min(365, Math.max(-365, scrubDays));
+        break;
+      }
+    }
+  });
+
+  // 지구계 전용 버튼 이벤트
+  const warpSteps = [1, 5, 15, 60];
+  let warpStepIdx = 0;
+  btnWarp.addEventListener('click', () => {
+    warpStepIdx = (warpStepIdx + 1) % warpSteps.length;
+    warpMultiplier = warpSteps[warpStepIdx];
+    btnWarp.textContent = `배속 ×${warpMultiplier}`;
+  });
+
+  btnToggleSatellites.addEventListener('click', () => {
+    showSatellites = !showSatellites;
+    btnToggleSatellites.classList.toggle('active', showSatellites);
+  });
+  btnToggleEML.addEventListener('click', () => {
+    showEML = !showEML;
+    btnToggleEML.classList.toggle('active', showEML);
+  });
+  btnToggleSEnear.addEventListener('click', () => {
+    showSEnear = !showSEnear;
+    btnToggleSEnear.classList.toggle('active', showSEnear);
+  });
+
+  // 드래그 & 줌 인터랙션
+  canvas.addEventListener('mousedown', (e) => {
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    panX += e.clientX - lastX;
+    panY += e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.08 : 0.92;
+    zoom = Math.max(0.4, Math.min(4.0, zoom * factor));
+  }, { passive: false });
+
+  // 모바일 터치 대응
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      dragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!dragging || e.touches.length !== 1) return;
+    panX += e.touches[0].clientX - lastX;
+    panY += e.touches[0].clientY - lastY;
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { dragging = false; });
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    initStars();
+  }
+  window.addEventListener('resize', resize);
+
+  // 초기화 및 시작
+  resize();
+  setScale(currentScale);
+  requestAnimationFrame(render);
+})();
+</script>
+
+</body>
+</html>
