@@ -456,7 +456,7 @@
 
   // 구형 서비터 상태
   let servitorTargetX = width * 0.64; // 난간 위 목표 위치
-  let servitorX = width + 60;         // 초기 계단참 진입 위치 (화면 밖)
+  let servitorX = width * 0.86;       // 초기 계단참 진입 위치 (화면 우측 안쪽에서 바로 보이도록)
   let servitorWheelRot = 0;           // 바퀴 회전
   let servitorMoving = true;          // 진입 이동 중
   let servitorZooming = 0;            // 줌 모터 애니메이션
@@ -574,12 +574,12 @@
   }
 
   // 4. 서비터 옵티컬 센서 줌 모터 소리 (찌르륵) & 뭉개진 경고음
-  function triggerServitorScan() {
+  function triggerServitorScan(withSound = true) {
     servitorZooming = 1.0;
     servitorHudChip.style.display = 'block';
     setTimeout(() => { servitorHudChip.style.display = 'none'; }, 5000);
 
-    if (!soundEnabled) return;
+    if (!withSound || !soundEnabled) return;
     const ac = getAudioCtx();
     const now = ac.currentTime;
 
@@ -622,7 +622,7 @@
 
   // 5. 서비터 계단참 등장 (소환)
   function summonServitor() {
-    servitorX = width + 60;
+    servitorX = width * 0.92;
     servitorTargetX = width * 0.64;
     servitorMoving = true;
     playServitorDriveSound();
@@ -635,7 +635,7 @@
     if (Math.abs(servitorX - servitorTargetX) > 40 || servitorX > width) {
       summonServitor();
     } else {
-      triggerServitorScan();
+      triggerServitorScan(true);
     }
   }
 
@@ -648,8 +648,8 @@
     playTrainSound();
   }
 
-  function triggerSpark() {
-    playSparkSound();
+  function triggerSpark(withSound = true) {
+    if (withSound) playSparkSound();
     for (let i = 0; i < 4; i++) {
       sparks.push({
         x: width * 0.25 + Math.random() * (width * 0.5),
@@ -663,12 +663,12 @@
 
   btnTrain.addEventListener('click', triggerTrain);
   btnServitor.addEventListener('click', handleServitorButton);
-  btnSpark.addEventListener('click', triggerSpark);
+  btnSpark.addEventListener('click', () => triggerSpark(true));
 
   trigTrain.addEventListener('click', triggerTrain);
   if (trigServitorEnter) trigServitorEnter.addEventListener('click', summonServitor);
-  if (trigServitorZoom) trigServitorZoom.addEventListener('click', triggerServitorScan);
-  trigSpark.addEventListener('click', triggerSpark);
+  if (trigServitorZoom) trigServitorZoom.addEventListener('click', () => triggerServitorScan(true));
+  trigSpark.addEventListener('click', () => triggerSpark(true));
 
   btnAudio.addEventListener('click', () => {
     soundEnabled = !soundEnabled;
@@ -735,7 +735,7 @@
         servitorX = servitorTargetX;
         servitorMoving = false;
         servitorSuspension = 0;
-        triggerServitorScan();
+        triggerServitorScan(false);
       }
     } else {
       servitorSuspension = Math.sin(timeTick * 2.2) * 0.5;
@@ -753,9 +753,9 @@
       }
     }
 
-    // 주기적 자연 스파크
+    // 주기적 자연 스파크 (시각 전용)
     if (Math.random() < 0.018) {
-      triggerSpark();
+      triggerSpark(false);
     }
 
     ctx.clearRect(0, 0, width, height);
@@ -828,8 +828,8 @@
 
     // 희미한 오렌지/앰버 창문 불빛들
     ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
-    for (let fx = mitaX + 20; fx < width - 15; fx += 26) {
-      for (let fy = height * 0.22; fy < height * 0.45; fy += 28) {
+    for (let fx = Math.floor(mitaX) + 20; fx < width - 15; fx += 26) {
+      for (let fy = Math.floor(height * 0.22); fy < height * 0.45; fy += 28) {
         if ((fx + fy) % 3 === 0) ctx.fillRect(fx, fy, 8, 12);
       }
     }
@@ -914,22 +914,25 @@
       ctx.fill();
     }
 
-    // 6. 전차선 스파크 파티클 렌더링
+    // 6. 전차선 스파크 파티클 렌더링 (부동소수점 음수 반지름 에러 방지)
     for (let i = sparks.length - 1; i >= 0; i--) {
       const sp = sparks[i];
       sp.x += sp.vx;
       sp.y += sp.vy;
       sp.life -= 0.05;
 
+      if (sp.life <= 0.01) {
+        sparks.splice(i, 1);
+        continue;
+      }
+
       ctx.fillStyle = `rgba(56, 189, 248, ${sp.life})`;
       ctx.shadowColor = '#38bdf8';
       ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(sp.x, sp.y, 2.5 * sp.life, 0, Math.PI * 2);
+      ctx.arc(sp.x, sp.y, Math.max(0.2, 2.5 * sp.life), 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
-
-      if (sp.life <= 0) sparks.splice(i, 1);
     }
 
     // 7. [전경] 미타(三田) 녹슨 철골 육교 & 명판 (Mita Footbridge)
@@ -1139,12 +1142,15 @@
 
   function resizeCanvas() {
     const parent = canvas.parentElement;
-    width = canvas.width = parent.clientWidth || 600;
-    height = canvas.height = parent.clientHeight || 700;
+    if (parent.clientWidth > 0 && parent.clientHeight > 0) {
+      width = canvas.width = parent.clientWidth;
+      height = canvas.height = parent.clientHeight;
+    }
     servitorTargetX = width * 0.64;
-    if (servitorX > 90000) {
-      servitorX = width + 60;
-      servitorMoving = true;
+    if (!servitorMoving) {
+      servitorX = servitorTargetX;
+    } else if (servitorX > width) {
+      servitorX = width * 0.88;
     }
   }
   window.addEventListener('resize', resizeCanvas);
