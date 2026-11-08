@@ -249,6 +249,33 @@
         .fiction-card-btn:hover { color: #7dd3fc; }
         .fiction-card-btn.is-alt { color: #a1a1aa; background: rgba(39, 39, 42, 0.5); border-color: rgba(63, 63, 70, 0.6); }
         .fiction-card-btn.is-alt:hover { color: #f4f4f5; }
+        .fiction-wrap { position: relative; }
+        .fiction-arrow {
+            position: absolute;
+            top: calc(50% - 0.3rem);
+            transform: translateY(-50%);
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            border: 1px solid rgba(63, 63, 70, 0.8);
+            background: rgba(9, 9, 11, 0.85);
+            color: #a1a1aa;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 0 0.15rem;
+            backdrop-filter: blur(4px);
+            transition: color 0.15s ease, border-color 0.15s ease;
+            z-index: 2;
+        }
+        .fiction-arrow[hidden] { display: none; }
+        .fiction-arrow:hover { color: #f4f4f5; border-color: #71717a; }
+        .fiction-arrow.is-prev { left: -0.6rem; }
+        .fiction-arrow.is-next { right: -0.6rem; }
+        @media (hover: none) { .fiction-arrow { display: none; } }
         .fiction-drawer { display: none; margin-top: 0.75rem; }
         .fiction-drawer.is-open { display: block; animation: fadeIn 0.25s ease; }
         .fiction-list p { font-size: 0.875rem; line-height: 1.9; color: #a1a1aa; }
@@ -310,31 +337,35 @@
         </div>
 
         <!-- 최신/대표작만 얹는 가로 슬라이드 -->
-        <div class="fiction-carousel" id="fictionCarousel">
-            <div class="fiction-card">
-                <a href="rojiura.html" class="fiction-card-title">우라이나리 골목</a>
-                <p class="fiction-card-desc">폭 1m 비유클리드 골목과 심야 카페 우라이나리. 빗속에서 울고 있는 새 점장을 만나는 이야기.</p>
-                <div class="fiction-card-actions">
-                    <a href="rojiura.html" class="fiction-card-btn">▶ 골목 걷기</a>
-                    <a href="cards.html#urainari" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
+        <div class="fiction-wrap">
+            <div class="fiction-carousel" id="fictionCarousel">
+                <div class="fiction-card">
+                    <a href="rojiura.html" class="fiction-card-title">우라이나리 골목</a>
+                    <p class="fiction-card-desc">폭 1m 비유클리드 골목과 심야 카페 우라이나리. 빗속에서 울고 있는 새 점장을 만나는 이야기.</p>
+                    <div class="fiction-card-actions">
+                        <a href="rojiura.html" class="fiction-card-btn">▶ 골목 걷기</a>
+                        <a href="cards.html#urainari" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
+                    </div>
+                </div>
+                <div class="fiction-card">
+                    <a href="mita.html" class="fiction-card-title">미타: 도시의 봉합선</a>
+                    <p class="fiction-card-desc">타카나와 경계선과 열 갈래 선로. 잔류 기억을 쫓아 육교로 올라온 버려진 서비터.</p>
+                    <div class="fiction-card-actions">
+                        <a href="mita.html" class="fiction-card-btn">▶ 육교 인터랙티브</a>
+                        <a href="cards.html#mita" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
+                    </div>
+                </div>
+                <div class="fiction-card">
+                    <a href="sluice4.html" class="fiction-card-title">제4수문 앞의 가비지 컬렉션</a>
+                    <p class="fiction-card-desc">도쿄만 수문과 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 단편.</p>
+                    <div class="fiction-card-actions">
+                        <a href="sluice4.html" class="fiction-card-btn">▶ 수문 인터랙티브</a>
+                        <a href="cards.html#sluice4" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
+                    </div>
                 </div>
             </div>
-            <div class="fiction-card">
-                <a href="mita.html" class="fiction-card-title">미타: 도시의 봉합선</a>
-                <p class="fiction-card-desc">타카나와 경계선과 열 갈래 선로. 잔류 기억을 쫓아 육교로 올라온 버려진 서비터.</p>
-                <div class="fiction-card-actions">
-                    <a href="mita.html" class="fiction-card-btn">▶ 육교 인터랙티브</a>
-                    <a href="cards.html#mita" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
-                </div>
-            </div>
-            <div class="fiction-card">
-                <a href="sluice4.html" class="fiction-card-title">제4수문 앞의 가비지 컬렉션</a>
-                <p class="fiction-card-desc">도쿄만 수문과 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 단편.</p>
-                <div class="fiction-card-actions">
-                    <a href="sluice4.html" class="fiction-card-btn">▶ 수문 인터랙티브</a>
-                    <a href="cards.html#sluice4" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
-                </div>
-            </div>
+            <button type="button" class="fiction-arrow is-prev" id="fictionPrev" aria-label="이전 작품" hidden>‹</button>
+            <button type="button" class="fiction-arrow is-next" id="fictionNext" aria-label="다음 작품" hidden>›</button>
         </div>
 
         <!-- 전체 목록 서랍 (Tools와 같은 텍스트 스타일) -->
@@ -843,6 +874,28 @@
 
         if (teaserMore) {
             teaserMore.addEventListener('click', () => setDrawerOpen(true));
+        }
+
+        const fictionCarousel = document.getElementById('fictionCarousel');
+        const fictionPrev = document.getElementById('fictionPrev');
+        const fictionNext = document.getElementById('fictionNext');
+        function syncFictionArrows() {
+            if (!fictionCarousel || !fictionPrev || !fictionNext) return;
+            const max = fictionCarousel.scrollWidth - fictionCarousel.clientWidth;
+            fictionPrev.hidden = fictionCarousel.scrollLeft <= 2;
+            fictionNext.hidden = max <= 2 || fictionCarousel.scrollLeft >= max - 2;
+        }
+        function slideFiction(dir) {
+            const card = fictionCarousel.querySelector('.fiction-card');
+            const step = card ? card.getBoundingClientRect().width + 12 : 260;
+            fictionCarousel.scrollBy({ left: dir * step, behavior: 'smooth' });
+        }
+        if (fictionCarousel && fictionPrev && fictionNext) {
+            fictionPrev.addEventListener('click', () => slideFiction(-1));
+            fictionNext.addEventListener('click', () => slideFiction(1));
+            fictionCarousel.addEventListener('scroll', syncFictionArrows, { passive: true });
+            window.addEventListener('resize', syncFictionArrows);
+            syncFictionArrows();
         }
 
         const fictionDrawerToggle = document.getElementById('fictionDrawerToggle');
