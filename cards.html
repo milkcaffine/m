@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#090a0d">
+  <meta name="description" content="Marsko 단편 카드 뷰어 — 도쿄의 뒷골목과 심우주 사이, 여백과 호흡으로 읽는 세계관 단편선.">
+  <title>단편 카드 뷰어 // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #090a0d;
+      color: #e4e4e7;
+      font-family: 'IBM Plex Mono', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      user-select: none;
+    }
+
+    /* 배경 빗줄기 캔버스 (은은한 앰비언트) */
+    #bgCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.35;
+    }
+
+    /* 상단 네비게이션 헤더 */
+    .top-bar {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .hud-btn {
+      background: rgba(18, 20, 26, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+    }
+
+    .hud-btn:hover {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+    }
+
+    .hud-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    /* 카드 무대 컨테이너 */
+    .stage {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 460px;
+      height: 100vh;
+      height: 100dvh;
+      max-height: 720px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    @media (max-height: 760px) {
+      .stage {
+        max-height: 100vh;
+        max-height: 100dvh;
+        padding: 8px 12px;
+      }
+    }
+
+    /* 개별 카드 (사용자 업로드 이미지와 100% 동일한 비주얼) */
+    .card {
+      width: 100%;
+      height: 100%;
+      background: #121316;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 1px rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 36px 30px 24px;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        border-radius: 16px;
+        padding: 28px 22px 20px;
+      }
+    }
+
+    /* 카드 상단: 시리즈 인디케이터 & 스토리 프로그레스 바 */
+    .card-top {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    /* 인스타그램 스토리 형태 세그먼트 진행바 */
+    .progress-bar {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .progress-seg {
+      height: 2.5px;
+      flex: 1;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+      transition: background 0.2s ease;
+    }
+
+    .progress-seg.done {
+      background: rgba(255, 255, 255, 0.65);
+    }
+
+    .progress-seg.active {
+      background: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+    }
+
+    .card-meta-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.7rem;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-series {
+      color: #71717a;
+      font-weight: 500;
+    }
+
+    .meta-title {
+      color: #94a3b8;
+      font-size: 0.75rem;
+    }
+
+    /* 카드 본문 텍스트 (명조 서체, 여유로운 행간) */
+    .card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      font-family: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+      font-size: 1.12rem;
+      line-height: 1.95;
+      color: #f1f3f5;
+      word-break: keep-all;
+      overflow-y: auto;
+      padding: 8px 0;
+      /* 스크롤바 숨기기 */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .card-body::-webkit-scrollbar {
+      display: none;
+    }
+
+    .card-body p {
+      margin-bottom: 1.4em;
+    }
+
+    .card-body p:last-child {
+      margin-bottom: 0;
+    }
+
+    .card-body .dialogue {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    @media (max-width: 480px) {
+      .card-body {
+        font-size: 1.02rem;
+        line-height: 1.9;
+      }
+    }
+
+    /* 카드 하단 푸터 (marsko.art & 1 / 2) */
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 12px;
+      font-size: 0.78rem;
+      color: #52525b;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.5px;
+    }
+
+    .card-footer .brand {
+      color: #52525b;
+      font-weight: 500;
+    }
+
+    .card-footer .page-num {
+      color: #71717a;
+      font-weight: 600;
+    }
+
+    /* 터치 힌트 오버레이 (클릭 시 은은한 플래시) */
+    .touch-cue {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 40%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .touch-cue.left { left: 0; background: linear-gradient(to right, rgba(255,255,255,0.03), transparent); }
+    .touch-cue.right { right: 0; width: 60%; background: linear-gradient(to left, rgba(56, 189, 248, 0.04), transparent); }
+
+    /* 화면 전환 애니메이션 */
+    .fade-enter {
+      animation: cardFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes cardFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 하단 키보드 / 탭 조작 힌트 */
+    .bottom-hint {
+      position: absolute;
+      bottom: 12px;
+      color: #52525b;
+      font-size: 0.68rem;
+      letter-spacing: 0.5px;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      gap: 12px;
+    }
+
+    @media (max-height: 720px) {
+      .bottom-hint { display: none; }
+    }
+
+    /* 에피소드 목록 서랍 (Bottom Sheet Modal) */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer {
+      background: #14161b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 520px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px 20px 32px;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .drawer-overlay.open .drawer {
+      transform: translateY(0);
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .drawer-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f1f3f5;
+    }
+
+    .drawer-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .episode-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .episode-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .episode-item:hover {
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .episode-item.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: #38bdf8;
+    }
+
+    .episode-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      color: #71717a;
+    }
+
+    .episode-item-title {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f3f5;
+    }
+
+    .episode-item-desc {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 배경 앰비언트 비 캔버스 -->
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- 상단 네비게이션 HUD -->
+  <div class="top-bar">
+    <a href="index.html" class="home-link">← marsko</a>
+    <div class="top-actions">
+      <button type="button" id="soundBtn" class="hud-btn" title="우라이나리 골목 빗소리 앰비언트">
+        <span id="soundIcon">🌧</span> <span id="soundLabel">사운드</span>
+      </button>
+      <button type="button" id="listBtn" class="hud-btn">
+        <span>☰ 목록</span> <span id="currentEpBadge" style="color:#38bdf8; font-weight:600;">#01</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 카드 무대 -->
+  <main class="stage" id="stage">
+    <article class="card" id="cardElement" aria-live="polite">
+      <!-- 탭 피드백 힌트 영역 -->
+      <div class="touch-cue left" id="cueLeft"></div>
+      <div class="touch-cue right" id="cueRight"></div>
+
+      <!-- 상단 헤더: 세그먼트 진행바 & 메타 정보 -->
+      <div class="card-top">
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="card-meta-line">
+          <span class="meta-series" id="metaSeries">SERIES #01</span>
+          <span class="meta-title" id="metaLocation">도쿄 미관측 골목 0.98m</span>
+        </div>
+      </div>
+
+      <!-- 본문 영역: 명조 서체 줄글 -->
+      <div class="card-body" id="cardBody">
+        <!-- 텍스트 주입 -->
+      </div>
+
+      <!-- 하단 푸터: marsko.art & 1 / 2 -->
+      <div class="card-footer">
+        <span class="brand">marsko.art</span>
+        <span class="page-num" id="pageNum">1 / 2</span>
+      </div>
+    </article>
+  </main>
+
+  <!-- 하단 힌트 -->
+  <div class="bottom-hint">
+    <span>[←] 이전 / [→ / Space] 다음</span>
+    <span>·</span>
+    <span>화면 터치/클릭으로 넘김</span>
+  </div>
+
+  <!-- 에피소드 서랍 (Bottom Sheet Modal) -->
+  <div class="drawer-overlay" id="drawerOverlay">
+    <div class="drawer" role="dialog" aria-labelledby="drawerTitle">
+      <div class="drawer-header">
+        <h2 class="drawer-title" id="drawerTitle">단편선 아카이브 (Stories)</h2>
+        <button type="button" class="drawer-close" id="drawerClose" aria-label="닫기">&times;</button>
+      </div>
+      <div class="episode-list" id="episodeList">
+        <!-- JS로 에피소드 렌더링 -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Marsko Short Story Dataset
+     * 앞으로 새로운 단편을 추가할 때는 아래 STORIES 배열에 새 객체를 추가하기만 하면 됩니다.
+     */
+    const STORIES = [
+      {
+        id: "urainari",
+        series: "SERIES #01",
+        title: "카페 우라이나리의 새 점장",
+        location: "도쿄 미관측 골목 0.98m // 우라이나리",
+        desc: "몇 년 만에 셀다운에서 깨어난 나와 비를 훔치며 울고 있는 안드로이드 점장.",
+        cards: [
+          `시스템이 제멋대로 새 점장을 등록했다는 업데이트가 와서, 나는 몇 년 만에 셀다운에서 깨어나 삐걱대는 비상계단을 밟고 카페 우라이나리로 내려갔다. 폭 1미터도 안 되는 골목, 비가 추적추적 내리는 그곳에 흰 셔츠에 앞치마를 맨 검은 머리의 로봇이 혼자 서서 얼굴의 빗물을 훔치고 있었다. 구레나루 아래로 이음새가 비치는, 이 동네엔 어울리지 않게 정교한 얼굴—생(生)을 흉내 내는 서글프고 공허한 마스커레이드였다.
+
+'시스템, 이 녀석은 왜 여기서 이러고 있지?'`,
+
+          `내가 묻자마자 점장은 동작을 멈추고 잠깐 몸을 떨었다. 강제 재부팅이었다. 그런데 다시 눈을 뜬 그는, 처음부터 그렇게 만들어진 것처럼 또 빗속에서 울기 시작했다. 시스템은 끝내 대답하지 않았고, 나는 지워도 지워지지 않는 게 무엇인지는 오래전에 죽은 내 쪽이 더 잘 알고 있다는 생각을 하며 계단 아래 오래 서 있었다.`
+        ]
+      },
+      {
+        id: "mita",
+        series: "SERIES #02",
+        title: "미타: 도시의 봉합선 (三田)",
+        location: "타카나와 게이트웨이 - 미타 경계 육교",
+        desc: "열 갈래의 야간 선로 위에서 허용 구역을 벗어난 채 잔류 기억을 쫓는 버려진 서비터.",
+        cards: [
+          `차가운 밤공기 사이로 궤도를 스치는 철의 비명이 얇게 번졌다.
+
+육교 한가운데, 녹슨 철골 난간에 붙은 흐릿한 명판에는 오래된 획으로 '三田(미타)'라는 글자가 새겨져 있었다. 표면의 페인트는 갈라져 들떴고, 산성 안개에 부식된 볼트 주변으로 붉은 침전물이 얼룩져 흘러내렸다.
+
+발아래로는 열 갈래가 넘는 선로가 어둠 속으로 길게 뻗어 있었다. 전력망이 불안정한 탓에 전차선(電車線)마다 푸른 스파크가 간헐적으로 튀었다.`,
+
+          `저 멀리, 거대한 유리와 백색 합금으로 지어진 타카나와 게이트웨이 구역의 매끄러운 돔이 안개 너머로 빛났다. 그곳은 모든 것이 규격화되고 통제되는 신도시 구역이었다. 경비 드론의 점멸등과 매끄러운 원통형 순찰 유닛들이 바닥의 유도선을 따라 소리 없이 미끄러져 다니는 곳.
+
+그러나 육교가 걸쳐진 이 지점은 경계였다. 타카나와의 매끈한 유리벽이 끝나고 미타의 낡은 콘크리트 오피스와 엉킨 케이블이 시작되는 곳.`,
+
+          `덜컹거리는 구동음과 함께 육교 계단참에서 바퀴 달린 기계 하나가 모습을 드러냈다. 원래는 역내 청소나 물류 지원용으로 배정되었을 구형 서비터였다. 플라스틱 외장은 군데군데 깨져 있었고, 왼쪽 궤도 바퀴는 마모되어 비틀거렸다.
+
+새 구역의 자율 기계들은 종종 이유 없이 이 낡은 육교로 기어 올라왔다. 허용 구역을 벗어났다는 경고음이 내부 스피커에서 뭉개져 흘러나오는데도, 녀석들은 마치 이 녹슨 철골 난간 너머에 지워지지 않은 무언가가 남아있기라도 한 것처럼 선로를 내려다보곤 했다.`
+        ]
+      },
+      {
+        id: "sluice4",
+        series: "SERIES #03",
+        title: "제4수문 앞의 가비지 컬렉션",
+        location: "도쿄만 시바우라 제4수문 운하 17:00 PM",
+        desc: "해수면 방어가 아닌, 도심 서버들의 메모리 드레인 슬러지를 걸러내는 물리적 방화벽.",
+        cards: [
+          `시바우라 제4수문의 푸른 강철판이 마지막으로 완전히 내려온 것은 도쿄만 해수면 때문이 아니었다. 그것은 일종의 물리적 방화벽이었다.
+
+오후 다섯 시의 창백한 태양빛이 오른쪽 마천루의 거대한 유리 외벽을 타고 미끄러져 내렸다. 그 매끄러운 단면 뒤에는 수백만 개의 서버 랙과 함께, 법적 인격이 말소된 구형 자율 구상체들의 백업 신경망이 냉각수에 잠겨 있었다.`,
+
+          `물결은 바람의 방향과 무관하게 일정한 주기로 일렁였다. 검은 수면 아래로 간혹 은빛의 가느다란 광섬유 다발들이 수초처럼 떠올랐다가 가라앉곤 했다. 폐기 처분된 안드로이드들의 척수 케이블과, 과열된 데이터 센터에서 무단으로 배출한 유기 냉각수가 뒤섞여 만들어낸 검은 슬러지였다.
+
+사람들은 저 물을 그저 오염된 도쿄의 운하라고 불렀지만, 우리 같은 수진가들은 저곳을 '배출구(The Heap)'라고 불렀다.`
+        ]
+      }
+    ];
+
+    // --- 상태 관리 ---
+    let currentStoryIdx = 0;
+    let currentCardIdx = 0;
+
+    // URL Hash 확인 (#mita, #sluice4, #urainari)
+    const hash = window.location.hash.replace('#', '');
+    const foundIdx = STORIES.findIndex(s => s.id === hash);
+    if (foundIdx !== -1) currentStoryIdx = foundIdx;
+
+    // DOM 요소
+    const stage = document.getElementById('stage');
+    const cardEl = document.getElementById('cardElement');
+    const cardBody = document.getElementById('cardBody');
+    const progressBar = document.getElementById('progressBar');
+    const metaSeries = document.getElementById('metaSeries');
+    const metaLocation = document.getElementById('metaLocation');
+    const pageNum = document.getElementById('pageNum');
+    const currentEpBadge = document.getElementById('currentEpBadge');
+
+    // 서랍 관련
+    const listBtn = document.getElementById('listBtn');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const drawerClose = document.getElementById('drawerClose');
+    const episodeList = document.getElementById('episodeList');
+
+    // --- 렌더링 함수 ---
+    function renderCard(animate = true) {
+      const story = STORIES[currentStoryIdx];
+      const totalCards = story.cards.length;
+
+      // 텍스트 포맷팅 (개행을 p로 쪼개기)
+      const rawText = story.cards[currentCardIdx];
+      const paragraphs = rawText.split('\n\n').map(p => {
+        // 따옴표로 감싸진 대사는 dialogue 클래스로 살짝 강조
+        const formatted = p.replace(/'(.*?)'/g, `<span class="dialogue">'$1'</span>`);
+        return `<p>${formatted.replace(/\n/g, '<br>')}</p>`;
+      }).join('');
+
+      cardBody.innerHTML = paragraphs;
+      metaSeries.textContent = `${story.series} // ${story.title}`;
+      metaLocation.textContent = story.location;
+      pageNum.textContent = `${currentCardIdx + 1} / ${totalCards}`;
+      currentEpBadge.textContent = `#0${currentStoryIdx + 1}`;
+
+      // 세그먼트 진행바 렌더링
+      progressBar.innerHTML = '';
+      for (let i = 0; i < totalCards; i++) {
+        const seg = document.createElement('div');
+        seg.className = 'progress-seg';
+        if (i < currentCardIdx) seg.classList.add('done');
+        else if (i === currentCardIdx) seg.classList.add('active');
+        progressBar.appendChild(seg);
+      }
+
+      // 애니메이션 클래스 재부여
+      if (animate) {
+        cardEl.classList.remove('fade-enter');
+        void cardEl.offsetWidth; // trigger reflow
+        cardEl.classList.add('fade-enter');
+      }
+
+      // URL 해시 업데이트
+      history.replaceState(null, '', `#${story.id}`);
+    }
+
+    // 카드 넘김 로직
+    function nextCard() {
+      const story = STORIES[currentStoryIdx];
+      if (currentCardIdx < story.cards.length - 1) {
+        currentCardIdx++;
+        renderCard(true);
+      } else {
+        // 마지막 카드에서 다음을 누르면: 다음 에피소드로 이동하거나 서랍 열기
+        if (currentStoryIdx < STORIES.length - 1) {
+          currentStoryIdx++;
+          currentCardIdx = 0;
+          renderCard(true);
+        } else {
+          // 전체 마지막이면 에피소드 서랍 열기
+          openDrawer();
+        }
+      }
+    }
+
+    function prevCard() {
+      if (currentCardIdx > 0) {
+        currentCardIdx--;
+        renderCard(true);
+      } else if (currentStoryIdx > 0) {
+        currentStoryIdx--;
+        currentCardIdx = STORIES[currentStoryIdx].cards.length - 1;
+        renderCard(true);
+      }
+    }
+
+    // --- 카드 탭 & 클릭 인터랙션 (좌 40% 이전, 우 60% 다음) ---
+    cardEl.addEventListener('click', (e) => {
+      const rect = cardEl.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const ratio = clickX / rect.width;
+
+      if (ratio < 0.38) {
+        prevCard();
+      } else {
+        nextCard();
+      }
+    });
+
+    // 키보드 네비게이션
+    window.addEventListener('keydown', (e) => {
+      if (drawerOverlay.classList.contains('open')) {
+        if (e.key === 'Escape') closeDrawer();
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        nextCard();
+      } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+        e.preventDefault();
+        prevCard();
+      }
+    });
+
+    // 모바일 터치 스와이프
+    let touchStartX = 0;
+    let touchStartY = 0;
+    cardEl.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    cardEl.addEventListener('touchend', (e) => {
+      const diffX = e.changedTouches[0].clientX - touchStartX;
+      const diffY = e.changedTouches[0].clientY - touchStartY;
+      // 가로 스와이프 판정 (수평 이동이 수직보다 크고 40px 이상일 때)
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+        if (diffX < 0) nextCard();
+        else prevCard();
+      }
+    }, { passive: true });
+
+    // --- 에피소드 서랍 (Drawer) 로직 ---
+    function renderDrawerList() {
+      episodeList.innerHTML = '';
+      STORIES.forEach((story, idx) => {
+        const item = document.createElement('div');
+        item.className = `episode-item ${idx === currentStoryIdx ? 'active' : ''}`;
+        item.innerHTML = `
+          <div class="episode-item-top">
+            <span>${story.series}</span>
+            <span>${story.cards.length} CARDS</span>
+          </div>
+          <div class="episode-item-title">${story.title}</div>
+          <div class="episode-item-desc">${story.desc}</div>
+        `;
+        item.addEventListener('click', () => {
+          currentStoryIdx = idx;
+          currentCardIdx = 0;
+          renderCard(true);
+          closeDrawer();
+        });
+        episodeList.appendChild(item);
+      });
+    }
+
+    function openDrawer() {
+      renderDrawerList();
+      drawerOverlay.classList.add('open');
+    }
+
+    function closeDrawer() {
+      drawerOverlay.classList.remove('open');
+    }
+
+    listBtn.addEventListener('click', openDrawer);
+    drawerClose.addEventListener('click', closeDrawer);
+    drawerOverlay.addEventListener('click', (e) => {
+      if (e.target === drawerOverlay) closeDrawer();
+    });
+
+    // --- Web Audio 앰비언트 빗소리 엔진 (순수 브라우저 합성) ---
+    let audioCtx = null;
+    let rainSource = null;
+    let gainNode = null;
+    let isPlaying = false;
+    const soundBtn = document.getElementById('soundBtn');
+    const soundLabel = document.getElementById('soundLabel');
+
+    function toggleRainSound() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      if (!isPlaying) {
+        // 핑크 노이즈 버퍼 생성 (부드러운 빗소리)
+        const bufferSize = audioCtx.sampleRate * 2;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.04;
+          b6 = white * 0.115926;
+        }
+
+        rainSource = audioCtx.createBufferSource();
+        rainSource.buffer = buffer;
+        rainSource.loop = true;
+
+        // 로우패스 필터 (비 오는 도쿄 뒷골목의 먹먹한 소리)
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 850;
+
+        gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 1.2);
+
+        rainSource.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        rainSource.start();
+        isPlaying = true;
+        soundBtn.classList.add('active');
+        soundLabel.textContent = '사운드 ON';
+      } else {
+        if (gainNode) {
+          gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+          setTimeout(() => {
+            if (rainSource) rainSource.stop();
+            isPlaying = false;
+            soundBtn.classList.remove('active');
+            soundLabel.textContent = '사운드';
+          }, 500);
+        }
+      }
+    }
+
+    soundBtn.addEventListener('click', toggleRainSound);
+
+    // --- 배경 빗방울 캔버스 렌더링 ---
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    let width, height;
+    const rainDrops = [];
+
+    function resizeCanvas() {
+      width = bgCanvas.width = window.innerWidth;
+      height = bgCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    for (let i = 0; i < 45; i++) {
+      rainDrops.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        len: Math.random() * 16 + 10,
+        speed: Math.random() * 8 + 8,
+        alpha: Math.random() * 0.2 + 0.1
+      });
+    }
+
+    function drawRain() {
+      bgCtx.clearRect(0, 0, width, height);
+      bgCtx.lineWidth = 1;
+      rainDrops.forEach(r => {
+        bgCtx.strokeStyle = `rgba(186, 230, 253, ${r.alpha})`;
+        bgCtx.beginPath();
+        bgCtx.moveTo(r.x, r.y);
+        bgCtx.lineTo(r.x, r.y + r.len);
+        bgCtx.stroke();
+
+        r.y += r.speed;
+        if (r.y > height) {
+          r.y = -20;
+          r.x = Math.random() * width;
+        }
+      });
+      requestAnimationFrame(drawRain);
+    }
+    drawRain();
+
+    // 초기 렌더링
+    renderCard(false);
+  </script>
+</body>
+</html>
