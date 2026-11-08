@@ -243,57 +243,94 @@
     </header>
 
     <!-- Interactive Fiction 섹션 -->
-    <section class="max-w-2xl mx-auto px-6 py-12">
-        <div class="flex items-baseline justify-between mb-3">
+    <section class="max-w-2xl mx-auto px-6 py-10">
+        <div class="flex items-center justify-between gap-3 mb-3">
             <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 flex items-center gap-2">
                 <span>Interactive Fiction</span>
-                <span class="text-xs text-zinc-600 font-mono">Series</span>
             </h2>
+            <div class="flex items-center gap-2">
+                <button type="button" id="fictionDrawerToggle" class="tool-drawer-toggle" aria-expanded="false" aria-controls="fictionDrawer">
+                    <span class="drawer-chevron" aria-hidden="true">▸</span>
+                    <span>all · <span id="fictionCount">3</span></span>
+                </button>
+            </div>
         </div>
 
-        <div class="space-y-3">
-            <div class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors">
-                <div class="flex items-baseline justify-between gap-2 mb-1.5">
-                    <a href="sluice4.html" class="text-sky-400 font-bold hover:underline text-base">x004F: 제4수문 앞의 가비지 컬렉션</a>
-                    <span class="text-xs text-zinc-500 font-mono">#01</span>
+        <!-- 가로 슬라이드 컴팩트 카드 캐러셀 -->
+        <div class="flex gap-3 overflow-x-auto pb-3 pt-1 snap-x snap-mandatory -mx-2 px-2" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;">
+            <!-- 카드 1: sluice4 -->
+            <div class="snap-start shrink-0 w-[265px] sm:w-[285px] p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors flex flex-col justify-between">
+                <div>
+                    <div class="flex items-baseline justify-between gap-1 mb-1.5">
+                        <a href="sluice4.html" class="text-sky-400 font-bold hover:underline text-sm leading-snug">제4수문: 가비지 컬렉션</a>
+                        <span class="text-xs text-zinc-500 font-mono">#01</span>
+                    </div>
+                    <p class="text-xs text-zinc-400 leading-relaxed mb-3 line-clamp-3">
+                        도쿄만 수문과 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 인터랙티브 소설.
+                    </p>
                 </div>
-                <p class="text-xs text-zinc-400 leading-relaxed mb-3">
-                    시바우라 제4수문의 푸른 강철판과 검은 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 인터랙티브 단편 소설.
-                </p>
-                <div class="flex items-center gap-2">
-                    <a href="sluice4.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40">
-                        <span>▶ 단편 읽기 & 수문 인터랙티브</span>
-                    </a>
-                </div>
+                <a href="sluice4.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40 w-fit">
+                    <span>▶ 수문 시뮬레이터</span>
+                </a>
             </div>
 
-            <div class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors">
-                <div class="flex items-baseline justify-between gap-2 mb-1.5">
-                    <a href="cards.html" class="text-sky-400 font-bold hover:underline text-base">세계관 단편 카드 뷰어 (Stories)</a>
-                    <span class="text-xs text-sky-400 font-mono bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-800/50">CARDS</span>
+            <!-- 카드 2: mita -->
+            <div class="snap-start shrink-0 w-[265px] sm:w-[285px] p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors flex flex-col justify-between">
+                <div>
+                    <div class="flex items-baseline justify-between gap-1 mb-1.5">
+                        <a href="mita.html" class="text-sky-400 font-bold hover:underline text-sm leading-snug">미타: 도시의 봉합선</a>
+                        <span class="text-xs text-zinc-500 font-mono">#02</span>
+                    </div>
+                    <p class="text-xs text-zinc-400 leading-relaxed mb-3 line-clamp-3">
+                        타카나와 경계선과 열 갈래 선로. 잔류 기억을 쫓아 육교로 올라온 버려진 서비터.
+                    </p>
                 </div>
-                <p class="text-xs text-zinc-400 leading-relaxed mb-3">
-                    카페 우라이나리의 빗속 안드로이드 점장, 미타 육교, 제4수문. 텍스트의 호흡과 여백에 집중하는 탭 넘김 단편 아카이브.
-                </p>
-                <div class="flex items-center gap-2">
-                    <a href="cards.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40">
-                        <span>▶ 단편 카드 뷰어 열기</span>
-                    </a>
-                </div>
+                <a href="mita.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40 w-fit">
+                    <span>▶ 육교 시뮬레이터</span>
+                </a>
             </div>
 
-            <div class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors">
-                <div class="flex items-baseline justify-between gap-2 mb-1.5">
-                    <a href="mita.html" class="text-sky-400 font-bold hover:underline text-base">미타: 도시의 봉합선 (三田)</a>
-                    <span class="text-xs text-zinc-500 font-mono">#02</span>
+            <!-- 카드 3: cards -->
+            <div class="snap-start shrink-0 w-[265px] sm:w-[285px] p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors flex flex-col justify-between">
+                <div>
+                    <div class="flex items-baseline justify-between gap-1 mb-1.5">
+                        <a href="cards.html" class="text-sky-400 font-bold hover:underline text-sm leading-snug">세계관 단편 카드 뷰어</a>
+                        <span class="text-xs text-sky-400 font-mono bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-800/50">CARDS</span>
+                    </div>
+                    <p class="text-xs text-zinc-400 leading-relaxed mb-3 line-clamp-3">
+                        카페 우라이나리의 빗속 안드로이드 점장. 텍스트의 호흡과 여백에 집중하는 탭 넘김 단편선.
+                    </p>
                 </div>
-                <p class="text-xs text-zinc-400 leading-relaxed mb-3">
-                    타카나와의 백색 돔과 미타의 낡은 빌딩 경계. 열 갈래의 야간 선로 위에서 잔류 기억을 쫓는 버려진 서비터.
-                </p>
-                <div class="flex items-center gap-2">
-                    <a href="mita.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40">
-                        <span>▶ 단편 읽기 & 육교 시뮬레이터</span>
-                    </a>
+                <a href="cards.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40 w-fit">
+                    <span>▶ 단편 카드 열기</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 서랍식 텍스트 아카이브 목록 -->
+        <div id="fictionDrawer" class="mt-2" style="display: none;">
+            <div class="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60 text-xs text-zinc-400 space-y-2">
+                <div class="flex items-center justify-between pb-1.5 border-b border-zinc-800/50 text-zinc-500 font-mono text-[0.7rem]">
+                    <span>TITLE // ARCHIVE LIST</span>
+                    <span>TYPE</span>
+                </div>
+                <div class="space-y-1.5 font-mono">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <a href="sluice4.html" class="text-zinc-300 hover:text-sky-300 transition-colors">x004F: 제4수문 앞의 가비지 컬렉션</a>
+                        <span class="text-zinc-600 shrink-0">Sim + Novel</span>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-2">
+                        <a href="mita.html" class="text-zinc-300 hover:text-sky-300 transition-colors">미타: 도시의 봉합선 (三田)</a>
+                        <span class="text-zinc-600 shrink-0">Sim + Novel</span>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-2">
+                        <a href="cards.html" class="text-zinc-300 hover:text-sky-300 transition-colors">카페 우라이나리의 새 점장 (외 2편)</a>
+                        <span class="text-sky-400 shrink-0">Story Cards</span>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-2">
+                        <a href="rojiura.html" class="text-zinc-300 hover:text-sky-300 transition-colors">Rojiura 1.0m // 심야 차방 우라이나리</a>
+                        <span class="text-zinc-600 shrink-0">Canvas Walk</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -795,6 +832,17 @@
 
         if (teaserMore) {
             teaserMore.addEventListener('click', () => setDrawerOpen(true));
+        }
+
+        const fictionDrawerToggle = document.getElementById('fictionDrawerToggle');
+        const fictionDrawer = document.getElementById('fictionDrawer');
+        if (fictionDrawerToggle && fictionDrawer) {
+            fictionDrawerToggle.addEventListener('click', () => {
+                const isOpen = fictionDrawer.style.display !== 'none';
+                fictionDrawer.style.display = isOpen ? 'none' : 'block';
+                fictionDrawerToggle.classList.toggle('is-open', !isOpen);
+                fictionDrawerToggle.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+            });
         }
 
         if (toolDrawerToggle) {
