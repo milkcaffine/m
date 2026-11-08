@@ -201,7 +201,7 @@
   <button type="button" class="dock-btn active" id="btnSweeper">수거 작업 (EVA Sweeper)</button>
   <button type="button" class="dock-btn" id="btnCupola">큐폴라 지구 감상 (Cupola View)</button>
 
-  <div class="dock-sep"></div>
+  <div class="dock-sep" id="pulseSep"></div>
 
   <button type="button" class="dock-btn" id="btnPulse">EMP 파편 감속 펄스</button>
 
@@ -226,6 +226,7 @@
   const btnSweeper = document.getElementById('btnSweeper');
   const btnCupola = document.getElementById('btnCupola');
   const btnPulse = document.getElementById('btnPulse');
+  const pulseSep = document.getElementById('pulseSep');
   const speedRange = document.getElementById('speedRange');
 
   let width = canvas.width = window.innerWidth;
@@ -289,11 +290,32 @@
     tractorRadius: 115
   };
 
-  // 우주 쓰레기 파편 배열
+  // 우주 쓰레기 파편 배열 & 관측 상태
   const debrisList = [];
-  const DEBRIS_COUNT = 18;
+  const DEBRIS_COUNT = 20;
   const particles = [];
   let empWave = null;
+
+  // 인터랙션 & 관측 타겟팅 상태
+  const mousePos = { x: -9999, y: -9999, active: false };
+  let hoveredDebris = null;
+  const reentryMeteors = [];
+
+  // LEO 실존 및 궤도 파편 카탈로그
+  const DEBRIS_CATALOG = [
+    { name: 'COSMOS-2251 FRAGMENT', type: 'kessler', catId: 'NORAD 34005' },
+    { name: 'SL-16 ROCKET BODY', type: 'stage', catId: 'NORAD 22220' },
+    { name: 'IRIDIUM 33 DEBRIS', type: 'panel', catId: 'NORAD 33750' },
+    { name: 'TITAN TRANSTAGE ADAPTER', type: 'stage', catId: 'NORAD 01614' },
+    { name: 'FENGYUN-1C POLAR FRAG', type: 'kessler', catId: 'NORAD 29841' },
+    { name: 'DELTA II SECOND STAGE', type: 'stage', catId: 'NORAD 25752' },
+    { name: 'ENVISAT SOLAR ARRAY FRAG', type: 'panel', catId: 'NORAD 27386' },
+    { name: 'NOAA-16 BATTERY SHRED', type: 'boltnut', catId: 'NORAD 26536' },
+    { name: 'CUBESAT 3U DEF-BUS', type: 'boltnut', catId: 'NORAD 43210' },
+    { name: 'CENTAUR D-1T SHIELD', type: 'stage', catId: 'NORAD 08480' },
+    { name: 'VANGUARD-1 DERELICT', type: 'boltnut', catId: 'NORAD 00005' },
+    { name: 'SPOT-1 SOLAR CELL', type: 'panel', catId: 'NORAD 16613' }
+  ];
 
   // 배경 별 & 지구 표면 도시/뇌우 데이터
   let stars = [];
@@ -326,21 +348,35 @@
   }
 
   function createDebris(randomX = false) {
-    const types = ['panel', 'boltnut', 'stage', 'kessler'];
-    const isKessler = Math.random() < 0.18;
-    const type = isKessler ? 'kessler' : types[Math.floor(Math.random() * 3)];
+    const meta = DEBRIS_CATALOG[Math.floor(Math.random() * DEBRIS_CATALOG.length)];
+    const isKessler = meta.type === 'kessler';
+    const type = meta.type;
     const fromLeft = Math.random() > 0.5;
 
+    // 0.55 (원경/소형/느림) ~ 1.3 (근경/대형/패럴랙스)
+    const depth = Math.random() * 0.75 + 0.55;
+    const baseSpeed = isKessler ? (Math.random() * 2.2 + 2.0) : (Math.random() * 1.0 + 0.45);
+    const speed = baseSpeed * (0.65 + depth * 0.35);
+
+    // 큐폴라 창문 및 궤도 관측 범위
+    const yMin = height * 0.12;
+    const yMax = height * 0.68;
+
     return {
-      x: randomX ? Math.random() * width : (fromLeft ? -40 : width + 40),
-      y: Math.random() * (height * 0.55) + 40,
-      vx: (fromLeft ? 1 : -1) * (isKessler ? (Math.random() * 2.8 + 2.2) : (Math.random() * 1.2 + 0.4)),
-      vy: (Math.random() - 0.5) * 0.5,
+      x: randomX ? Math.random() * width : (fromLeft ? -60 : width + 60),
+      y: Math.random() * (yMax - yMin) + yMin,
+      vx: (fromLeft ? 1 : -1) * speed,
+      vy: (Math.random() - 0.5) * 0.35,
       rot: Math.random() * Math.PI * 2,
-      vRot: (Math.random() - 0.5) * 0.06,
+      vRot: (Math.random() - 0.5) * 0.05,
       type,
+      name: meta.name,
+      catId: meta.catId,
       mass: isKessler ? 0 : Math.floor(Math.random() * 45 + 15),
-      size: type === 'stage' ? 12 : (type === 'panel' ? 10 : 6),
+      size: type === 'stage' ? 14 : (type === 'panel' ? 12 : 7),
+      depth,
+      altitude: Math.floor(405 + depth * 35),
+      velKmS: (7.66 + (1 - depth) * 0.12).toFixed(2),
       captured: false
     };
   }
@@ -371,98 +407,136 @@
       if (lightningFlashes[i].alpha <= 0) lightningFlashes.splice(i, 1);
     }
 
-    if (mode === 'cupola') return;
-
-    // 청소선 관성 이동
-    const dx = ship.targetX - ship.x;
-    const dy = ship.targetY - ship.y;
-    ship.vx = ship.vx * 0.88 + dx * 0.018;
-    ship.vy = ship.vy * 0.88 + dy * 0.018;
-    ship.x += ship.vx;
-    ship.y += ship.vy;
-
-    if (Math.hypot(ship.vx, ship.vy) > 0.6 && Math.random() < 0.5) {
-      particles.push({
-        x: ship.x - ship.vx * 2,
-        y: ship.y - ship.vy * 2,
-        vx: -ship.vx * 0.4 + (Math.random() - 0.5),
-        vy: -ship.vy * 0.4 + (Math.random() - 0.5),
-        color: 'rgba(186, 230, 253, 0.7)',
-        life: 0.5
+    // 대기권 재진입 미세 파편 유성 연출
+    if (Math.random() < 0.012) {
+      const fromLeft = Math.random() > 0.5;
+      reentryMeteors.push({
+        x: width * 0.25 + Math.random() * width * 0.5,
+        y: height * 0.65 + (Math.random() - 0.5) * 20,
+        vx: (fromLeft ? 1 : -1) * (Math.random() * 5 + 6),
+        vy: Math.random() * 1.2 + 0.4,
+        alpha: 1.0
       });
     }
-
-    if (empWave) {
-      empWave.r += 14;
-      empWave.alpha -= 0.025;
-      if (empWave.alpha <= 0) empWave = null;
+    for (let i = reentryMeteors.length - 1; i >= 0; i--) {
+      const rm = reentryMeteors[i];
+      rm.x += rm.vx;
+      rm.y += rm.vy;
+      rm.alpha -= 0.04;
+      if (rm.alpha <= 0) reentryMeteors.splice(i, 1);
     }
+
+    // 데브리 궤도 이동 (수거 모드 & 큐폴라 모드 공통 물리 드리프트)
+    const speedFactor = orbitSpeed / 0.0014;
 
     for (let i = 0; i < debrisList.length; i++) {
       const d = debrisList[i];
-      d.x += d.vx;
-      d.y += d.vy;
-      d.rot += d.vRot;
+      d.x += d.vx * speedFactor;
+      d.y += d.vy * speedFactor;
+      d.rot += d.vRot * speedFactor;
 
-      if (d.x < -80 || d.x > width + 80 || d.y < -60 || d.y > height * 0.72) {
+      if (d.x < -100 || d.x > width + 100 || d.y < -60 || d.y > height * 0.76) {
         debrisList[i] = createDebris(false);
         continue;
       }
 
-      const distToShip = Math.hypot(ship.x - d.x, ship.y - d.y);
+      if (mode === 'sweeper') {
+        const distToShip = Math.hypot(ship.x - d.x, ship.y - d.y);
 
-      if (d.type === 'kessler') {
-        if (distToShip < 18) {
-          playHitSound();
-          hull = Math.max(0, hull - 15);
-          hudHull.textContent = `${hull}%`;
-          hudHull.className = hull < 40 ? 'danger' : (hull < 75 ? 'warn' : 'ok');
+        if (d.type === 'kessler') {
+          if (distToShip < 18) {
+            playHitSound();
+            hull = Math.max(0, hull - 15);
+            hudHull.textContent = `${hull}%`;
+            hudHull.className = hull < 40 ? 'danger' : (hull < 75 ? 'warn' : 'ok');
 
-          for (let k = 0; k < 20; k++) {
-            particles.push({
-              x: d.x, y: d.y,
-              vx: (Math.random() - 0.5) * 6,
-              vy: (Math.random() - 0.5) * 6,
-              color: '#f43f5e',
-              life: 1.0
-            });
-          }
-          debrisList[i] = createDebris(false);
-        }
-      } else {
-        if (distToShip < ship.tractorRadius) {
-          d.captured = true;
-          d.vx = d.vx * 0.9 + ((ship.x - d.x) / distToShip) * 0.55;
-          d.vy = d.vy * 0.9 + ((ship.y - d.y) / distToShip) * 0.55;
-
-          if (distToShip < 16) {
-            playSalvageChime();
-            salvagedKg += d.mass;
-            hudScore.textContent = salvagedKg.toLocaleString();
-
-            for (let k = 0; k < 12; k++) {
+            for (let k = 0; k < 20; k++) {
               particles.push({
                 x: d.x, y: d.y,
-                vx: (Math.random() - 0.5) * 3,
-                vy: (Math.random() - 0.5) * 3,
-                color: '#34d399',
-                life: 0.8
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                color: '#f43f5e',
+                life: 1.0
               });
             }
             debrisList[i] = createDebris(false);
           }
         } else {
-          d.captured = false;
+          if (distToShip < ship.tractorRadius) {
+            d.captured = true;
+            d.vx = d.vx * 0.9 + ((ship.x - d.x) / distToShip) * 0.55;
+            d.vy = d.vy * 0.9 + ((ship.y - d.y) / distToShip) * 0.55;
+
+            if (distToShip < 16) {
+              playSalvageChime();
+              salvagedKg += d.mass;
+              hudScore.textContent = salvagedKg.toLocaleString();
+
+              for (let k = 0; k < 12; k++) {
+                particles.push({
+                  x: d.x, y: d.y,
+                  vx: (Math.random() - 0.5) * 3,
+                  vy: (Math.random() - 0.5) * 3,
+                  color: '#34d399',
+                  life: 0.8
+                });
+              }
+              debrisList[i] = createDebris(false);
+            }
+          } else {
+            d.captured = false;
+          }
         }
       }
     }
 
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= 0.03;
-      if (p.life <= 0) particles.splice(i, 1);
+    if (mode === 'sweeper') {
+      // 청소선 관성 이동
+      const dx = ship.targetX - ship.x;
+      const dy = ship.targetY - ship.y;
+      ship.vx = ship.vx * 0.88 + dx * 0.018;
+      ship.vy = ship.vy * 0.88 + dy * 0.018;
+      ship.x += ship.vx;
+      ship.y += ship.vy;
+
+      if (Math.hypot(ship.vx, ship.vy) > 0.6 && Math.random() < 0.5) {
+        particles.push({
+          x: ship.x - ship.vx * 2,
+          y: ship.y - ship.vy * 2,
+          vx: -ship.vx * 0.4 + (Math.random() - 0.5),
+          vy: -ship.vy * 0.4 + (Math.random() - 0.5),
+          color: 'rgba(186, 230, 253, 0.7)',
+          life: 0.5
+        });
+      }
+
+      if (empWave) {
+        empWave.r += 14;
+        empWave.alpha -= 0.025;
+        if (empWave.alpha <= 0) empWave = null;
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.03;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    } else {
+      // 큐폴라 관측 모드: 마우스/터치 근접 타겟 레이더 탐지
+      hoveredDebris = null;
+      if (mousePos.active) {
+        let minD = 54;
+        for (let i = 0; i < debrisList.length; i++) {
+          const d = debrisList[i];
+          const dist = Math.hypot(d.x - mousePos.x, d.y - mousePos.y);
+          if (dist < minD) {
+            minD = dist;
+            hoveredDebris = d;
+          }
+        }
+      }
     }
   }
 
@@ -568,6 +642,219 @@
     ctx.restore();
   }
 
+  // --- 대기권 재진입 유성 렌더링 ---
+  function drawReentryMeteors() {
+    if (reentryMeteors.length === 0) return;
+    ctx.save();
+    reentryMeteors.forEach(m => {
+      ctx.strokeStyle = `rgba(254, 240, 138, ${m.alpha * 0.85})`;
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y);
+      ctx.lineTo(m.x - m.vx * 3.2, m.y - m.vy * 3.2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // --- 큐폴라 모드 시네마틱 데브리 렌더링 (창틀 뒤 420km 궤도 드리프트) ---
+  function drawDebrisCupola(d) {
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+
+    const s = d.depth; // 0.55 ~ 1.3
+    const alpha = Math.min(1.0, 0.45 + d.depth * 0.5);
+    ctx.globalAlpha = alpha;
+
+    // 회전 시 태양광(상단 좌측 입사각) 반사 플래시 계산
+    const sunDiff = Math.cos(d.rot - (-0.75));
+    const glint = Math.pow(Math.max(0, sunDiff), 16);
+
+    if (d.type === 'panel') {
+      // 태양광 패널 파편
+      const pw = 22 * s;
+      const ph = 9 * s;
+
+      ctx.fillStyle = glint > 0.4 ? `rgba(224, 242, 254, ${glint})` : '#072b4a';
+      ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+
+      ctx.strokeStyle = glint > 0.4 ? '#ffffff' : '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-pw / 2, -ph / 2, pw, ph);
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(-pw / 6, -ph / 2); ctx.lineTo(-pw / 6, ph / 2);
+      ctx.moveTo(pw / 6, -ph / 2); ctx.lineTo(pw / 6, ph / 2);
+      ctx.moveTo(-pw / 2, 0); ctx.lineTo(pw / 2, 0);
+      ctx.stroke();
+
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(-2 * s, -ph / 2 - 3 * s, 4 * s, ph + 6 * s);
+
+    } else if (d.type === 'stage') {
+      // 로켓 상단부 추진체 / 실린더 바디
+      const sw = 18 * s;
+      const sh = 10 * s;
+
+      ctx.fillStyle = glint > 0.4 ? '#e2e8f0' : '#475569';
+      ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
+
+      ctx.strokeStyle = glint > 0.4 ? '#ffffff' : '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-sw / 2, -sh / 2, sw, sh);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(-sw / 2, -sh * 0.35);
+      ctx.lineTo(-sw / 2 - 5 * s, -sh * 0.5);
+      ctx.lineTo(-sw / 2 - 5 * s, sh * 0.5);
+      ctx.lineTo(-sw / 2, sh * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+      ctx.beginPath();
+      ctx.moveTo(0, -sh / 2); ctx.lineTo(0, sh / 2);
+      ctx.stroke();
+
+    } else if (d.type === 'kessler') {
+      // 고속 충돌 파편 / 날카로운 금속 파편
+      const r = 9 * s;
+      ctx.fillStyle = glint > 0.4 ? '#f8fafc' : 'rgba(100, 116, 139, 0.85)';
+      ctx.strokeStyle = glint > 0.4 ? '#ffffff' : 'rgba(244, 63, 94, 0.65)';
+      ctx.lineWidth = 1.2;
+
+      ctx.beginPath();
+      ctx.moveTo(0, -r);
+      ctx.lineTo(r * 0.85, -r * 0.2);
+      ctx.lineTo(r * 0.4, r);
+      ctx.lineTo(-r * 0.7, r * 0.6);
+      ctx.lineTo(-r * 0.9, -r * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+    } else {
+      // CubeSat 본체 / 볼트 너트 부속품
+      const cs = 7 * s;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-cs, -cs, cs * 2, cs * 2);
+
+      ctx.fillStyle = glint > 0.3 ? '#fef08a' : '#d97706';
+      ctx.fillRect(-cs + 1, -cs + 1, cs - 1, cs * 2 - 2);
+
+      ctx.strokeStyle = glint > 0.4 ? '#ffffff' : '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-cs, -cs, cs * 2, cs * 2);
+
+      ctx.strokeStyle = 'rgba(203, 213, 225, 0.8)';
+      ctx.beginPath();
+      ctx.moveTo(cs, 0); ctx.lineTo(cs + 6 * s, -4 * s);
+      ctx.stroke();
+    }
+
+    // 태양광 플래시(Specular Glint Starburst)
+    if (glint > 0.35) {
+      const gAlpha = Math.min(1.0, (glint - 0.35) / 0.65);
+      ctx.fillStyle = `rgba(255, 255, 255, ${gAlpha * 0.95})`;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10 * gAlpha;
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.2 * s, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = `rgba(255, 255, 255, ${gAlpha * 0.9})`;
+      ctx.lineWidth = 1.2;
+      const spike = 18 * s * gAlpha;
+      ctx.beginPath();
+      ctx.moveTo(-spike, 0); ctx.lineTo(spike, 0);
+      ctx.moveTo(0, -spike * 0.55); ctx.lineTo(0, spike * 0.55);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  }
+
+  // --- 관측창 글래스 타겟팅 HUD 렌더링 ---
+  function drawObservationHUD(d) {
+    ctx.save();
+
+    const r = (d.size * d.depth) + 12;
+    const hudX = d.x;
+    const hudY = d.y;
+
+    // 조준 브래킷 [ ]
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 8;
+
+    const bLen = 8;
+    ctx.beginPath();
+    ctx.moveTo(hudX - r, hudY - r + bLen); ctx.lineTo(hudX - r, hudY - r); ctx.lineTo(hudX - r + bLen, hudY - r);
+    ctx.moveTo(hudX + r - bLen, hudY - r); ctx.lineTo(hudX + r, hudY - r); ctx.lineTo(hudX + r, hudY - r + bLen);
+    ctx.moveTo(hudX - r, hudY + r - bLen); ctx.lineTo(hudX - r, hudY + r); ctx.lineTo(hudX - r + bLen, hudY + r);
+    ctx.moveTo(hudX + r - bLen, hudY + r); ctx.lineTo(hudX + r, hudY + r); ctx.lineTo(hudX + r, hudY + r - bLen);
+    ctx.stroke();
+
+    // 중앙 크로스헤어
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hudX - 3, hudY); ctx.lineTo(hudX + 3, hudY);
+    ctx.moveTo(hudX, hudY - 3); ctx.lineTo(hudX, hudY + 3);
+    ctx.stroke();
+
+    // 지시선
+    const dirRight = (hudX < width * 0.68);
+    const lineStartX = hudX + (dirRight ? r * 0.7 : -r * 0.7);
+    const lineStartY = hudY - r * 0.7;
+    const elbowX = hudX + (dirRight ? r + 24 : -(r + 24));
+    const elbowY = hudY - r - 16;
+    const endX = elbowX + (dirRight ? 32 : -32);
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(lineStartX, lineStartY);
+    ctx.lineTo(elbowX, elbowY);
+    ctx.lineTo(endX, elbowY);
+    ctx.stroke();
+
+    // 텔레메트리 데이터 카드
+    const cardW = 168;
+    const cardH = 48;
+    const cardX = dirRight ? endX + 4 : endX - cardW - 4;
+    const cardY = elbowY - cardH * 0.5;
+
+    ctx.fillStyle = 'rgba(4, 9, 20, 0.9)';
+    ctx.fillRect(cardX, cardY, cardW, cardH);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+    ctx.shadowBlur = 0;
+    ctx.font = '600 8.5px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'left';
+    ctx.fillText(`TRK // ${d.catId || 'OBJ-UNKNOWN'}`, cardX + 8, cardY + 13);
+
+    ctx.font = '500 8.5px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillText(d.name || 'ORBITAL DEBRIS', cardX + 8, cardY + 27);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`ALT: ${d.altitude || 420}km · VEL: ${d.velKmS || '7.66'} km/s`, cardX + 8, cardY + 40);
+
+    ctx.restore();
+  }
+
   function drawCupolaWindow() {
     ctx.save();
     const cx = width * 0.5;
@@ -613,6 +900,10 @@
     ctx.textAlign = 'center';
     ctx.fillText('CUPOLA OBSERVATION MODULE · NADIR VIEW 420KM', cx, cy + outerR + 24);
 
+    ctx.font = '500 8.5px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+    ctx.fillText('RADAR SCANNER ACTIVE · HOVER DEBRIS TO TRACK', cx, cy + outerR + 38);
+
     ctx.restore();
   }
 
@@ -628,14 +919,24 @@
     ctx.globalAlpha = 1.0;
 
     drawCurvedEarth();
+    drawReentryMeteors();
 
     if (mode === 'cupola') {
+      // 1. 창문 너머 420km 궤도 데브리 렌더링 (창틀 뒤로 가려져 입체감 극대화)
+      debrisList.forEach(d => drawDebrisCupola(d));
+
       const satX = ((timeTick * 28) % (width + 100)) - 50;
       const satY = height * 0.28 + Math.sin(timeTick * 0.4) * 40;
       ctx.fillStyle = 'rgba(186, 230, 253, 0.7)';
       ctx.fillRect(satX, satY, 2, 2);
 
+      // 2. 큐폴라 8각 관측 창문 프레임
       drawCupolaWindow();
+
+      // 3. 관측창 글래스 HUD (마우스/터치 타겟 레이더 락온)
+      if (hoveredDebris) {
+        drawObservationHUD(hoveredDebris);
+      }
       return;
     }
 
@@ -731,18 +1032,31 @@
     requestAnimationFrame(loop);
   }
 
-  function moveShipTarget(clientX, clientY) {
-    ship.targetX = clientX;
-    ship.targetY = Math.min(height * 0.65, clientY);
+  function handlePointer(clientX, clientY) {
+    mousePos.x = clientX;
+    mousePos.y = clientY;
+    mousePos.active = true;
+    if (mode === 'sweeper') {
+      ship.targetX = clientX;
+      ship.targetY = Math.min(height * 0.65, clientY);
+    }
   }
 
-  canvas.addEventListener('mousemove', (e) => moveShipTarget(e.clientX, e.clientY));
+  canvas.addEventListener('mousemove', (e) => handlePointer(e.clientX, e.clientY));
+  canvas.addEventListener('mouseleave', () => {
+    mousePos.active = false;
+    hoveredDebris = null;
+  });
+
   canvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length > 0) moveShipTarget(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length > 0) handlePointer(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
   canvas.addEventListener('touchmove', (e) => {
-    if (e.touches.length > 0) moveShipTarget(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length > 0) handlePointer(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
+  canvas.addEventListener('touchend', () => {
+    setTimeout(() => { mousePos.active = false; hoveredDebris = null; }, 3000);
+  });
 
   btnSweeper.addEventListener('click', () => {
     mode = 'sweeper';
@@ -750,6 +1064,8 @@
     btnCupola.classList.remove('active');
     topHeader.style.opacity = '1';
     telemetryCard.style.opacity = '1';
+    btnPulse.style.display = 'inline-block';
+    if (pulseSep) pulseSep.style.display = 'block';
   });
 
   btnCupola.addEventListener('click', () => {
@@ -758,6 +1074,8 @@
     btnSweeper.classList.remove('active');
     topHeader.style.opacity = '0.35';
     telemetryCard.style.opacity = '0';
+    btnPulse.style.display = 'none';
+    if (pulseSep) pulseSep.style.display = 'none';
   });
 
   btnPulse.addEventListener('click', () => {
