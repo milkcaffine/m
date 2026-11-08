@@ -198,6 +198,63 @@
             font-family: ui-monospace, monospace;
         }
         .tool-drawer-body .tool-cat-label:first-child { margin-top: 0.5rem; }
+
+        /* Interactive Fiction: 가로 슬라이드 + 텍스트 서랍 */
+        .fiction-carousel {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            padding-bottom: 0.6rem;
+            scrollbar-width: thin;
+            scrollbar-color: #27272a transparent;
+        }
+        .fiction-carousel::-webkit-scrollbar { height: 4px; }
+        .fiction-carousel::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        .fiction-card {
+            flex: 0 0 min(15.5rem, 78%);
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.9rem 1rem;
+            border-radius: 0.75rem;
+            background: rgba(24, 24, 27, 0.6);
+            border: 1px solid rgba(39, 39, 42, 0.8);
+            transition: border-color 0.2s ease;
+        }
+        .fiction-card:hover { border-color: rgba(14, 165, 233, 0.4); }
+        .fiction-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+        .fiction-card-title { color: #38bdf8; font-weight: 700; font-size: 0.875rem; line-height: 1.35; }
+        .fiction-card-title:hover { text-decoration: underline; }
+        .fiction-card-no { color: #71717a; font-size: 0.7rem; font-family: ui-monospace, monospace; flex-shrink: 0; }
+        .fiction-card-desc {
+            color: #a1a1aa;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex: 1;
+        }
+        .fiction-card-btn {
+            align-self: flex-start;
+            color: #38bdf8;
+            font-size: 0.72rem;
+            font-family: ui-monospace, monospace;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.3rem;
+            background: rgba(8, 47, 73, 0.4);
+            border: 1px solid rgba(7, 89, 133, 0.4);
+        }
+        .fiction-card-btn:hover { color: #7dd3fc; }
+        .fiction-drawer { display: none; margin-top: 0.75rem; }
+        .fiction-drawer.is-open { display: block; animation: fadeIn 0.25s ease; }
+        .fiction-list p { font-size: 0.875rem; line-height: 1.9; color: #a1a1aa; }
+        .fiction-list a { color: #a1a1aa; transition: color 0.2s ease; }
+        .fiction-list a:hover { color: #f4f4f5; text-decoration: underline; text-underline-offset: 3px; }
+        .fiction-list-tag { color: #52525b; font-size: 0.7rem; font-family: ui-monospace, monospace; margin-left: 0.4rem; }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -243,95 +300,50 @@
     </header>
 
     <!-- Interactive Fiction 섹션 -->
-    <section class="max-w-2xl mx-auto px-6 py-10">
-        <div class="flex items-center justify-between gap-3 mb-3">
-            <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500 flex items-center gap-2">
-                <span>Interactive Fiction</span>
-            </h2>
-            <div class="flex items-center gap-2">
-                <button type="button" id="fictionDrawerToggle" class="tool-drawer-toggle" aria-expanded="false" aria-controls="fictionDrawer">
-                    <span class="drawer-chevron" aria-hidden="true">▸</span>
-                    <span>all · <span id="fictionCount">3</span></span>
-                </button>
+    <section class="max-w-2xl mx-auto px-6 py-12">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 class="text-sm tracking-[0.22em] uppercase text-zinc-500">Interactive Fiction</h2>
+            <button type="button" id="fictionDrawerToggle" class="tool-drawer-toggle" aria-expanded="false" aria-controls="fictionDrawer">
+                <span class="drawer-chevron" aria-hidden="true">▸</span>
+                <span>all · <span id="fictionCount">0</span></span>
+            </button>
+        </div>
+
+        <!-- 최신/대표작만 얹는 가로 슬라이드 -->
+        <div class="fiction-carousel" id="fictionCarousel">
+            <div class="fiction-card">
+                <div class="fiction-card-top">
+                    <a href="sluice4.html" class="fiction-card-title">제4수문 앞의 가비지 컬렉션</a>
+                    <span class="fiction-card-no">#01</span>
+                </div>
+                <p class="fiction-card-desc">도쿄만 수문과 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 단편.</p>
+                <a href="sluice4.html" class="fiction-card-btn">▶ 단편 읽기 &amp; 수문</a>
+            </div>
+            <div class="fiction-card">
+                <div class="fiction-card-top">
+                    <a href="mita.html" class="fiction-card-title">미타: 도시의 봉합선</a>
+                    <span class="fiction-card-no">#02</span>
+                </div>
+                <p class="fiction-card-desc">타카나와 경계선과 열 갈래 선로. 잔류 기억을 쫓아 육교로 올라온 버려진 서비터.</p>
+                <a href="mita.html" class="fiction-card-btn">▶ 단편 읽기 &amp; 육교</a>
+            </div>
+            <div class="fiction-card">
+                <div class="fiction-card-top">
+                    <a href="cards.html" class="fiction-card-title">단편 카드 뷰어</a>
+                    <span class="fiction-card-no">CARDS</span>
+                </div>
+                <p class="fiction-card-desc">카페 우라이나리의 빗속 점장. 탭으로 넘기며 텍스트의 호흡에 집중하는 단편선.</p>
+                <a href="cards.html" class="fiction-card-btn">▶ 카드로 읽기</a>
             </div>
         </div>
 
-        <!-- 가로 슬라이드 컴팩트 카드 캐러셀 -->
-        <div class="flex gap-3 overflow-x-auto pb-3 pt-1 snap-x snap-mandatory -mx-2 px-2" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;">
-            <!-- 카드 1: sluice4 -->
-            <div class="snap-start shrink-0 w-[265px] sm:w-[285px] p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors flex flex-col justify-between">
-                <div>
-                    <div class="flex items-baseline justify-between gap-1 mb-1.5">
-                        <a href="sluice4.html" class="text-sky-400 font-bold hover:underline text-sm leading-snug">제4수문: 가비지 컬렉션</a>
-                        <span class="text-xs text-zinc-500 font-mono">#01</span>
-                    </div>
-                    <p class="text-xs text-zinc-400 leading-relaxed mb-3 line-clamp-3">
-                        도쿄만 수문과 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 인터랙티브 소설.
-                    </p>
-                </div>
-                <a href="sluice4.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40 w-fit">
-                    <span>▶ 수문 시뮬레이터</span>
-                </a>
-            </div>
-
-            <!-- 카드 2: mita -->
-            <div class="snap-start shrink-0 w-[265px] sm:w-[285px] p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors flex flex-col justify-between">
-                <div>
-                    <div class="flex items-baseline justify-between gap-1 mb-1.5">
-                        <a href="mita.html" class="text-sky-400 font-bold hover:underline text-sm leading-snug">미타: 도시의 봉합선</a>
-                        <span class="text-xs text-zinc-500 font-mono">#02</span>
-                    </div>
-                    <p class="text-xs text-zinc-400 leading-relaxed mb-3 line-clamp-3">
-                        타카나와 경계선과 열 갈래 선로. 잔류 기억을 쫓아 육교로 올라온 버려진 서비터.
-                    </p>
-                </div>
-                <a href="mita.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40 w-fit">
-                    <span>▶ 육교 시뮬레이터</span>
-                </a>
-            </div>
-
-            <!-- 카드 3: cards -->
-            <div class="snap-start shrink-0 w-[265px] sm:w-[285px] p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-sky-500/40 transition-colors flex flex-col justify-between">
-                <div>
-                    <div class="flex items-baseline justify-between gap-1 mb-1.5">
-                        <a href="cards.html" class="text-sky-400 font-bold hover:underline text-sm leading-snug">세계관 단편 카드 뷰어</a>
-                        <span class="text-xs text-sky-400 font-mono bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-800/50">CARDS</span>
-                    </div>
-                    <p class="text-xs text-zinc-400 leading-relaxed mb-3 line-clamp-3">
-                        카페 우라이나리의 빗속 안드로이드 점장. 텍스트의 호흡과 여백에 집중하는 탭 넘김 단편선.
-                    </p>
-                </div>
-                <a href="cards.html" class="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-mono bg-sky-950/40 px-2.5 py-1 rounded border border-sky-800/40 w-fit">
-                    <span>▶ 단편 카드 열기</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- 서랍식 텍스트 아카이브 목록 -->
-        <div id="fictionDrawer" class="mt-2" style="display: none;">
-            <div class="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60 text-xs text-zinc-400 space-y-2">
-                <div class="flex items-center justify-between pb-1.5 border-b border-zinc-800/50 text-zinc-500 font-mono text-[0.7rem]">
-                    <span>TITLE // ARCHIVE LIST</span>
-                    <span>TYPE</span>
-                </div>
-                <div class="space-y-1.5 font-mono">
-                    <div class="flex items-baseline justify-between gap-2">
-                        <a href="sluice4.html" class="text-zinc-300 hover:text-sky-300 transition-colors">x004F: 제4수문 앞의 가비지 컬렉션</a>
-                        <span class="text-zinc-600 shrink-0">Sim + Novel</span>
-                    </div>
-                    <div class="flex items-baseline justify-between gap-2">
-                        <a href="mita.html" class="text-zinc-300 hover:text-sky-300 transition-colors">미타: 도시의 봉합선 (三田)</a>
-                        <span class="text-zinc-600 shrink-0">Sim + Novel</span>
-                    </div>
-                    <div class="flex items-baseline justify-between gap-2">
-                        <a href="cards.html" class="text-zinc-300 hover:text-sky-300 transition-colors">카페 우라이나리의 새 점장 (외 2편)</a>
-                        <span class="text-sky-400 shrink-0">Story Cards</span>
-                    </div>
-                    <div class="flex items-baseline justify-between gap-2">
-                        <a href="rojiura.html" class="text-zinc-300 hover:text-sky-300 transition-colors">Rojiura 1.0m // 심야 차방 우라이나리</a>
-                        <span class="text-zinc-600 shrink-0">Canvas Walk</span>
-                    </div>
-                </div>
+        <!-- 전체 목록 서랍 (Tools와 같은 텍스트 스타일) -->
+        <div id="fictionDrawer" class="fiction-drawer">
+            <div class="fiction-list">
+                <p><a href="sluice4.html">제4수문 앞의 가비지 컬렉션</a> <span class="fiction-list-tag">sim</span></p>
+                <p><a href="mita.html">미타: 도시의 봉합선</a> <span class="fiction-list-tag">sim</span></p>
+                <p><a href="rojiura.html">우라이나리 골목 (rojiura)</a> <span class="fiction-list-tag">walk</span></p>
+                <p><a href="cards.html#urainari">카페 우라이나리의 새 점장</a> <span class="fiction-list-tag">cards</span></p>
             </div>
         </div>
     </section>
@@ -836,12 +848,16 @@
 
         const fictionDrawerToggle = document.getElementById('fictionDrawerToggle');
         const fictionDrawer = document.getElementById('fictionDrawer');
+        const fictionCount = document.getElementById('fictionCount');
+        if (fictionCount && fictionDrawer) {
+            fictionCount.textContent = String(fictionDrawer.querySelectorAll('.fiction-list p').length);
+        }
         if (fictionDrawerToggle && fictionDrawer) {
             fictionDrawerToggle.addEventListener('click', () => {
-                const isOpen = fictionDrawer.style.display !== 'none';
-                fictionDrawer.style.display = isOpen ? 'none' : 'block';
-                fictionDrawerToggle.classList.toggle('is-open', !isOpen);
-                fictionDrawerToggle.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+                const open = !fictionDrawer.classList.contains('is-open');
+                fictionDrawer.classList.toggle('is-open', open);
+                fictionDrawerToggle.classList.toggle('is-open', open);
+                fictionDrawerToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
             });
         }
 
