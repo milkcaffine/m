@@ -224,10 +224,8 @@
             transition: border-color 0.2s ease;
         }
         .fiction-card:hover { border-color: rgba(14, 165, 233, 0.4); }
-        .fiction-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
         .fiction-card-title { color: #38bdf8; font-weight: 700; font-size: 0.875rem; line-height: 1.35; }
         .fiction-card-title:hover { text-decoration: underline; }
-        .fiction-card-no { color: #71717a; font-size: 0.7rem; font-family: ui-monospace, monospace; flex-shrink: 0; }
         .fiction-card-desc {
             color: #a1a1aa;
             font-size: 0.75rem;
@@ -238,8 +236,8 @@
             overflow: hidden;
             flex: 1;
         }
+        .fiction-card-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
         .fiction-card-btn {
-            align-self: flex-start;
             color: #38bdf8;
             font-size: 0.72rem;
             font-family: ui-monospace, monospace;
@@ -249,12 +247,14 @@
             border: 1px solid rgba(7, 89, 133, 0.4);
         }
         .fiction-card-btn:hover { color: #7dd3fc; }
+        .fiction-card-btn.is-alt { color: #a1a1aa; background: rgba(39, 39, 42, 0.5); border-color: rgba(63, 63, 70, 0.6); }
+        .fiction-card-btn.is-alt:hover { color: #f4f4f5; }
         .fiction-drawer { display: none; margin-top: 0.75rem; }
         .fiction-drawer.is-open { display: block; animation: fadeIn 0.25s ease; }
         .fiction-list p { font-size: 0.875rem; line-height: 1.9; color: #a1a1aa; }
-        .fiction-list a { color: #a1a1aa; transition: color 0.2s ease; }
-        .fiction-list a:hover { color: #f4f4f5; text-decoration: underline; text-underline-offset: 3px; }
-        .fiction-list-tag { color: #52525b; font-size: 0.7rem; font-family: ui-monospace, monospace; margin-left: 0.4rem; }
+        .fiction-list-title { color: #d4d4d8; }
+        .fiction-list-tag { color: #52525b; font-size: 0.7rem; font-family: ui-monospace, monospace; margin-left: 0.5rem; transition: color 0.2s ease; }
+        .fiction-list-tag:hover { color: #38bdf8; text-decoration: underline; text-underline-offset: 3px; }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -312,38 +312,37 @@
         <!-- 최신/대표작만 얹는 가로 슬라이드 -->
         <div class="fiction-carousel" id="fictionCarousel">
             <div class="fiction-card">
-                <div class="fiction-card-top">
-                    <a href="sluice4.html" class="fiction-card-title">제4수문 앞의 가비지 컬렉션</a>
-                    <span class="fiction-card-no">#01</span>
+                <a href="rojiura.html" class="fiction-card-title">우라이나리 골목</a>
+                <p class="fiction-card-desc">폭 1m 비유클리드 골목과 심야 카페 우라이나리. 빗속에서 울고 있는 새 점장을 만나는 이야기.</p>
+                <div class="fiction-card-actions">
+                    <a href="rojiura.html" class="fiction-card-btn">▶ 골목 걷기</a>
+                    <a href="cards.html#urainari" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
                 </div>
-                <p class="fiction-card-desc">도쿄만 수문과 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 단편.</p>
-                <a href="sluice4.html" class="fiction-card-btn">▶ 단편 읽기 &amp; 수문</a>
             </div>
             <div class="fiction-card">
-                <div class="fiction-card-top">
-                    <a href="mita.html" class="fiction-card-title">미타: 도시의 봉합선</a>
-                    <span class="fiction-card-no">#02</span>
-                </div>
+                <a href="mita.html" class="fiction-card-title">미타: 도시의 봉합선</a>
                 <p class="fiction-card-desc">타카나와 경계선과 열 갈래 선로. 잔류 기억을 쫓아 육교로 올라온 버려진 서비터.</p>
-                <a href="mita.html" class="fiction-card-btn">▶ 단편 읽기 &amp; 육교</a>
+                <div class="fiction-card-actions">
+                    <a href="mita.html" class="fiction-card-btn">▶ 육교 인터랙티브</a>
+                    <a href="cards.html#mita" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
+                </div>
             </div>
             <div class="fiction-card">
-                <div class="fiction-card-top">
-                    <a href="cards.html" class="fiction-card-title">단편 카드 뷰어</a>
-                    <span class="fiction-card-no">CARDS</span>
+                <a href="sluice4.html" class="fiction-card-title">제4수문 앞의 가비지 컬렉션</a>
+                <p class="fiction-card-desc">도쿄만 수문과 유기 냉각수 운하. 잉여 의식들이 방류되는 순간을 마주하는 단편.</p>
+                <div class="fiction-card-actions">
+                    <a href="sluice4.html" class="fiction-card-btn">▶ 수문 인터랙티브</a>
+                    <a href="cards.html#sluice4" class="fiction-card-btn is-alt">📖 카드로 읽기</a>
                 </div>
-                <p class="fiction-card-desc">카페 우라이나리의 빗속 점장. 탭으로 넘기며 텍스트의 호흡에 집중하는 단편선.</p>
-                <a href="cards.html" class="fiction-card-btn">▶ 카드로 읽기</a>
             </div>
         </div>
 
         <!-- 전체 목록 서랍 (Tools와 같은 텍스트 스타일) -->
         <div id="fictionDrawer" class="fiction-drawer">
             <div class="fiction-list">
-                <p><a href="sluice4.html">제4수문 앞의 가비지 컬렉션</a> <span class="fiction-list-tag">sim</span></p>
-                <p><a href="mita.html">미타: 도시의 봉합선</a> <span class="fiction-list-tag">sim</span></p>
-                <p><a href="rojiura.html">우라이나리 골목 (rojiura)</a> <span class="fiction-list-tag">walk</span></p>
-                <p><a href="cards.html#urainari">카페 우라이나리의 새 점장</a> <span class="fiction-list-tag">cards</span></p>
+                <p><span class="fiction-list-title">우라이나리 골목</span> <a href="rojiura.html" class="fiction-list-tag">interactive</a> <a href="cards.html#urainari" class="fiction-list-tag">cards</a></p>
+                <p><span class="fiction-list-title">미타: 도시의 봉합선</span> <a href="mita.html" class="fiction-list-tag">interactive</a> <a href="cards.html#mita" class="fiction-list-tag">cards</a></p>
+                <p><span class="fiction-list-title">제4수문 앞의 가비지 컬렉션</span> <a href="sluice4.html" class="fiction-list-tag">interactive</a> <a href="cards.html#sluice4" class="fiction-list-tag">cards</a></p>
             </div>
         </div>
     </section>
