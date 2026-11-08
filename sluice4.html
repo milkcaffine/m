@@ -338,6 +338,60 @@
       .control-dock { bottom: 12px; padding: 6px 10px; gap: 6px; }
       .gate-btn { padding: 5px 8px; font-size: 0.68rem; }
     }
+
+    /* 소설 말미 원본 사진 아카이브 박스 */
+    .story-origin-box {
+      margin-top: 48px;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+    }
+    .story-origin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+    }
+    .story-origin-label {
+      color: #38bdf8;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .story-origin-meta {
+      color: #64748b;
+    }
+    .story-origin-frame {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #000;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+    .story-origin-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+    .story-origin-frame:hover .story-origin-img {
+      transform: scale(1.02);
+    }
+    .story-origin-caption {
+      margin-top: 10px;
+      font-size: 0.76rem;
+      color: #94a3b8;
+      line-height: 1.6;
+      font-family: 'IBM Plex Mono', -apple-system, sans-serif;
+    }
+    .story-origin-caption strong {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -465,6 +519,20 @@
       <p>
         수문 위의 낡은 제어실 창문 너머로, 누군가 혹은 무언가가 찰칵, 하고 보이지 않는 셔터를 누른 것 같은 기분이 들었다. 나는 천천히 뒷걸음질 쳐 산책로의 짙은 그림자 속으로 몸을 숨겼다.
       </p>
+
+      <!-- 원본 사진 아카이브 -->
+      <div class="story-origin-box">
+        <div class="story-origin-header">
+          <span class="story-origin-label">// FIELD ARCHIVE & ORIGIN</span>
+          <span class="story-origin-meta">SERIES #01</span>
+        </div>
+        <div class="story-origin-frame">
+          <img src="images/sluice4-origin.jpg" alt="도쿄만 시바우라 제4수문과 운하 실제 사진" class="story-origin-img" loading="lazy">
+        </div>
+        <div class="story-origin-caption">
+          <strong>도쿄만 시바우라 제4수문 (Shibaura Sluice Gate No. 4)</strong> — 거대한 유리 빌딩 단면과 운하. 소설 속 물리적 방화벽과 배출구(The Heap)의 모티브가 된 실제 수문.
+        </div>
+      </div>
     </div>
   </div>
 </div>

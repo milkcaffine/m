@@ -323,6 +323,60 @@
       .control-dock { bottom: 10px; padding: 5px 8px; gap: 5px; max-width: calc(100% - 16px); }
       .action-btn { padding: 4px 7px; font-size: 0.66rem; }
     }
+
+    /* 소설 말미 원본 사진 아카이브 박스 */
+    .story-origin-box {
+      margin-top: 48px;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: rgba(10, 15, 26, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+    }
+    .story-origin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+    }
+    .story-origin-label {
+      color: #38bdf8;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .story-origin-meta {
+      color: #64748b;
+    }
+    .story-origin-frame {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #000;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+    .story-origin-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+    .story-origin-frame:hover .story-origin-img {
+      transform: scale(1.02);
+    }
+    .story-origin-caption {
+      margin-top: 10px;
+      font-size: 0.76rem;
+      color: #94a3b8;
+      line-height: 1.6;
+      font-family: 'IBM Plex Mono', -apple-system, sans-serif;
+    }
+    .story-origin-caption strong {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -414,6 +468,20 @@
         바람이 불자 미타의 낡은 전선들이 파도처럼 흔들렸다.<br>
         버려진 로봇의 렌즈 표면에, 지나가는 열차의 차가운 헤드라이트가 한 줄기 하얀 선으로 그어졌다 사라졌다.
       </p>
+
+      <!-- 원본 사진 아카이브 -->
+      <div class="story-origin-box">
+        <div class="story-origin-header">
+          <span class="story-origin-label">// FIELD ARCHIVE & ORIGIN</span>
+          <span class="story-origin-meta">SERIES #02</span>
+        </div>
+        <div class="story-origin-frame">
+          <img src="images/mita-origin.jpg" alt="도쿄 미타 육교 명판 (三田 Mita) 실제 사진" class="story-origin-img" loading="lazy">
+        </div>
+        <div class="story-origin-caption">
+          <strong>도쿄 미타 육교 (三田 Mita)</strong> — 타카나와 게이트웨이와 미타 사이 경계선. 소설과 인터랙션의 출발점이 된 실제 육교의 오래된 명판.
+        </div>
+      </div>
     </div>
   </div>
 </div>
