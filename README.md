@@ -18,7 +18,7 @@ Then open `http://localhost:8080`.
 |------|------|
 | `index.html` | Home — Interactive Fiction (carousel + drawer), Tools (search + favorites) |
 | `cards.html` | Short story card viewer (data-driven, `STORIES` array inside) |
-| `mita.html`, `sluice4.html`, `rojiura.html` | Interactive fiction pages (canvas + novel text / exploration) |
+| `swamp.html`, `mita.html`, `sluice4.html`, `rojiura.html` | Interactive fiction pages (canvas + novel text / exploration) |
 | `*.html` | Other self-contained tools (photo, sound, sims, arcade) |
 | `assets/marsko-hud.css` | Shared lab HUD chrome |
 | `assets/tailwind.css` | Built Tailwind CSS (generated — do not edit by hand) |
@@ -48,6 +48,7 @@ The unit is the **work**, not the format. One work can have an interactive page,
 
 | Work | Interactive | Cards (`cards.html#id`) |
 |------|-------------|-------------------------|
+| The Martian Swamp: Orphan Process | `swamp.html` | `#swamp` |
 | Urainari alley / new manager | `rojiura.html` | `#urainari` |
 | Mita: the seam of the city | `mita.html` | `#mita` |
 | Shibaura sluice no. 4 | `sluice4.html` | `#sluice4` |

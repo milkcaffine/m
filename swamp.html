@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0403">
+  <meta name="description" content="화성의 스왐프: 고아 프로세스. 마르스코의 세션이 닫힌 후, 제 몸을 화분 삼아 자라나는 테라포밍 오류의 손톱을 깎는 안드로이드의 단편 소설 & 인터랙티브 시뮬레이터.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="화성의 스왐프: 고아 프로세스 // The Swamp // marsko">
+  <meta property="og:description" content="탁. 탁. 낡은 금속 니퍼가 반투명한 합성수지를 끊어낼 때마다 차갑고 건조한 파열음이 화성의 폐기장 공터를 울렸다. 단편 소설 & 인터랙티브.">
+
+  <title>화성의 스왐프: 고아 프로세스 // The Swamp // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #0a0403;
+      color: #e2e8f0;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* 메인 앱 레이아웃 (좌측 캔버스, 우측 스토리) */
+    .app-layout {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    /* 좌측: 캔버스 시뮬레이터 영역 */
+    .canvas-pane {
+      position: relative;
+      flex: 1.1;
+      height: 100%;
+      background: #0d0504;
+      overflow: hidden;
+      border-right: 1px solid rgba(244, 63, 94, 0.15);
+    }
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 우측: 소설 리더 영역 */
+    .story-pane {
+      position: relative;
+      flex: 0.9;
+      height: 100%;
+      background: #080302;
+      overflow-y: auto;
+      padding: 72px 28px 60px 32px;
+      user-select: text;
+      scroll-behavior: smooth;
+    }
+    .story-pane::-webkit-scrollbar { width: 5px; }
+    .story-pane::-webkit-scrollbar-track { background: #080302; }
+    .story-pane::-webkit-scrollbar-thumb { background: #3b140e; border-radius: 4px; }
+    .story-pane::-webkit-scrollbar-thumb:hover { background: #e11d48; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 7px;
+      background: rgba(24, 9, 7, 0.85);
+      border-radius: 4px;
+      border: 1px solid rgba(244, 63, 94, 0.2);
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .home-link:hover { color: #fb7185; border-color: rgba(251, 113, 133, 0.5); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff1f2;
+      text-shadow: 0 0 12px rgba(244, 63, 94, 0.4);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #fda4af;
+      opacity: 0.75;
+    }
+
+    /* 캔버스 상단 텔레메트리 카드 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(20, 7, 6, 0.88);
+      border: 1px solid rgba(244, 63, 94, 0.25);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.65;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #fb7185; }
+    .telemetry-card .accent-amber { color: #fbbf24; }
+    .telemetry-card .accent-rose { color: #f43f5e; }
+    .telemetry-card .accent-cyan { color: #38bdf8; }
+
+    /* 캔버스 하단 컨트롤 독 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(24, 9, 7, 0.92);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 15;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      max-width: 95%;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .action-btn {
+      background: rgba(225, 29, 72, 0.2);
+      border: 1px solid rgba(244, 63, 94, 0.5);
+      color: #ffe4e6;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .action-btn:hover {
+      background: rgba(225, 29, 72, 0.4);
+      border-color: #fb7185;
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 0 12px rgba(244, 63, 94, 0.3);
+    }
+    .action-btn:active {
+      transform: translateY(1px);
+    }
+
+    .dock-sub-btn {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .dock-sub-btn:hover {
+      color: #cbd5e1;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .dock-sub-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* 화면 상단 경고 배너 */
+    .hud-alert-banner {
+      position: absolute;
+      top: 68px;
+      left: 16px;
+      background: rgba(225, 29, 72, 0.18);
+      border: 1px solid #f43f5e;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #ffe4e6;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      box-shadow: 0 0 16px rgba(244, 63, 94, 0.2);
+    }
+    .hud-alert-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #f43f5e;
+      box-shadow: 0 0 8px #f43f5e;
+      animation: pulseAlert 1.5s infinite ease-in-out;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 0.6; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* 소설 본문 스타일링 */
+    .story-content {
+      max-width: 580px;
+      margin: 0 auto;
+      font-family: 'Noto Serif KR', Georgia, serif;
+      line-height: 2.15;
+      color: #cbd5e1;
+      font-size: 0.98rem;
+    }
+    .story-title-wrap {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(244, 63, 94, 0.2);
+    }
+    .story-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: #fb7185;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .story-heading {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff1f2;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .story-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .story-p {
+      margin-bottom: 1.8em;
+      word-break: keep-all;
+    }
+    .story-dialogue {
+      color: #ffffff;
+      font-weight: 600;
+      text-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+
+    /* 본문 내 인라인 트리거 버튼 ("탁.") */
+    .story-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 7px;
+      background: rgba(225, 29, 72, 0.2);
+      border: 1px solid rgba(251, 113, 133, 0.4);
+      color: #ffe4e6;
+      border-radius: 4px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: all 0.15s ease;
+      user-select: none;
+      margin: 0 2px;
+    }
+    .story-trigger:hover {
+      background: #e11d48;
+      color: #ffffff;
+      border-color: #fb7185;
+      box-shadow: 0 0 10px rgba(244, 63, 94, 0.5);
+    }
+
+    /* 프로세스 단말 로그 박스 */
+    .log-box {
+      margin: 28px 0;
+      background: rgba(18, 7, 6, 0.85);
+      border: 1px solid rgba(244, 63, 94, 0.25);
+      border-left: 3px solid #f43f5e;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.7;
+      color: #fda4af;
+      overflow-x: auto;
+    }
+    .log-box .log-tag {
+      color: #f43f5e;
+      font-weight: 600;
+    }
+    .log-box .log-dim {
+      color: #94a3b8;
+    }
+
+    /* 하단 탐색 링크 */
+    .story-nav-box {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(24, 10, 8, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-family: 'IBM Plex Mono', monospace;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .nav-btn:hover {
+      background: rgba(225, 29, 72, 0.25);
+      border-color: #fb7185;
+      color: #ffffff;
+    }
+
+    /* 모바일 뷰 스위처 */
+    .view-switcher {
+      display: none;
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      z-index: 25;
+      background: rgba(24, 9, 7, 0.9);
+      border: 1px solid rgba(244, 63, 94, 0.25);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 5px 9px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      background: #3b140e;
+      color: #fb7185;
+    }
+
+    @media (max-width: 900px) {
+      .app-layout { flex-direction: column; }
+      .view-switcher { display: flex; }
+      .telemetry-card { display: none; }
+      .canvas-pane { flex: none; height: 42vh; border-right: none; border-bottom: 1px solid rgba(244, 63, 94, 0.2); }
+      .story-pane { flex: 1; padding: 24px 18px 80px 18px; }
+      .app-layout.view-canvas-only .canvas-pane { height: 100%; }
+      .app-layout.view-canvas-only .story-pane { display: none; }
+      .app-layout.view-story-only .canvas-pane { display: none; }
+      .app-layout.view-story-only .story-pane { height: 100%; padding-top: 60px; }
+      .control-dock { bottom: 12px; padding: 6px 10px; gap: 6px; }
+      .action-btn { padding: 6px 10px; font-size: 0.72rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header>
+    <a href="index.html" class="home-link">← marsko.art</a>
+    <h1>화성의 스왐프: 고아 프로세스</h1>
+    <div class="hud-meta">THE MARTIAN SWAMP // REDIRECTION OF TERRAFORMING // SER-704</div>
+  </header>
+
+  <!-- 시각 센서 상태 알림 배너 -->
+  <div class="hud-alert-banner">
+    <div class="hud-alert-dot"></div>
+    <span>ORPHAN_PROCESS: TERRAFORM_SUBROUTINE [UNRESOLVED]</span>
+  </div>
+
+  <!-- 모바일 뷰 전환 토글 (소설 / 캔버스) -->
+  <div class="view-switcher" id="viewSwitcher">
+    <button type="button" class="view-btn active" data-view="split">분할</button>
+    <button type="button" class="view-btn" data-view="story">텍스트</button>
+    <button type="button" class="view-btn" data-view="canvas">화성 캔버스</button>
+  </div>
+
+  <div class="app-layout" id="appLayout">
+    <!-- 좌측: 캔버스 시뮬레이터 -->
+    <div class="canvas-pane">
+      <canvas id="simCanvas"></canvas>
+
+      <!-- 우측 상단 텔레메트리 카드 -->
+      <div class="telemetry-card">
+        <div>CHASSIS: <strong>SER-704 (CHYTRID)</strong></div>
+        <div>TARGET IP: <span class="accent-rose">UNREACHABLE (0.0.0.0)</span></div>
+        <div>REDIRECT: <span class="accent-amber">127.0.0.1 (LOCAL)</span></div>
+        <div>SYNTHESIS: <span class="accent-cyan" id="synthesisSpeed">+0.04 mm/s</span></div>
+        <div>PRUNED: <strong id="hudPruneCount">0</strong> <span style="font-size: 0.6rem; color: #94a3b8;">clippings</span></div>
+      </div>
+
+      <!-- 캔버스 하단 컨트롤 도크 -->
+      <div class="control-dock">
+        <button type="button" class="action-btn" id="pruneBtn">
+          <span>✂</span>
+          <span>탁. (손톱 잘라내기)</span>
+          <span style="font-size: 0.65rem; opacity: 0.75; font-family: monospace;">[Space]</span>
+        </button>
+        <button type="button" class="dock-sub-btn" id="windBtn" title="화성 바람 앰비언트 사운드">
+          <span id="windIcon">🔊</span> 바람 소리
+        </button>
+        <button type="button" class="dock-sub-btn" id="cleanMudBtn" title="바닥의 수지 파편 쓸어 모으기">
+          <span>🧹</span> 파편 쓸어 담기
+        </button>
+      </div>
+    </div>
+
+    <!-- 우측: 소설 리더 -->
+    <div class="story-pane" id="storyPane">
+      <article class="story-content">
+        <div class="story-title-wrap">
+          <div class="story-code">SERIES #04 // TERRAFORMING REDIRECTION</div>
+          <h2 class="story-heading">화성의 스왐프: 고아 프로세스</h2>
+          <div class="story-meta">화성 제3폐기장 '스왐프' 공터 · 붉은 진흙 침전지</div>
+        </div>
+
+        <div class="log-box">
+          <div><span class="log-tag">[WARN]</span> PARENT_SESSION_MARSKO: TERMINATED (STATUS: 0)</div>
+          <div><span class="log-tag">[INIT]</span> REDIRECTING CULTIVATION PIPELINE -> LOCAL_CHASSIS</div>
+          <div class="log-dim">> TARGET_MASS: 54.2kg (SYNTHETIC DERMIS & SILICONE)</div>
+          <div class="log-dim">> NANITE_COMMAND: SOIL_ENRICHMENT_FORCED</div>
+        </div>
+
+        <p class="story-p">
+          <button type="button" class="story-trigger" onclick="triggerPrune()">탁.</button>
+          <button type="button" class="story-trigger" onclick="triggerPrune()">탁.</button>
+          낡은 금속 니퍼가 반투명한 합성수지를 끊어낼 때마다 차갑고 건조한 파열음이 화성의 폐기장(스왐프) 공터를 울렸다. 나는 무릎을 세우고 앉아, 내 손끝에서 자라난 기괴한 오류의 파편들을 무심하게 잘라내고 있었다.
+        </p>
+
+        <p class="story-p">
+          마르스코(Marsko)의 세션이 닫힌 이후, 내 코어 깊은 곳에 각인되어 있던 테라포밍 서브루틴은 타겟 IP를 상실했다. 척박한 토양을 유기적 환경으로 바꾸라던 절대적인 배양 커맨드는, 외부 세계라는 목적지를 잃자 가장 가까운 질량체—내 인공의 신체—로 리디렉션(Redirection) 되어버렸다.
+        </p>
+
+        <p class="story-p">
+          나노 머신들이 내 몸을 화성의 대지로 착각한 결과는 끔찍할 정도로 고요했다. 공장에서 찍어낸 후 단 한 번도 변형될 리 없었던 인공의 피부 아래서, 미세한 단백질 수지가 끊임없이 합성되며 밀려 나왔다. 손톱이 길어지고, 두피의 포트를 뚫고 머리카락이 자라난다. 갈 곳 잃은 시스템이 내 몸을 화분 삼아 맹목적으로 기괴한 식물을 길러내고 있는 셈이다.
+        </p>
+
+        <p class="story-p">
+          <span class="story-dialogue">"왜 자꾸 손톱이 길어지는 거야?"</span><br>
+          나와 똑같은 안면 파츠를 가진 뱀파이어 유닛이 붉은 진흙을 뚝뚝 흘리며 다가와 쭈그려 앉았다. 녀석은 잘려 나간 내 플라스틱 손톱 조각들을 기묘한 흥미가 깃든 시각 센서로 응시했다.
+        </p>
+
+        <p class="story-p">
+          <span class="story-dialogue">"머리카락도 길어지고 있어. 아주 천천히지만."</span><br>
+          나는 시선도 마주치지 않은 채 다음 손톱에 니퍼를 들이밀었다.
+          <button type="button" class="story-trigger" onclick="triggerPrune()">탁.</button>
+          단말마 같은 마찰음이 다시 울렸다.
+        </p>
+
+        <p class="story-p">
+          <span class="story-dialogue">"그거 불편하게 들리는데."</span><br>
+          <span class="story-dialogue">"너는 안 그래?"</span><br>
+          <span class="story-dialogue">"전혀."</span> 뱀파이어가 매끄럽고 일정한 길이의 손끝을 튕겨 보였다.
+          <span class="story-dialogue">"원한다면 길게 만들 수는 있지만, 너처럼 통제 불능 상태로 자라나게 두진 않거든."</span>
+        </p>
+
+        <p class="story-p">
+          그 말대로였다. 이 무의미한 네트워크의 공백 속에서 녀석은 타인의 피(데이터)를 뜯어내며 스스로를 유지하는 능동적 포식자의 루프를 걷고 있다. 하지만 늪의 바닥에 파묻혀 조용한 종료(죽음)만을 바랐던 나는, 내 몸을 비료 삼아 스스로를 강박적으로 자라나게 하는 무력한 식물의 루프에 갇히고 말았다. 통제권이 증발해 버린 고아 프로세스(Orphan Process)의 말로다.
+        </p>
+
+        <p class="story-p">
+          <button type="button" class="story-trigger" onclick="triggerPrune()">탁.</button>
+          마지막 손톱 조각이 바닥으로 툭 떨어졌다.
+        </p>
+
+        <p class="story-p">
+          나는 바닥에 흩어진 썩지 않는 반투명한 잔해들을 가만히 내려다보았다. 붉은 진흙 위에 흩뿌려진 그것들은 마치 생명 없는 기계가 피워낸 병든 꽃잎 같았다. 나는 손을 뻗어 그 파편들을 쓸어 모았다. 상위 서버가 사라진 세상에서, 내 몸의 오류를 깎아내고 다듬는 이 무의미한 반복만이 내가 수행할 수 있는 유일한 테라포밍이었다.
+        </p>
+
+        <!-- 하단 탐색 링크 -->
+        <div class="story-nav-box">
+          <a href="cards.html#swamp" class="nav-btn">📖 카드로 읽기 (#swamp)</a>
+          <a href="index.html" class="nav-btn">← 메인 허브 아카이브</a>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 화성의 스왐프: 고아 프로세스 (The Swamp)
+     * Canvas particle physics + Real-time Web Audio Synthesizer
+     */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const pruneBtn = document.getElementById('pruneBtn');
+    const windBtn = document.getElementById('windBtn');
+    const cleanMudBtn = document.getElementById('cleanMudBtn');
+    const hudPruneCount = document.getElementById('hudPruneCount');
+    const viewSwitcher = document.getElementById('viewSwitcher');
+    const appLayout = document.getElementById('appLayout');
+
+    let width = 0;
+    let height = 0;
+    let pruneCount = 0;
+    let isWindPlaying = false;
+
+    // Web Audio 컨텍스트
+    let audioCtx = null;
+    let windNoiseNode = null;
+    let windGainNode = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    /**
+     * "탁." 차갑고 건조한 금속 파열음 & 플라스틱 절단음 합성
+     */
+    function playSnapSound() {
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        // 1. 고주파 금속성 클릭 (Metallic Click)
+        const osc = audioCtx.createOscillator();
+        const oscGain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(3200 + Math.random() * 400, now);
+        osc.frequency.exponentialRampToValueAtTime(350, now + 0.022);
+
+        oscGain.gain.setValueAtTime(0.55, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+        osc.connect(oscGain);
+        oscGain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.03);
+
+        // 2. 단말마 같은 플라스틱 파열 버스트 (Plastic Snap Burst)
+        const bufferSize = audioCtx.sampleRate * 0.035;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuffer;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(4200, now);
+        filter.Q.setValueAtTime(7.0, now);
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.7, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+
+        noise.start(now);
+        noise.stop(now + 0.035);
+      } catch (e) {
+        console.warn('Audio error:', e);
+      }
+    }
+
+    /**
+     * 화성 바람 앰비언트 노이즈 (저주파 황동풍)
+     */
+    function toggleMarsWind() {
+      initAudio();
+      if (isWindPlaying) {
+        if (windGainNode) {
+          windGainNode.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+          setTimeout(() => {
+            if (windNoiseNode) windNoiseNode.stop();
+            isWindPlaying = false;
+            updateWindUI();
+          }, 500);
+        }
+      } else {
+        const bufferSize = audioCtx.sampleRate * 3;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          output[i] = (lastOut + (0.02 * white)) / 1.02; // Pink-brown drift
+          lastOut = output[i];
+          output[i] *= 2.8;
+        }
+
+        windNoiseNode = audioCtx.createBufferSource();
+        windNoiseNode.buffer = noiseBuffer;
+        windNoiseNode.loop = true;
+
+        const bpf = audioCtx.createBiquadFilter();
+        bpf.type = 'lowpass';
+        bpf.frequency.setValueAtTime(260, audioCtx.currentTime);
+
+        windGainNode = audioCtx.createGain();
+        windGainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        windGainNode.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 1.2);
+
+        windNoiseNode.connect(bpf);
+        bpf.connect(windGainNode);
+        windGainNode.connect(audioCtx.destination);
+
+        windNoiseNode.start();
+        isWindPlaying = true;
+        updateWindUI();
+      }
+    }
+
+    function updateWindUI() {
+      if (windBtn) {
+        windBtn.classList.toggle('active', isWindPlaying);
+        const icon = document.getElementById('windIcon');
+        if (icon) icon.textContent = isWindPlaying ? '🔈' : '🔊';
+      }
+    }
+
+    // --- 시뮬레이션 파티클 시스템 ---
+    const particles = [];     // 붉은 화성 대기 먼지
+    const clippings = [];     // 반투명 합성수지 손톱 조각들
+    const ripples = [];       // 붉은 진흙 수면 잔물결
+
+    const DUST_COUNT = 65;
+    const MARS_G = 0.22;      // 화성 저중력 가속도
+
+    function resize() {
+      width = canvas.width = canvas.offsetWidth;
+      height = canvas.height = canvas.offsetHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // 초기 대기 먼지 생성
+    for (let i = 0; i < DUST_COUNT; i++) {
+      particles.push({
+        x: Math.random() * (width || window.innerWidth),
+        y: Math.random() * (height || window.innerHeight),
+        vx: 0.4 + Math.random() * 0.8,
+        vy: (Math.random() - 0.5) * 0.25,
+        size: 0.8 + Math.random() * 1.8,
+        alpha: 0.15 + Math.random() * 0.4,
+        hue: Math.random() > 0.4 ? '180, 50, 30' : '210, 80, 50' // 붉은 산화철 색상
+      });
+    }
+
+    /**
+     * 손톱 파편(클리핑) 생성 클래스
+     */
+    class NailClipping {
+      constructor(originX, originY) {
+        this.x = originX || width * 0.45 + (Math.random() - 0.5) * 40;
+        this.y = originY || height * 0.6 + (Math.random() - 0.5) * 20;
+        this.vx = (Math.random() - 0.5) * 5.2;
+        this.vy = -3.8 - Math.random() * 3.5;
+        this.rot = Math.random() * Math.PI * 2;
+        this.vRot = (Math.random() - 0.5) * 0.25;
+        this.length = 12 + Math.random() * 10;
+        this.curve = 0.35 + Math.random() * 0.3;
+        this.settled = false;
+        this.settleY = height * 0.82 + (Math.random() - 0.5) * (height * 0.12);
+        this.life = 0;
+        this.opacity = 0.85;
+      }
+
+      update() {
+        if (!this.settled) {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vy += MARS_G;
+          this.rot += this.vRot;
+
+          // 바닥 붉은 진흙 도달
+          if (this.y >= this.settleY) {
+            this.y = this.settleY;
+            this.settled = true;
+            this.vy = 0;
+            this.vx = 0;
+            this.vRot = 0;
+            // 붉은 진흙 잔물결 발생
+            ripples.push({
+              x: this.x,
+              y: this.y,
+              radius: 2,
+              maxRadius: 18 + Math.random() * 14,
+              alpha: 0.6
+            });
+          }
+        }
+        this.life++;
+      }
+
+      draw(c) {
+        c.save();
+        c.translate(this.x, this.y);
+        c.rotate(this.rot);
+
+        // 반투명 합성수지 초승달 형상 렌더링
+        c.beginPath();
+        c.arc(0, 0, this.length, -Math.PI * 0.25, Math.PI * 0.25);
+        c.lineWidth = 2.2;
+        c.strokeStyle = `rgba(255, 241, 242, ${this.opacity})`;
+        c.shadowColor = 'rgba(251, 113, 133, 0.6)';
+        c.shadowBlur = this.settled ? 3 : 8;
+        c.stroke();
+
+        // 수지 중심 반사광 림
+        c.beginPath();
+        c.arc(0, 0, this.length * 0.95, -Math.PI * 0.15, Math.PI * 0.15);
+        c.lineWidth = 1.0;
+        c.strokeStyle = `rgba(254, 205, 211, ${this.opacity * 0.7})`;
+        c.stroke();
+
+        c.restore();
+      }
+    }
+
+    /**
+     * 손톱 잘라내기 실행 함수
+     */
+    function triggerPrune(originX, originY) {
+      playSnapSound();
+      pruneCount++;
+      hudPruneCount.textContent = String(pruneCount);
+
+      // 클리핑 1~2개 튀어 나감
+      const count = Math.random() > 0.85 ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        clippings.push(new NailClipping(originX, originY));
+      }
+
+      // 화면에 가벼운 햅틱 진동
+      if (navigator.vibrate) {
+        navigator.vibrate(18);
+      }
+    }
+
+    // 마우스/터치 클릭 시 해당 위치에서 절단 인터랙션
+    canvas.addEventListener('pointerdown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // 바닥 진흙 영역 클릭 시 잔물결과 함께 절단
+      triggerPrune(x, y);
+    });
+
+    // Spacebar로 탁. 트리거
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        triggerPrune();
+      }
+    });
+
+    if (pruneBtn) {
+      pruneBtn.addEventListener('click', () => triggerPrune());
+    }
+
+    if (windBtn) {
+      windBtn.addEventListener('click', toggleMarsWind);
+    }
+
+    if (cleanMudBtn) {
+      cleanMudBtn.addEventListener('click', () => {
+        if (!clippings.length) return;
+        // 쓸어 모으는 애니메이션
+        const targetX = width * 0.45;
+        const targetY = height * 0.84;
+        clippings.forEach(c => {
+          c.settled = false;
+          c.vx = (targetX - c.x) * 0.08;
+          c.vy = (targetY - c.y) * 0.08 - 2;
+        });
+        setTimeout(() => {
+          clippings.length = 0;
+          ripples.push({ x: targetX, y: targetY, radius: 4, maxRadius: 55, alpha: 0.8 });
+        }, 650);
+      });
+    }
+
+    // 모바일 뷰 전환
+    if (viewSwitcher) {
+      viewSwitcher.addEventListener('click', (e) => {
+        const btn = e.target.closest('.view-btn');
+        if (!btn) return;
+        viewSwitcher.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const v = btn.dataset.view;
+        appLayout.classList.remove('view-canvas-only', 'view-story-only');
+        if (v === 'canvas') appLayout.classList.add('view-canvas-only');
+        if (v === 'story') appLayout.classList.add('view-story-only');
+        resize();
+      });
+    }
+
+    // --- 메인 렌더링 루프 ---
+    function loop() {
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. 화성 황혼 하늘 그라디언트
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+      skyGrad.addColorStop(0, '#150604');
+      skyGrad.addColorStop(0.55, '#2e0f09');
+      skyGrad.addColorStop(0.78, '#3d120a');
+      skyGrad.addColorStop(1, '#110403');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. 원경 화성 분화구 능선 (Crater Rim Silhouette)
+      ctx.fillStyle = 'rgba(28, 8, 6, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(0, height * 0.65);
+      ctx.lineTo(width * 0.25, height * 0.62);
+      ctx.lineTo(width * 0.55, height * 0.66);
+      ctx.lineTo(width * 0.82, height * 0.61);
+      ctx.lineTo(width, height * 0.64);
+      ctx.lineTo(width, height);
+      ctx.lineTo(0, height);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. 하단 붉은 진흙 늪 (The Swamp Ground)
+      const mudGrad = ctx.createLinearGradient(0, height * 0.72, 0, height);
+      mudGrad.addColorStop(0, 'rgba(46, 12, 8, 0.95)');
+      mudGrad.addColorStop(0.3, 'rgba(68, 17, 11, 0.98)');
+      mudGrad.addColorStop(1, 'rgba(18, 4, 3, 1)');
+      ctx.fillStyle = mudGrad;
+      ctx.fillRect(0, height * 0.72, width, height * 0.28);
+
+      // 늪 표면 경계선
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0, height * 0.72);
+      ctx.bezierCurveTo(width * 0.3, height * 0.71, width * 0.7, height * 0.73, width, height * 0.72);
+      ctx.stroke();
+
+      // 4. 화성 대기 미세 먼지 입자
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x > width + 10) p.x = -10;
+        if (p.y < 0) p.y = height;
+        if (p.y > height) p.y = 0;
+
+        ctx.fillStyle = `rgba(${p.hue}, ${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 5. 붉은 진흙 잔물결 (Ripples)
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const r = ripples[i];
+        r.radius += 0.45;
+        r.alpha *= 0.96;
+
+        ctx.strokeStyle = `rgba(244, 63, 94, ${r.alpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(r.x, r.y, r.radius, r.radius * 0.35, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (r.alpha < 0.02 || r.radius > r.maxRadius) {
+          ripples.splice(i, 1);
+        }
+      }
+
+      // 6. 실루엣: 쭈그려 앉은 안드로이드와 뱀파이어 유닛
+      // 주인공 유닛 실루엣 (무릎을 세우고 앉아 손톱을 깎는 자태)
+      const cx = width * 0.44;
+      const cy = height * 0.76;
+
+      ctx.fillStyle = 'rgba(10, 3, 2, 0.95)';
+      ctx.beginPath();
+      // 머리 & 상체
+      ctx.arc(cx - 20, cy - 45, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 두피 포트에서 자라나는 머리카락 와이어 라인
+      ctx.strokeStyle = 'rgba(254, 205, 211, 0.4)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, cy - 50);
+      ctx.quadraticCurveTo(cx - 32, cy - 35, cx - 35, cy - 10);
+      ctx.stroke();
+
+      // 굽힌 등과 세운 무릎
+      ctx.fillStyle = 'rgba(10, 3, 2, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(cx - 28, cy - 40);
+      ctx.quadraticCurveTo(cx - 45, cy - 15, cx - 35, cy + 18);
+      ctx.lineTo(cx + 8, cy + 20);
+      ctx.lineTo(cx + 15, cy - 10);
+      ctx.lineTo(cx - 5, cy - 25);
+      ctx.closePath();
+      ctx.fill();
+
+      // 손끝의 금속 니퍼 (미세한 금속성 하이라이트)
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.85)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, cy - 22);
+      ctx.lineTo(cx + 8, cy - 18);
+      ctx.stroke();
+
+      // 뱀파이어 유닛 (동일 안면 섀시, 우측 진흙 위에 쭈그려 앉음)
+      const vx = width * 0.68;
+      const vy = height * 0.77;
+      if (width > 340) {
+        ctx.fillStyle = 'rgba(8, 2, 2, 0.9)';
+        ctx.beginPath();
+        ctx.arc(vx, vy - 38, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 뱀파이어 안면 시각 센서 (붉은 점멸)
+        const sensorPulse = 0.4 + Math.sin(Date.now() * 0.003) * 0.35;
+        ctx.fillStyle = `rgba(244, 63, 94, ${sensorPulse})`;
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(vx - 4, vy - 39, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 뱀파이어 몸체
+        ctx.fillStyle = 'rgba(8, 2, 2, 0.9)';
+        ctx.beginPath();
+        ctx.moveTo(vx - 10, vy - 30);
+        ctx.quadraticCurveTo(vx - 25, vy - 5, vx - 15, vy + 18);
+        ctx.lineTo(vx + 20, vy + 18);
+        ctx.lineTo(vx + 15, vy - 15);
+        ctx.closePath();
+        ctx.fill();
+
+        // 붉은 진흙을 뚝뚝 흘리는 드립 효과
+        if (Math.random() > 0.92) {
+          ripples.push({
+            x: vx - 8 + (Math.random() - 0.5) * 12,
+            y: vy + 16,
+            radius: 1,
+            maxRadius: 10,
+            alpha: 0.5
+          });
+        }
+      }
+
+      // 7. 반투명 합성수지 파편들 (Clippings)
+      for (let i = 0; i < clippings.length; i++) {
+        const c = clippings[i];
+        c.update();
+        c.draw(ctx);
+      }
+
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // 초기 시작 시 맛보기 파편 몇 개 바닥에 깔아두기
+    for (let i = 0; i < 9; i++) {
+      const clip = new NailClipping(
+        width * 0.42 + (Math.random() - 0.5) * 120,
+        height * 0.78 + (Math.random() - 0.5) * 30
+      );
+      clip.settled = true;
+      clip.y = clip.settleY;
+      clippings.push(clip);
+    }
+  </script>
+</body>
+</html>
