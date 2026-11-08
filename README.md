@@ -16,7 +16,7 @@ Then open `http://localhost:8080`.
 
 | Path | Role |
 |------|------|
-| `index.html` | Home — Interactive Fiction (carousel + drawer), Tools (search + favorites), Work |
+| `index.html` | Home — Interactive Fiction (carousel + drawer), Tools (search + favorites) |
 | `cards.html` | Short story card viewer (data-driven, `STORIES` array inside) |
 | `mita.html`, `sluice4.html`, `rojiura.html` | Interactive fiction pages (canvas + novel text / exploration) |
 | `*.html` | Other self-contained tools (photo, sound, sims, arcade) |
