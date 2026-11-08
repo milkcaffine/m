@@ -199,6 +199,29 @@
       color: #fbbf24;
       display: none;
     }
+    .nav-btn.story-link {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: #38bdf8;
+      text-decoration: none;
+      display: none;
+    }
+    .nav-btn.story-link:hover {
+      background: rgba(56, 189, 248, 0.28);
+      border-color: #38bdf8;
+      color: #e0f2fe;
+    }
+    .nav-btn.sub-btn {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: #475569;
+      color: #cbd5e1;
+      display: none;
+    }
+    .control-dock {
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 94vw;
+    }
 
     @media (max-width: 680px) {
       .telemetry-card {
@@ -228,7 +251,7 @@
 </header>
 
 <div class="telemetry-card">
-  <div>AREA: <strong>UNMAPPED VOID (0.98m)</strong></div>
+  <div>AREA: <strong id="hudArea">UNMAPPED VOID (0.98m)</strong></div>
   <div>ALLEY WIDTH: <strong>0.98 m</strong></div>
   <div>TORII SYNC: <strong id="hudDepth" class="amber">0 / 6</strong></div>
   <div>STEPS: <strong id="hudSteps">0</strong></div>
@@ -236,8 +259,8 @@
 
 <!-- 우라이나리 도착 시 오픈되는 시그니처 보드 -->
 <div class="cafe-card" id="cafeCard">
-  <div class="cafe-title">⛩️ 심야 차방 · 우라이나리 🦊</div>
-  <div class="cafe-tags">
+  <div class="cafe-title" id="cafeTitle">⛩️ 심야 차방 · 우라이나리 🦊</div>
+  <div class="cafe-tags" id="cafeTags">
     🍜 따뜻한 키츠네 우동 🦊 & 짙은 드립 커피<br>
     📍 지도에 표시되지 않는 폭 0.98m 도심 뒷골목<br>
     🌧️ 비 내리는 밤, 길을 잃은 자들을 위한 은신처
@@ -255,22 +278,33 @@
   <button type="button" class="nav-btn" id="btnLeft">← 좌측 골목</button>
   <button type="button" class="nav-btn" id="btnForward">↑ 직진</button>
   <button type="button" class="nav-btn" id="btnRight">우측 골목 →</button>
-  <button type="button" class="nav-btn udon-btn" id="btnReset">🍜 키츠네 우동 한 그릇 먹고 다시 골목으로</button>
+  <button type="button" class="nav-btn udon-btn" id="btnEnter">🚪 미닫이문 열고 들어가기</button>
+  <button type="button" class="nav-btn udon-btn" id="btnUdon">🍜 키츠네 우동 주문</button>
+  <button type="button" class="nav-btn udon-btn" id="btnCoffee">☕ 심야 드립 커피</button>
+  <a href="cards.html#urainari" class="nav-btn story-link" id="linkStory">📖 새 점장의 단편 읽기</a>
+  <button type="button" class="nav-btn sub-btn" id="btnReset">🌧️ 다시 골목으로</button>
 </div>
 
 <script>
   const canvas = document.getElementById('alleyCanvas');
   const ctx = canvas.getContext('2d');
 
+  const hudArea = document.getElementById('hudArea');
   const hudDepth = document.getElementById('hudDepth');
   const hudSteps = document.getElementById('hudSteps');
   const narrativeText = document.getElementById('narrativeText');
   const narrativeHint = document.getElementById('narrativeHint');
   const cafeCard = document.getElementById('cafeCard');
+  const cafeTitle = document.getElementById('cafeTitle');
+  const cafeTags = document.getElementById('cafeTags');
 
   const btnLeft = document.getElementById('btnLeft');
   const btnForward = document.getElementById('btnForward');
   const btnRight = document.getElementById('btnRight');
+  const btnEnter = document.getElementById('btnEnter');
+  const btnUdon = document.getElementById('btnUdon');
+  const btnCoffee = document.getElementById('btnCoffee');
+  const linkStory = document.getElementById('linkStory');
   const btnReset = document.getElementById('btnReset');
 
   let width = canvas.width = window.innerWidth;
@@ -340,11 +374,72 @@
     });
   }
 
+  // 목조 미닫이문 드르륵 열리는 소리 + 처마 풍경(風鈴) 소리
+  function playDoorSlideSound() {
+    initAudio();
+    const now = audioCtx.currentTime;
+    const dur = 0.45;
+    const bufferSize = Math.floor(audioCtx.sampleRate * dur);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      const env = Math.sin((i / bufferSize) * Math.PI);
+      data[i] = (Math.random() * 2 - 1) * env * 0.35;
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(180, now);
+    filter.frequency.linearRampToValueAtTime(260, now + dur);
+    filter.Q.value = 3.0;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.4;
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    noise.start(now);
+
+    // 문 열릴 때 작은 방울 공명
+    const bell = audioCtx.createOscillator();
+    const bGain = audioCtx.createGain();
+    bell.type = 'sine';
+    bell.frequency.setValueAtTime(1046.5, now + 0.35);
+    bGain.gain.setValueAtTime(0.08, now + 0.35);
+    bGain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+    bell.connect(bGain);
+    bGain.connect(audioCtx.destination);
+    bell.start(now + 0.35);
+    bell.stop(now + 1.45);
+  }
+
+  // 우동 그릇 / 커피 잔 내려놓는 따뜻한 소리
+  function playServeSound(isCoffee) {
+    initAudio();
+    const now = audioCtx.currentTime;
+    const freqs = isCoffee ? [587.33, 880.0] : [392.0, 523.25];
+    freqs.forEach((f, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now + i * 0.12);
+      gain.gain.setValueAtTime(0.1, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now + i * 0.12);
+      osc.stop(now + 1.15);
+    });
+  }
+
   // --- 상태 변수 ---
   const TARGET_DEPTH = 6;
   let depth = 0;
   let steps = 0;
   let arrived = false;
+  let insideCafe = false;
+  let orderedItem = null; // null | 'udon' | 'coffee'
+  let steamParticles = [];
 
   let currentNode = {
     answer: 'forward',
@@ -369,6 +464,29 @@
     }
   }
 
+  function spawnSteam() {
+    steamParticles = [];
+    for (let i = 0; i < 18; i++) {
+      steamParticles.push({
+        xOffset: (Math.random() - 0.5) * 44,
+        yOffset: Math.random() * 60,
+        size: Math.random() * 8 + 5,
+        speed: Math.random() * 0.45 + 0.25,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  function getArrivalNarrativeBySteps(totalSteps) {
+    if (totalSteps <= TARGET_DEPTH) {
+      return '단 한 번도 헤매지 않고 여섯 걸음 만에 닿았다. 처마 밑에서 얼굴의 빗물을 훔치던 흰 셔츠와 앞치마 차림의 새 점장이 놀란 듯 동작을 멈추고 나를 바라본다.';
+    } else if (totalSteps <= 10) {
+      return '비에 젖은 골목 끝에 따뜻한 호박색 등불이 번진다. 처마 밑에 서 있던 검은 머리의 안드로이드 점장이 구레나루 아래 이음새를 반짝이며 조용히 고개를 숙인다.';
+    } else {
+      return `안개 속을 ${totalSteps}걸음이나 헤맨 끝에 마침내 골목 안쪽 은신처에 닿았다. 빗속에서 홀로 울고 있던 새 점장이 잠깐 몸을 떨더니, 강제 재부팅된 눈으로 묵묵히 문을 열어준다.`;
+    }
+  }
+
   function generateNextNode() {
     const dirs = ['left', 'forward', 'right'];
     const clues = ['fox', 'puddle', 'wire'];
@@ -379,9 +497,9 @@
       pipesLeft: Math.random() > 0.3
     };
 
-    if (arrived) {
-      narrativeText.textContent = '달콤짭짤한 유부를 얹은 키츠네 우동 국물 향기가 골목을 메운다. 창가에는 아름다운 인형과 고서들이 조용히 손님을 맞이한다.';
-      narrativeHint.textContent = '🍜 키츠네 우동 🦊 · 📍 도심 모처의 미관측 틈새 · ⛩️ 심야 차방 우라이나리';
+    if (arrived && !insideCafe) {
+      narrativeText.textContent = getArrivalNarrativeBySteps(steps);
+      narrativeHint.textContent = `⛩️ 도착 (${steps} STEPS) · 미닫이문을 열고 들어가거나 새 점장의 단편을 읽을 수 있습니다`;
       return;
     }
 
@@ -421,11 +539,18 @@
         depth++;
         if (depth >= TARGET_DEPTH) {
           arrived = true;
+          insideCafe = false;
+          orderedItem = null;
           playArrivalChord();
+          hudArea.textContent = 'URAINARI ENTRANCE';
+          cafeTitle.textContent = '⛩️ 심야 차방 · 우라이나리 🦊';
+          cafeTags.innerHTML = '🍜 따뜻한 키츠네 우동 🦊 & 짙은 드립 커피<br>🤖 처마 밑에서 빗물을 훔치는 새 점장<br>🌧️ 비 내리는 밤, 길을 잃은 자들을 위한 은신처';
           cafeCard.style.display = 'block';
           btnLeft.style.display = 'none';
           btnForward.style.display = 'none';
           btnRight.style.display = 'none';
+          btnEnter.style.display = 'inline-block';
+          linkStory.style.display = 'inline-block';
           btnReset.style.display = 'inline-block';
         }
       } else {
@@ -462,48 +587,50 @@
 
     ctx.save();
 
-    // 1. 깊이별 1인칭 골목 원근 그리드
-    const slices = 7;
-    const zoomOffset = walkAnim > 0 ? (1 - walkAnim) : 0;
+    if (!insideCafe) {
+      // 1. 깊이별 1인칭 골목 원근 그리드
+      const slices = 7;
+      const zoomOffset = walkAnim > 0 ? (1 - walkAnim) : 0;
 
-    for (let i = 0; i < slices; i++) {
-      const z = (i + 1 - zoomOffset) / slices;
-      const invZ = Math.pow(1 - z * 0.82, 1.4);
+      for (let i = 0; i < slices; i++) {
+        const z = (i + 1 - zoomOffset) / slices;
+        const invZ = Math.pow(1 - z * 0.82, 1.4);
 
-      const xL = vanishX - alleyHalfW * invZ;
-      const xR = vanishX + alleyHalfW * invZ;
-      const yT = vanishY - (height * 0.45) * invZ;
-      const yB = vanishY + (height * 0.45) * invZ;
+        const xL = vanishX - alleyHalfW * invZ;
+        const xR = vanishX + alleyHalfW * invZ;
+        const yT = vanishY - (height * 0.45) * invZ;
+        const yB = vanishY + (height * 0.45) * invZ;
 
-      const alpha = (1 - z) * 0.45;
-      ctx.strokeStyle = arrived ? `rgba(251, 191, 36, ${alpha})` : `rgba(56, 189, 248, ${alpha})`;
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(xL, yT, xR - xL, yB - yT);
+        const alpha = (1 - z) * 0.45;
+        ctx.strokeStyle = arrived ? `rgba(251, 191, 36, ${alpha})` : `rgba(56, 189, 248, ${alpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(xL, yT, xR - xL, yB - yT);
 
-      if (i % 2 === 0 && currentNode.pipesLeft) {
-        ctx.strokeStyle = `rgba(148, 163, 184, ${alpha * 0.8})`;
-        ctx.strokeRect(xL + 2, yB - (yB - yT) * 0.35, (xR - xL) * 0.12, (yB - yT) * 0.22);
+        if (i % 2 === 0 && currentNode.pipesLeft) {
+          ctx.strokeStyle = `rgba(148, 163, 184, ${alpha * 0.8})`;
+          ctx.strokeRect(xL + 2, yB - (yB - yT) * 0.35, (xR - xL) * 0.12, (yB - yT) * 0.22);
+        }
+
+        ctx.strokeStyle = `rgba(100, 116, 139, ${alpha * 0.9})`;
+        ctx.beginPath();
+        ctx.moveTo(xL, yT + (yB - yT) * 0.12);
+        ctx.quadraticCurveTo(vanishX, yT + (yB - yT) * 0.22, xR, yT + (yB - yT) * 0.10);
+        ctx.stroke();
       }
 
-      ctx.strokeStyle = `rgba(100, 116, 139, ${alpha * 0.9})`;
+      // 2. 좌우 골목 모서리 원근 사선
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(xL, yT + (yB - yT) * 0.12);
-      ctx.quadraticCurveTo(vanishX, yT + (yB - yT) * 0.22, xR, yT + (yB - yT) * 0.10);
+      ctx.moveTo(leftWallX, 0); ctx.lineTo(vanishX - alleyHalfW * 0.16, vanishY - height * 0.08);
+      ctx.moveTo(leftWallX, height * 0.9); ctx.lineTo(vanishX - alleyHalfW * 0.16, vanishY + height * 0.08);
+      ctx.moveTo(rightWallX, 0); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY - height * 0.08);
+      ctx.moveTo(rightWallX, height * 0.9); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY + height * 0.08);
       ctx.stroke();
     }
 
-    // 2. 좌우 골목 모서리 원근 사선
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(leftWallX, 0); ctx.lineTo(vanishX - alleyHalfW * 0.16, vanishY - height * 0.08);
-    ctx.moveTo(leftWallX, height * 0.9); ctx.lineTo(vanishX - alleyHalfW * 0.16, vanishY + height * 0.08);
-    ctx.moveTo(rightWallX, 0); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY - height * 0.08);
-    ctx.moveTo(rightWallX, height * 0.9); ctx.lineTo(vanishX + alleyHalfW * 0.16, vanishY + height * 0.08);
-    ctx.stroke();
-
     // 3-A. [도착: 심야 다방 '우라이나리(裏稲荷)']
-    if (arrived) {
+    if (arrived && !insideCafe) {
       const cw = alleyHalfW * 0.58;
       const ch = height * 0.25;
       const cx = vanishX;
@@ -557,6 +684,209 @@
       ctx.font = '700 9px sans-serif';
       ctx.fillStyle = '#ffffff';
       ctx.fillText('饂飩', lx, ly + 3);
+
+      // 좌측 처마 밑: 흰 셔츠에 앞치마를 맨 새 점장(안드로이드) 실루엣
+      const mx = cx - cw * 0.68;
+      const my = cy + ch * 0.22;
+      const wipeBob = Math.sin(timeTick * 2.2) * 1.5;
+
+      // 흰 셔츠 상체 & 앞치마
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(mx - 9, my - 24, 18, 26);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(mx - 7, my - 12, 14, 18);
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mx - 7, my - 12, 14, 18);
+
+      // 검은 머리 & 얼굴
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(mx, my - 32, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 구레나루 아래 미세한 이음새(시안색 광택)
+      const seamAlpha = 0.45 + Math.sin(timeTick * 5) * 0.35;
+      ctx.strokeStyle = `rgba(56, 189, 248, ${seamAlpha})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(mx - 4, my - 27);
+      ctx.lineTo(mx + 3, my - 26);
+      ctx.stroke();
+
+      // 얼굴의 빗물을 훔치는 팔 동작
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(mx - 8, my - 20);
+      ctx.lineTo(mx - 3, my - 30 + wipeBob);
+      ctx.stroke();
+    }
+
+    // 3-A-2. [실내 진입: 심야 다방 우라이나리 카운터]
+    else if (arrived && insideCafe) {
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+      const roomW = alleyHalfW * 1.85;
+
+      // 실내 따뜻한 호박색 앰비언트 조명
+      const roomGlow = ctx.createRadialGradient(cx, cy - height * 0.08, 10, cx, cy, roomW * 0.95);
+      roomGlow.addColorStop(0, 'rgba(251, 191, 36, 0.28)');
+      roomGlow.addColorStop(0.55, 'rgba(120, 53, 15, 0.16)');
+      roomGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = roomGlow;
+      ctx.fillRect(leftWallX, 0, rightWallX - leftWallX, height);
+
+      // 좌측 격자 창문 (창밖으로 조용히 내리는 비)
+      const winX = leftWallX + 26;
+      const winY = cy - height * 0.16;
+      const winW = Math.min(86, alleyHalfW * 0.34);
+      const winH = height * 0.22;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 2;
+      ctx.fillRect(winX, winY, winW, winH);
+      ctx.strokeRect(winX, winY, winW, winH);
+      // 창살
+      ctx.beginPath();
+      ctx.moveTo(winX + winW * 0.5, winY); ctx.lineTo(winX + winW * 0.5, winH + winY);
+      ctx.moveTo(winX, winY + winH * 0.5); ctx.lineTo(winX + winW, winY + winH * 0.5);
+      ctx.stroke();
+
+      // 창가 구체관절인형 실루엣 & 고서 선반
+      const shelfX = rightWallX - Math.min(106, alleyHalfW * 0.42);
+      const shelfY = cy - height * 0.14;
+      ctx.strokeStyle = 'rgba(217, 119, 6, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(shelfX, shelfY + 34); ctx.lineTo(shelfX + 74, shelfY + 34);
+      ctx.moveTo(shelfX, shelfY + 68); ctx.lineTo(shelfX + 74, shelfY + 68);
+      ctx.stroke();
+      // 고서들
+      for (let b = 0; b < 5; b++) {
+        ctx.fillStyle = b % 2 === 0 ? '#451a03' : '#1e293b';
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+        ctx.fillRect(shelfX + 8 + b * 11, shelfY + 12, 9, 21);
+        ctx.strokeRect(shelfX + 8 + b * 11, shelfY + 12, 9, 21);
+      }
+      // 인형 실루엣 (유리 안구 반짝임)
+      const dollX = shelfX + 38;
+      const dollY = shelfY + 54;
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.arc(dollX, dollY - 6, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(dollX - 2, dollY - 6, 1.2, 0, Math.PI * 2);
+      ctx.arc(dollX + 2, dollY - 6, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 천장 펜던트 램프
+      const lampY = cy - height * 0.22;
+      ctx.strokeStyle = '#92400e';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0); ctx.lineTo(cx, lampY);
+      ctx.stroke();
+      ctx.fillStyle = '#fbbf24';
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(cx, lampY + 6, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // 카운터 너머 새 점장 실루엣
+      const mgrX = cx;
+      const mgrY = cy + height * 0.02;
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(mgrX - 16, mgrY - 30, 32, 34);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(mgrX - 12, mgrY - 18, 24, 22);
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(mgrX, mgrY - 40, 10, 0, Math.PI * 2);
+      ctx.fill();
+      // 구레나루 아래 이음새
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(mgrX - 6, mgrY - 33);
+      ctx.lineTo(mgrX + 5, mgrY - 32);
+      ctx.stroke();
+
+      // 목조 바 카운터 테이블
+      const counterY = cy + height * 0.05;
+      ctx.fillStyle = '#271507';
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2;
+      ctx.fillRect(leftWallX + 10, counterY, (rightWallX - leftWallX) - 20, height * 0.14);
+      ctx.strokeRect(leftWallX + 10, counterY, (rightWallX - leftWallX) - 20, height * 0.14);
+
+      // 주문한 메뉴 렌더링 (키츠네 우동 or 드립 커피) + 김 파티클
+      if (orderedItem) {
+        const dishX = cx;
+        const dishY = counterY + 22;
+
+        if (orderedItem === 'udon') {
+          // 우동 사발
+          ctx.fillStyle = '#1e1b18';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(dishX, dishY, 34, 13, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // 국물과 유부(키츠네)
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.75)';
+          ctx.beginPath();
+          ctx.ellipse(dishX, dishY, 28, 9, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#d97706';
+          ctx.fillRect(dishX - 12, dishY - 4, 16, 8);
+          // 젓가락
+          ctx.strokeStyle = '#fde68a';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(dishX - 26, dishY + 14);
+          ctx.lineTo(dishX + 28, dishY + 11);
+          ctx.stroke();
+        } else if (orderedItem === 'coffee') {
+          // 커피 받침 & 찻잔
+          ctx.fillStyle = '#f8fafc';
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(dishX, dishY + 6, 22, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#f1f5f9';
+          ctx.fillRect(dishX - 12, dishY - 10, 24, 15);
+          ctx.strokeRect(dishX - 12, dishY - 10, 24, 15);
+          // 커피 원액
+          ctx.fillStyle = '#271206';
+          ctx.beginPath();
+          ctx.ellipse(dishX, dishY - 10, 11, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 모락모락 피어오르는 김 애니메이션
+        steamParticles.forEach(sp => {
+          sp.yOffset += sp.speed;
+          if (sp.yOffset > 65) sp.yOffset = 0;
+          const progress = sp.yOffset / 65;
+          const sx = dishX + sp.xOffset * 0.5 + Math.sin(timeTick * 3 + sp.phase) * 7;
+          const sy = dishY - 12 - sp.yOffset;
+          const sAlpha = Math.sin(progress * Math.PI) * 0.38;
+
+          ctx.fillStyle = `rgba(248, 250, 252, ${sAlpha})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, sp.size * (0.6 + progress * 0.7), 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
     }
 
     // 3-B. [탐색 중: 3대 단서]
@@ -644,8 +974,8 @@
       }
     }
 
-    // 4. 골목 빗줄기
-    ctx.strokeStyle = 'rgba(186, 230, 253, 0.22)';
+    // 4. 골목 빗줄기 (실내에서는 창밖 느낌으로 은은하게 감소)
+    ctx.strokeStyle = insideCafe ? 'rgba(186, 230, 253, 0.06)' : 'rgba(186, 230, 253, 0.22)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     rainDrops.forEach(r => {
@@ -666,7 +996,7 @@
     ctx.fillRect(0, 0, leftWallX, height);
     ctx.fillRect(rightWallX, 0, width - rightWallX, height);
 
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.strokeStyle = insideCafe ? 'rgba(217, 119, 6, 0.3)' : 'rgba(56, 189, 248, 0.25)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(leftWallX, 0); ctx.lineTo(leftWallX, height);
@@ -682,16 +1012,58 @@
   btnForward.addEventListener('click', () => makeMove('forward'));
   btnRight.addEventListener('click', () => makeMove('right'));
 
+  // 미닫이문 열고 실내 카운터 진입
+  btnEnter.addEventListener('click', () => {
+    if (!arrived || insideCafe) return;
+    insideCafe = true;
+    orderedItem = null;
+    playDoorSlideSound();
+    hudArea.textContent = 'URAINARI COUNTER (INSIDE)';
+    cafeTitle.textContent = '🏮 우라이나리 · 실내 카운터';
+    cafeTags.innerHTML = '🎎 창가의 구체관절인형과 고서들이 늘어선 서가<br>🤖 카운터 너머에서 말없이 잔을 닦는 새 점장<br>🌧️ 창밖으로 아득하게 들려오는 골목의 빗소리';
+    narrativeText.textContent = '드르륵― 낡은 목조 미닫이문을 열자 바깥의 찬 빗소리가 먹먹하게 멀어지고, 달콤한 다시 국물 냄새와 오래된 종이 향기가 훅 끼쳐온다.';
+    narrativeHint.textContent = '🏮 실내 카운터 // 따뜻한 메뉴를 주문하거나 새 점장의 단편을 읽어보세요';
+    btnEnter.style.display = 'none';
+    btnUdon.style.display = 'inline-block';
+    btnCoffee.style.display = 'inline-block';
+  });
+
+  // 키츠네 우동 주문
+  btnUdon.addEventListener('click', () => {
+    orderedItem = 'udon';
+    spawnSteam();
+    playServeSound(false);
+    narrativeText.textContent = '새 점장이 말없이 김이 모락모락 피어오르는 키츠네 우동 한 그릇을 앞에 내려놓았다. 달콤짭짤하게 졸여진 두툼한 유부와 뜨거운 국물이 언 손끝을 녹인다.';
+    narrativeHint.textContent = '🍜 키츠네 우동 대접 완료 · 구레나루 아래 이음새가 호박색 등불에 희미하게 비친다';
+  });
+
+  // 심야 드립 커피 주문
+  btnCoffee.addEventListener('click', () => {
+    orderedItem = 'coffee';
+    spawnSteam();
+    playServeSound(true);
+    narrativeText.textContent = '점장이 정교한 손놀림으로 융 드립 커피를 내려 하얀 찻잔에 담아주었다. 다크 로스팅 특유의 묵직한 쓴맛 뒤로 창밖의 빗소리가 한결 아늑하게 내려앉는다.';
+    narrativeHint.textContent = '☕ 심야 드립 커피 대접 완료 · 지워도 지워지지 않는 기억처럼 짙은 잔향';
+  });
+
   btnReset.addEventListener('click', () => {
     depth = 0;
     steps = 0;
     arrived = false;
+    insideCafe = false;
+    orderedItem = null;
+    steamParticles = [];
+    hudArea.textContent = 'UNMAPPED VOID (0.98m)';
     hudDepth.textContent = `0 / ${TARGET_DEPTH}`;
     hudSteps.textContent = '0';
     cafeCard.style.display = 'none';
     btnLeft.style.display = 'inline-block';
     btnForward.style.display = 'inline-block';
     btnRight.style.display = 'inline-block';
+    btnEnter.style.display = 'none';
+    btnUdon.style.display = 'none';
+    btnCoffee.style.display = 'none';
+    linkStory.style.display = 'none';
     btnReset.style.display = 'none';
     generateNextNode();
   });
