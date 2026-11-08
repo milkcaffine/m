@@ -3,9 +3,7 @@ module.exports = {
   content: [
     "./index.html",
     "./trisolaris.html",
-    "./walks.html",
-    "./syllable.html",
-    "./archive.html"
+    "./syllable.html"
   ],
   theme: { extend: {} },
   plugins: []
