@@ -617,25 +617,14 @@
         currentCardIdx++;
         renderCard(true);
       } else {
-        // 마지막 카드에서 다음을 누르면: 다음 에피소드로 이동하거나 서랍 열기
-        if (currentStoryIdx < STORIES.length - 1) {
-          currentStoryIdx++;
-          currentCardIdx = 0;
-          renderCard(true);
-        } else {
-          // 전체 마지막이면 에피소드 서랍 열기
-          openDrawer();
-        }
+        // 한 편이 끝나면 다음 편으로 자동 이동하지 않고 목록 서랍 열기
+        openDrawer();
       }
     }
 
     function prevCard() {
       if (currentCardIdx > 0) {
         currentCardIdx--;
-        renderCard(true);
-      } else if (currentStoryIdx > 0) {
-        currentStoryIdx--;
-        currentCardIdx = STORIES[currentStoryIdx].cards.length - 1;
         renderCard(true);
       }
     }
