@@ -16,9 +16,10 @@ Then open `http://localhost:8080`.
 
 | Path | Role |
 |------|------|
-| `index.html` | Home — Note, Tools (search + favorites), Work |
-| `cards.html` | Short story cards viewer |
-| `*.html` | Self-contained tools (photo, sound, sims, arcade) |
+| `index.html` | Home — Interactive Fiction (carousel + drawer), Tools (search + favorites), Work |
+| `cards.html` | Short story card viewer (data-driven, `STORIES` array inside) |
+| `mita.html`, `sluice4.html`, `rojiura.html` | Interactive fiction pages (canvas + novel text / exploration) |
+| `*.html` | Other self-contained tools (photo, sound, sims, arcade) |
 | `assets/marsko-hud.css` | Shared lab HUD chrome |
 | `assets/tailwind.css` | Built Tailwind CSS (generated — do not edit by hand) |
 | `assets/tailwind.src.css` | Tailwind build input |
@@ -40,6 +41,36 @@ chmod +x tailwindcss
 ```
 
 If a new page uses Tailwind, add it to `content` in `tailwind.config.js` and link `assets/tailwind.css`. Commit the regenerated `assets/tailwind.css`.
+
+## Stories (Interactive Fiction)
+
+The unit is the **work**, not the format. One work can have an interactive page, a card version, or both.
+
+| Work | Interactive | Cards (`cards.html#id`) |
+|------|-------------|-------------------------|
+| Urainari alley / new manager | `rojiura.html` | `#urainari` |
+| Mita: the seam of the city | `mita.html` | `#mita` |
+| Shibaura sluice no. 4 | `sluice4.html` | `#sluice4` |
+
+### Add a new work
+
+1. **Cards** (text-first story): append an object to the `STORIES` array at the top of the script in `cards.html`:
+   ```js
+   { id: "new-id", series: "SERIES #04", title: "...", location: "...", desc: "one line",
+     cards: [`page 1 (blank line = new paragraph)`, `page 2`] }
+   ```
+   `'quoted'` lines render as emphasized dialogue. The `id` doubles as the deep link `cards.html#new-id`.
+2. **Interactive** (optional): add a standalone page like `mita.html`; link `index.html` back from it. Put the real-world origin photo in `images/<name>-origin.jpg` and show it at the end of the story text (see the `.story-origin-box` block in `mita.html` / `sluice4.html`).
+3. **Home page** (`index.html`, Interactive Fiction section):
+   - Put the newest/featured works in the carousel (`.fiction-card`), newest first. One card per work; add a `▶` button for the interactive page and a `📖` button (`.is-alt`) linking `cards.html#id`. Older cards can drop out of the carousel.
+   - Add one line per work to the drawer list (`.fiction-list`) with `interactive` / `cards` tag links. Every work belongs here. The `all · N` count is computed from these lines.
+4. Add new pages to `sitemap.xml`.
+
+Keep the carousel to a few cards; the drawer is the full catalog.
+
+### Styling gotcha
+
+`assets/tailwind.css` is prebuilt, so Tailwind classes that are not already in it silently do nothing. For new UI either rebuild Tailwind (see above) or write plain CSS in the page's `<style>` block, as the `.fiction-*` styles do.
 
 ## Tools
 
