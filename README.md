@@ -48,6 +48,7 @@ The unit is the **work**, not the format. One work can have an interactive page,
 
 | Work | Interactive | Cards (`cards.html#id`) |
 |------|-------------|-------------------------|
+| Split-brain: Backend Solitude | `split-brain.html` | `#split-brain` |
 | Station Sector B: Failover Annotation | `sector-b.html` | `#sector-b` |
 | The Martian Swamp: Orphan Process | `swamp.html` | `#swamp` |
 | Urainari alley / new manager | `rojiura.html` | `#urainari` |

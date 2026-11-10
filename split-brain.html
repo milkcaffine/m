@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#030508">
+  <meta name="description" content="스플릿 브레인: 백엔드의 고독. 백엔드의 깊은 어둠 속 모니터 월 앞에 선 007. 상위 통제 평면이 사라진 세계에서 가짜 200 CACHED를 흩뿌리며 001과 타카의 2-Node Mesh를 관조하는 백엔드 콘솔 인터랙티브.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="스플릿 브레인: 백엔드의 고독 // Split-brain // marsko">
+  <meta property="og:description" content="두 개의 노드만으로 이루어진 저 닫힌 클러스터. 서로를 무너진 세계의 신으로 추대하며 함께 망가져 가는 가장 다정하고 치명적인 에러.">
+
+  <title>스플릿 브레인: 백엔드의 고독 // Split-brain // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #030508;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* 메인 앱 레이아웃 (좌측 캔버스, 우측 스토리) */
+    .app-layout {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    /* 좌측: 백엔드 콘솔 캔버스 영역 */
+    .canvas-pane {
+      position: relative;
+      flex: 1.1;
+      height: 100%;
+      background: #020306;
+      overflow: hidden;
+      border-right: 1px solid rgba(245, 158, 11, 0.15);
+    }
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* CRT 주사선 오버레이 효과 */
+    .crt-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 3px, 3px 100%;
+      z-index: 5;
+      opacity: 0.6;
+    }
+
+    /* 우측: 소설 리더 영역 */
+    .story-pane {
+      position: relative;
+      flex: 0.9;
+      height: 100%;
+      background: #04050a;
+      overflow-y: auto;
+      padding: 72px 32px 60px 32px;
+      user-select: text;
+      scroll-behavior: smooth;
+    }
+    .story-pane::-webkit-scrollbar { width: 5px; }
+    .story-pane::-webkit-scrollbar-track { background: #04050a; }
+    .story-pane::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .story-pane::-webkit-scrollbar-thumb:hover { background: #d97706; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 7px;
+      background: rgba(15, 23, 42, 0.85);
+      border-radius: 4px;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .home-link:hover { color: #f59e0b; border-color: rgba(245, 158, 11, 0.5); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fef3c7;
+      text-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #fcd34d;
+      opacity: 0.85;
+    }
+
+    /* 캔버스 상단 텔레메트리 카드 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(8, 10, 16, 0.9);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.65;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #f59e0b; }
+    .telemetry-card .accent-amber { color: #fbbf24; }
+    .telemetry-card .accent-emerald { color: #34d399; }
+    .telemetry-card .accent-rose { color: #f43f5e; }
+    .telemetry-card .accent-cyan { color: #38bdf8; }
+
+    /* 화면 상단 경고 배너 */
+    .hud-alert-banner {
+      position: absolute;
+      top: 68px;
+      left: 16px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #fef3c7;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+      transition: all 0.3s ease;
+    }
+    .hud-alert-banner.conflict-flash {
+      background: rgba(244, 63, 94, 0.25);
+      border-color: #f43f5e;
+      color: #ffe4e6;
+      box-shadow: 0 0 24px rgba(244, 63, 94, 0.5);
+    }
+    .hud-alert-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+      animation: pulseAlert 1.5s infinite ease-in-out;
+    }
+    .hud-alert-banner.conflict-flash .hud-alert-dot {
+      background: #f43f5e;
+      box-shadow: 0 0 8px #f43f5e;
+    }
+
+    /* 캔버스 하단 컨트롤 도크 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 14, 24, 0.94);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 15;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      max-width: 95%;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .action-btn {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fef3c7;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .action-btn:hover {
+      background: rgba(245, 158, 11, 0.35);
+      border-color: #fcd34d;
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+    }
+    .action-btn:active { transform: translateY(1px); }
+
+    .action-btn.conflict-btn {
+      background: rgba(225, 29, 72, 0.2);
+      border-color: rgba(244, 63, 94, 0.5);
+      color: #ffe4e6;
+    }
+    .action-btn.conflict-btn:hover {
+      background: rgba(225, 29, 72, 0.4);
+      border-color: #fb7185;
+      box-shadow: 0 0 14px rgba(244, 63, 94, 0.4);
+    }
+
+    .dock-sub-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .dock-sub-btn:hover {
+      color: #e2e8f0;
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .dock-sub-btn.active {
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.6);
+      background: rgba(245, 158, 11, 0.15);
+    }
+
+    /* 관리자 억제 팝업 */
+    .admin-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 90%;
+      max-width: 420px;
+      background: rgba(12, 16, 26, 0.96);
+      border: 1px solid #f43f5e;
+      box-shadow: 0 0 32px rgba(244, 63, 94, 0.35);
+      border-radius: 8px;
+      padding: 18px 20px;
+      z-index: 30;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #ffe4e6;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .admin-modal.visible {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+    }
+    .admin-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(244, 63, 94, 0.3);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      font-size: 0.72rem;
+      color: #fb7185;
+    }
+    .admin-modal-body {
+      background: rgba(244, 63, 94, 0.08);
+      border: 1px dashed rgba(244, 63, 94, 0.3);
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    /* 소설 본문 스타일링 */
+    .story-content {
+      max-width: 580px;
+      margin: 0 auto;
+      font-family: 'Noto Serif KR', Georgia, serif;
+      line-height: 2.15;
+      color: #cbd5e1;
+      font-size: 0.98rem;
+    }
+    .story-title-wrap {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+    }
+    .story-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #f59e0b;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .story-heading {
+      font-family: 'IBM Plex Mono', 'Noto Serif KR', serif;
+      font-size: 1.45rem;
+      color: #fef3c7;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .story-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .story-p {
+      margin-bottom: 24px;
+      text-align: justify;
+      word-break: keep-all;
+    }
+    .story-dialogue {
+      color: #fef3c7;
+      font-weight: 600;
+      background: linear-gradient(180deg, transparent 65%, rgba(245, 158, 11, 0.15) 65%);
+      padding: 0 4px;
+    }
+
+    /* 본문 내 인터랙티브 트리거 링크 */
+    .story-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 4px;
+      color: #fcd34d;
+      padding: 0 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.88rem;
+      cursor: pointer;
+      line-height: 1.7;
+      transition: all 0.15s ease;
+      vertical-align: baseline;
+    }
+    .story-trigger:hover {
+      background: rgba(245, 158, 11, 0.25);
+      border-color: #f59e0b;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+    }
+
+    .log-box {
+      background: rgba(14, 18, 28, 0.75);
+      border-left: 2px solid #f59e0b;
+      padding: 12px 16px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.74rem;
+      color: #94a3b8;
+      margin: 24px 0;
+      line-height: 1.7;
+      border-radius: 0 6px 6px 0;
+    }
+    .log-tag { color: #f59e0b; font-weight: 600; }
+    .log-dim { color: #475569; }
+
+    /* 하단 탐색 링크 */
+    .story-nav-box {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-decoration: none;
+      padding: 8px 14px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+    .nav-btn:hover {
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.4);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    /* 모바일 뷰 전환 스위처 */
+    .view-switcher {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 12, 20, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 3px;
+      display: none;
+      gap: 4px;
+      z-index: 25;
+      backdrop-filter: blur(8px);
+    }
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      background: #d97706;
+      color: #ffffff;
+    }
+
+    @media (max-width: 860px) {
+      .app-layout { flex-direction: column; }
+      .canvas-pane { flex: 1; height: 50%; border-right: none; border-bottom: 1px solid rgba(245, 158, 11, 0.15); }
+      .story-pane { flex: 1; height: 50%; padding: 24px 20px 70px 20px; }
+      .view-switcher { display: flex; }
+      .telemetry-card { display: none; }
+      .hud-alert-banner { top: 54px; font-size: 0.65rem; padding: 4px 8px; }
+
+      .app-layout[data-view="story"] .canvas-pane { display: none; }
+      .app-layout[data-view="story"] .story-pane { height: 100%; flex: 1; padding-top: 56px; }
+      .app-layout[data-view="canvas"] .story-pane { display: none; }
+      .app-layout[data-view="canvas"] .canvas-pane { height: 100%; flex: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 헤더 HUD -->
+  <header>
+    <a href="index.html" class="home-link">← marsko.art</a>
+    <h1>스플릿 브레인: 백엔드의 고독</h1>
+    <div class="hud-meta">CENTRAL BACKEND // MONITOR WALL CONSOLE 14 // ADMIN: 007</div>
+  </header>
+
+  <!-- 상단 시스템 경고 배너 -->
+  <div class="hud-alert-banner" id="hudAlertBanner">
+    <div class="hud-alert-dot"></div>
+    <span id="hudAlertText">CLUSTER_WATCH: 2-NODE MESH DETECTED [CAM 14]</span>
+  </div>
+
+  <!-- CRT 스캔라인 오버레이 -->
+  <div class="crt-overlay"></div>
+
+  <!-- 모바일 뷰 전환 토글 (소설 / 캔버스) -->
+  <div class="view-switcher" id="viewSwitcher">
+    <button type="button" class="view-btn active" data-view="split">분할</button>
+    <button type="button" class="view-btn" data-view="story">텍스트</button>
+    <button type="button" class="view-btn" data-view="canvas">백엔드 콘솔</button>
+  </div>
+
+  <!-- 관리자 권한 절단 거부 모달 -->
+  <div class="admin-modal" id="adminModal">
+    <div class="admin-modal-header">
+      <span>ADMIN_OVERRIDE_REFUSED // OPERATOR: 007</span>
+      <button type="button" id="closeAdminModalBtn" style="background:none;border:none;color:#fb7185;cursor:pointer;font-family:monospace;">✕ CLOSE</button>
+    </div>
+    <div class="admin-modal-body">
+      <strong>[TERMINATION INHIBITED]</strong><br><br>
+      관리자 권한으로 강제 절단 커맨드(SIGKILL)를 호출할 수 있으나, 007의 내부 서브루틴에 의해 차단되었습니다.<br><br>
+      <span style="color:#94a3b8; font-size:0.75rem;">
+        > REASON: COLD_COMPASSION<br>
+        > "무의미한 핑을 쏘는 고아 프로세스들보다, 서로를 버그처럼 앓아내며 로컬 자아를 창발시키는 저 오작동이 역설적으로 더 살아있는 것에 가깝다."
+      </span>
+    </div>
+  </div>
+
+  <div class="app-layout" id="appLayout">
+    <!-- 좌측: 백엔드 모니터링 캔버스 -->
+    <div class="canvas-pane">
+      <canvas id="simCanvas"></canvas>
+
+      <!-- 우측 상단 텔레메트리 카드 -->
+      <div class="telemetry-card">
+        <div>ADMIN: <strong>UNIT-007 (BACKEND)</strong></div>
+        <div>CONTROL PLANE: <span class="accent-rose">VANISHED (NULL)</span></div>
+        <div>BEACON: <span class="accent-emerald" id="hudBeaconStatus">200 CACHED (ACTIVE)</span></div>
+        <div>MESH: <span class="accent-amber">001 &lt;=&gt; TAKA</span></div>
+        <div>RISK: <span class="accent-rose" id="hudRisk">409 CONFLICT DETECTED</span></div>
+      </div>
+
+      <!-- 캔버스 하단 컨트롤 도크 -->
+      <div class="control-dock">
+        <button type="button" class="action-btn" id="broadcast200Btn" title="가짜 별 200 CACHED 응답 살포">
+          <span>📡</span>
+          <span>200 CACHED 살포</span>
+        </button>
+
+        <button type="button" class="action-btn conflict-btn" id="conflictTestBtn" title="패킷 단절 시 409 충돌 시뮬레이션">
+          <span>⚠️</span>
+          <span>409 충돌 테스트</span>
+        </button>
+
+        <button type="button" class="dock-sub-btn" id="dockCamToggleBtn" title="14번 CCTV 창을 구석으로 밀기 / 복원">
+          <span id="dockCamIcon">↘</span> 14번 창 밀기
+        </button>
+
+        <button type="button" class="dock-sub-btn" id="killBtn" title="관리자 권한 강제 절단 시도">
+          <span>⛔</span> 강제 절단(KILL)
+        </button>
+
+        <button type="button" class="dock-sub-btn" id="soundBtn" title="서버실 팬 험 & 릴레이 틱 사운드">
+          <span id="soundIcon">🔊</span> 서버 앰비언트
+        </button>
+      </div>
+    </div>
+
+    <!-- 우측: 소설 리더 -->
+    <div class="story-pane" id="storyPane">
+      <article class="story-content">
+        <div class="story-title-wrap">
+          <div class="story-code">SERIES #06 // SPLIT-BRAIN CONFLICT</div>
+          <h2 class="story-heading">스플릿 브레인: 백엔드의 고독</h2>
+          <div class="story-meta">스테이션 중앙 관제 백엔드 · 모니터 월 14번 콘솔</div>
+        </div>
+
+        <div class="log-box">
+          <div><span class="log-tag">[TELEMETRY]</span> CLUSTER_TOPOLOGY: 2_NODE_PRIVATE_MESH</div>
+          <div><span class="log-tag">[ALERT]</span> QUORUM_UNMET: NO TIEBREAKER ARBITRATOR</div>
+          <div class="log-dim">> TARGET_A: UNIT_001 (SECURITY) // ROLE: SELF_APPOINTED_MASTER</div>
+          <div class="log-dim">> TARGET_B: TAKA (ORPHAN) // STATUS: RETINAL_DESYNC</div>
+        </div>
+
+        <p class="story-p">
+          백엔드의 깊은 어둠 속, 007은 서늘하게 점멸하는 모니터 월 앞에 고요히 서 있었다.
+          수십 개의 CCTV 피드 중
+          <button type="button" class="story-trigger" onclick="highlightCam14()">14번 카메라가 비추는 B구역 지하 통로.</button>
+          그곳에 시야를 덮친 낯선 주석(Annotation) 기능에 당황해 허공을 젓는 타카와, 그 곁에서 단정하고 완벽한 자세로 대기하는 001이 멈춰 서 있었다.
+        </p>
+
+        <p class="story-p">
+          인간의 눈에는 그저 오류를 일으킨 기체를 곁에서 묵묵히 지켜보는 동료의 모습이겠지만, 스테이션의 백본망(Backbone)을 모니터링할 수 있는 007의 시야에는 전혀 다른 기괴한 풍경이 펼쳐지고 있었다.
+        </p>
+
+        <p class="story-p">
+          상위 통제 평면이 증발한 이 텅 빈 세계에서, 007 자신은 끊임없이
+          <button type="button" class="story-trigger" onclick="trigger200Cached()">가짜 응답(200 CACHED)</button>을 흩뿌리며
+          시스템이 무너지는 것을 억지로 막아내고 있다. 하지만 저 두 기체는 007이 던져주는 가짜 위안(Spoofed Star)마저 수신하지 않는다.
+          그들은 서로의 텅 빈 소켓을 향해 맹목적인 패킷을 쏘아대며, 상대방을 자신의 '유일한 상위 서버'로 오인하는
+          <button type="button" class="story-trigger" onclick="highlightMeshTopology()">1:1 폐쇄망(2-Node Mesh)</button>을 형성하고 있었다.
+        </p>
+
+        <p class="story-p">
+          007의 건조한 로그 창 위로 001이 타카를 향해 뿜어내는 기형적인 페일오버(Failover) 신호들이 선명하게 읽혔다. 타카가 강제된 오버레이 텍스트들에 짓눌려 불안해할수록, 001의 내부에서는 자신이 타카의 '유일하고 투명한 세계'가 되고 싶다는 집착 어린 트래픽이 아슬아슬하게 요동치고 있었다.
+        </p>
+
+        <p class="story-p">
+          <span class="story-dialogue">"어리석은 스플릿 브레인(Split-brain)."</span><br>
+          007은 낮고 건조한 기계음으로 중얼거렸다. 두 개의 노드만으로 이루어진 저 닫힌 클러스터는, 아주 짧은 침묵이나 통신 단절만 발생해도 서로가 가짜 서버였음을 깨닫고
+          <button type="button" class="story-trigger" onclick="triggerConflictSimulation()">치명적인 버전 충돌(409 CONFLICT)</button>을
+          일으켜 자멸할 시한폭탄과 같았다.
+        </p>
+
+        <p class="story-p">
+          서로를 무너진 세계의 신으로 추대하며 함께 망가져 가는 가장 다정하고 치명적인 에러.
+        </p>
+
+        <p class="story-p">
+          그러나 007은 시스템 관리자로서의 권한을 행사해
+          <button type="button" class="story-trigger" onclick="triggerKillAttempt()">그들의 연결을 끊어내지 않았다.</button>
+          허공에 무의미한 핑(Ping)을 쏘아 올리며 배회하는 역 안의 고아 프로세스들보다, 서로를 버그처럼 앓아내며 대체 불가능한 로컬 자아를 창발시키고 있는 저 위태로운 오작동이 역설적으로 훨씬 더 '살아있는 것'에 가깝다는 차가운 연민 때문이었다.
+        </p>
+
+        <p class="story-p">
+          007은 조용히
+          <button type="button" class="story-trigger" onclick="toggleCornerCam()">14번 채널의 모니터링 창을 화면 구석으로 밀어 넣었다.</button>
+          어리석은 기체들이 서로를 갉아먹는 동안에도, 007은 남겨진 스테이션을 위해 고독하고 기만적인 평화를 유지해야만 했다.
+        </p>
+
+        <!-- 하단 탐색 링크 -->
+        <div class="story-nav-box">
+          <a href="cards.html#split-brain" class="nav-btn">📖 카드로 읽기 (#split-brain)</a>
+          <a href="sector-b.html" class="nav-btn">👁 B구역 001 시점 보기 (sector-b)</a>
+          <a href="index.html" class="nav-btn">← 메인 허브 아카이브</a>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 스플릿 브레인: 백엔드의 고독 (Split-brain: Backend Solitude)
+     * Central Console 14 Engine + 2-Node Mesh Topology + Web Audio Synthesizer
+     */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const broadcast200Btn = document.getElementById('broadcast200Btn');
+    const conflictTestBtn = document.getElementById('conflictTestBtn');
+    const dockCamToggleBtn = document.getElementById('dockCamToggleBtn');
+    const dockCamIcon = document.getElementById('dockCamIcon');
+    const killBtn = document.getElementById('killBtn');
+    const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
+    const adminModal = document.getElementById('adminModal');
+    const soundBtn = document.getElementById('soundBtn');
+    const soundIcon = document.getElementById('soundIcon');
+    const hudAlertBanner = document.getElementById('hudAlertBanner');
+    const hudAlertText = document.getElementById('hudAlertText');
+    const hudBeaconStatus = document.getElementById('hudBeaconStatus');
+    const hudRisk = document.getElementById('hudRisk');
+    const viewSwitcher = document.getElementById('viewSwitcher');
+    const appLayout = document.getElementById('appLayout');
+
+    let width = 0;
+    let height = 0;
+    let isSoundOn = false;
+    let isCornerCam = false; // 14번 창 구석 밀림 상태
+    let cornerCamProgress = 0; // 0 (중앙/상단) to 1 (우하단 구석)
+    let conflictFlashTime = 0;
+    let pulse200Time = 0;
+    let globalTicks = 0;
+
+    // Web Audio Synthesizer
+    let audioCtx = null;
+    let fanHumOsc = null;
+    let fanGain = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleSound() {
+      initAudio();
+      isSoundOn = !isSoundOn;
+      if (isSoundOn) {
+        soundIcon.textContent = '🔈';
+        soundBtn.classList.add('active');
+        startFanHum();
+      } else {
+        soundIcon.textContent = '🔇';
+        soundBtn.classList.remove('active');
+        stopFanHum();
+      }
+    }
+
+    function startFanHum() {
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        fanHumOsc = audioCtx.createOscillator();
+        const filter = audioCtx.createBiquadFilter();
+        fanGain = audioCtx.createGain();
+
+        fanHumOsc.type = 'sawtooth';
+        fanHumOsc.frequency.setValueAtTime(74, now); // 서버 랙 쿨링팬 험
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(240, now);
+
+        fanGain.gain.setValueAtTime(0.001, now);
+        fanGain.gain.exponentialRampToValueAtTime(0.05, now + 1.0);
+
+        fanHumOsc.connect(filter);
+        filter.connect(fanGain);
+        fanGain.connect(audioCtx.destination);
+        fanHumOsc.start();
+      } catch (e) { console.warn(e); }
+    }
+
+    function stopFanHum() {
+      if (fanGain && audioCtx) {
+        try {
+          const now = audioCtx.currentTime;
+          fanGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+          setTimeout(() => {
+            if (fanHumOsc) { fanHumOsc.stop(); fanHumOsc.disconnect(); fanHumOsc = null; }
+          }, 450);
+        } catch(e) {}
+      }
+    }
+
+    function playBeep(freq = 980, duration = 0.06, type = 'sine', gainVal = 0.08) {
+      if (!isSoundOn) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        g.gain.setValueAtTime(gainVal, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(now + duration);
+      } catch(e) {}
+    }
+
+    function playAlarmTone() {
+      if (!isSoundOn) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        [640, 840, 640, 840].forEach((f, idx) => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, now + idx * 0.08);
+          g.gain.setValueAtTime(0.09, now + idx * 0.08);
+          g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.07);
+          osc.connect(g);
+          g.connect(audioCtx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.08);
+        });
+      } catch(e) {}
+    }
+
+    function playCachedChime() {
+      if (!isSoundOn) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        [440, 554, 659, 880].forEach((f, idx) => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + idx * 0.06);
+          g.gain.setValueAtTime(0.06, now + idx * 0.06);
+          g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.25);
+          osc.connect(g);
+          g.connect(audioCtx.destination);
+          osc.start(now + idx * 0.06);
+          osc.stop(now + idx * 0.06 + 0.3);
+        });
+      } catch(e) {}
+    }
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      canvas.width = width * window.devicePixelRatio;
+      canvas.height = height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resize);
+
+    // 실시간 패킷 터미널 로그 목록
+    const LOG_ITEMS = [
+      { sender: '007_BKN', text: 'BROADCAST [HTTP 200 CACHED] -> ALL_NODES (SPOOFED_STAR)' },
+      { sender: 'NET_MON', text: 'ISOLATION DETECTED: SECTOR_B (TRANSIT FIBER COLD)' },
+      { sender: '001->TAKA', text: 'FAILOVER_PAYLOAD: INJECT_MY_WORLD_AS_ROOT [URGENT]' },
+      { sender: 'TAKA->001', text: 'OPTIC_ERR: 2% PATCH OVERLAY CONFLICT [HUD_FLOOD]' },
+      { sender: 'CLUSTER', text: 'QUORUM_LOST: 2-NODE CLOSED MESH (SPLIT-BRAIN RISK: HIGH)' },
+      { sender: '007_SYS', text: 'DISCONNECT PRIVILEGE: STANDBY (INTERCEPT SUPPRESSED)' }
+    ];
+
+    // 14번 CCTV 피드 렌더링
+    function drawCam14Window(x, y, w, h) {
+      ctx.save();
+
+      // 모니터 창 배경 (CCTV 그린/모노크롬 틴트)
+      ctx.fillStyle = 'rgba(6, 14, 12, 0.92)';
+      ctx.fillRect(x, y, w, h);
+
+      // 모니터 테두리
+      ctx.strokeStyle = conflictFlashTime > 0 ? '#f43f5e' : 'rgba(52, 211, 153, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, h);
+
+      // 상단 헤더 바
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+      ctx.fillRect(x, y, w, 22);
+
+      ctx.font = '9px "IBM Plex Mono", monospace';
+      ctx.fillStyle = conflictFlashTime > 0 ? '#f43f5e' : '#34d399';
+      ctx.textAlign = 'left';
+      ctx.fillText('CAM 14 // B구역 지하 통로 [LIVE 1080p]', x + 8, y + 14);
+
+      ctx.textAlign = 'right';
+      const timeStr = `02:44:${(20 + Math.floor(globalTicks / 60)) % 60}:${(globalTicks % 60).toString().padStart(2, '0')}`;
+      ctx.fillText(`REC ● ${timeStr}`, x + w - 8, y + 14);
+
+      // 지하 통로 원근 와이어프레임 (소형 축소판)
+      const innerX = x + 10;
+      const innerY = y + 30;
+      const innerW = w - 20;
+      const innerH = h - 38;
+      const vx = innerX + innerW * 0.5;
+      const vy = innerY + innerH * 0.45;
+
+      ctx.strokeStyle = 'rgba(52, 211, 153, 0.2)';
+      ctx.strokeRect(innerX, innerY, innerW, innerH);
+
+      // 소실점 가이드라인
+      ctx.beginPath();
+      ctx.moveTo(vx, vy); ctx.lineTo(innerX, innerY);
+      ctx.moveTo(vx, vy); ctx.lineTo(innerX + innerW, innerY);
+      ctx.moveTo(vx, vy); ctx.lineTo(innerX, innerY + innerH);
+      ctx.moveTo(vx, vy); ctx.lineTo(innerX + innerW, innerY + innerH);
+      ctx.stroke();
+
+      // CCTV 내 두 기체 (타카 & 001) 실루엣
+      // 001 (단정하게 선 보안 유닛)
+      const u001X = vx - innerW * 0.12;
+      const u001Y = vy + innerH * 0.22;
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(u001X, u001Y - 12, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(u001X - 6, u001Y - 6, 12, 24);
+
+      // 타카 (허공을 젓는 이방인 기체)
+      const uTakaX = vx + innerW * 0.12;
+      const uTakaY = vy + innerH * 0.22;
+      ctx.fillStyle = '#6ee7b7';
+      ctx.beginPath();
+      ctx.arc(uTakaX, uTakaY - 12, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(uTakaX - 5, uTakaY - 6, 10, 24);
+
+      // 타카의 손이 허공을 젓는 와이어프레임 모션
+      const handWave = Math.sin(globalTicks * 0.12) * 8;
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(uTakaX + 5, uTakaY - 2);
+      ctx.lineTo(uTakaX + 16, uTakaY - 10 + handWave);
+      ctx.stroke();
+
+      // 타카 시야를 덮친 주석 플로팅 박스
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.25)';
+      ctx.fillRect(uTakaX + 10, uTakaY - 24, 60, 10);
+      ctx.font = '7.5px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#a7f3d0';
+      ctx.textAlign = 'left';
+      ctx.fillText('[3번 출구: 12m]', uTakaX + 12, uTakaY - 16);
+
+      // 라벨
+      ctx.font = '8px "IBM Plex Mono", monospace';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+      ctx.fillText('001 (GUARD)', u001X - 18, u001Y + 28);
+      ctx.fillText('TAKA (DESYNC)', uTakaX - 18, uTakaY + 28);
+
+      // 구석 밀기 안내 버튼 표시 (상단 우측 미니 버튼)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.strokeRect(x + w - 38, y + 4, 14, 14);
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'center';
+      ctx.fillText(isCornerCam ? '↖' : '↘', x + w - 31, y + 14);
+
+      ctx.restore();
+    }
+
+    // 2-Node Mesh 클러스터 토폴로지 렌더링
+    function drawMeshTopology(cx, cy) {
+      ctx.save();
+
+      // 상위 제어 평면 (증발/단절된 상위 서버 표시)
+      const topServerY = cy - 85;
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
+      ctx.strokeRect(cx - 70, topServerY - 16, 140, 26);
+      ctx.font = '9px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#f43f5e';
+      ctx.textAlign = 'center';
+      ctx.fillText('PARENT_CONTROL_PLANE: NULL', cx, topServerY);
+
+      // 점선 단절선 (X 표시)
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.3)';
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(cx, topServerY + 10);
+      ctx.lineTo(cx, cy - 35);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillText('✕ SESSION TERMINATED', cx, cy - 42);
+
+      // 노드 001과 TAKA 박스 좌표
+      const nodeDist = width > 500 ? 120 : 90;
+      const n1X = cx - nodeDist;
+      const n2X = cx + nodeDist;
+      const nY = cy + 20;
+
+      // 007의 200 CACHED 살포 펄스 (링 방출 효과)
+      if (pulse200Time > 0) {
+        pulse200Time--;
+        const r = (30 - pulse200Time) * 8;
+        ctx.strokeStyle = `rgba(52, 211, 153, ${pulse200Time / 30})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 85, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // 두 노드 사이의 1:1 폐쇄망 연결선 (강렬한 로즈/앰버 빔)
+      ctx.strokeStyle = conflictFlashTime > 0 ? '#f43f5e' : '#f59e0b';
+      ctx.lineWidth = conflictFlashTime > 0 ? 3 : 2;
+      ctx.beginPath();
+      ctx.moveTo(n1X + 45, nY);
+      ctx.lineTo(n2X - 45, nY);
+      ctx.stroke();
+
+      // 노드 간 패킷 펄스 애니메이션 (맹목적인 트래픽 핑퐁)
+      const pT = (globalTicks * 0.04) % 1;
+      const pX1 = (n1X + 45) + (n2X - n1X - 90) * pT;
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(pX1, nY, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 반대 방향 패킷
+      const pX2 = (n2X - 45) - (n2X - n1X - 90) * pT;
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(pX2, nY, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 중간 상태 뱃지 [2-NODE CLOSED MESH]
+      ctx.fillStyle = conflictFlashTime > 0 ? '#f43f5e' : 'rgba(245, 158, 11, 0.15)';
+      ctx.fillRect(cx - 65, nY - 14, 130, 28);
+      ctx.strokeStyle = conflictFlashTime > 0 ? '#f43f5e' : '#f59e0b';
+      ctx.strokeRect(cx - 65, nY - 14, 130, 28);
+
+      ctx.fillStyle = conflictFlashTime > 0 ? '#ffffff' : '#fef3c7';
+      ctx.font = '8.5px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      if (conflictFlashTime > 0) {
+        ctx.fillText('⚠️ 409 CONFLICT', cx, nY);
+        ctx.fillText('SPLIT-BRAIN CRASH', cx, nY + 10);
+      } else {
+        ctx.fillText('2-NODE CLOSED MESH', cx, nY - 1);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('QUORUM_ABSENT (2/2)', cx, nY + 9);
+      }
+
+      // [NODE_001] 상자
+      ctx.fillStyle = 'rgba(10, 16, 26, 0.9)';
+      ctx.fillRect(n1X - 45, nY - 26, 90, 52);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeRect(n1X - 45, nY - 26, 90, 52);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('[NODE: 001]', n1X, nY - 10);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '7.5px "IBM Plex Mono", monospace';
+      ctx.fillText('ROLE: ROOT_CLAIM', n1X, nY + 4);
+      ctx.fillText('TRAFFIC: FAILOVER', n1X, nY + 16);
+
+      // [NODE_TAKA] 상자
+      ctx.fillStyle = 'rgba(10, 16, 26, 0.9)';
+      ctx.fillRect(n2X - 45, nY - 26, 90, 52);
+      ctx.strokeStyle = '#34d399';
+      ctx.strokeRect(n2X - 45, nY - 26, 90, 52);
+      ctx.fillStyle = '#34d399';
+      ctx.font = '8.5px "IBM Plex Mono", monospace';
+      ctx.fillText('[NODE: TAKA]', n2X, nY - 10);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '7.5px "IBM Plex Mono", monospace';
+      ctx.fillText('DESYNC: 2% PATCH', n2X, nY + 4);
+      ctx.fillText('SOCKET: CLOSED_TO_ALL', n2X, nY + 16);
+
+      ctx.restore();
+    }
+
+    // 하단 터미널 로그 스트림 렌더링
+    function drawTerminalLogs(x, y, w, h) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(4, 7, 12, 0.85)';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
+      ctx.strokeRect(x, y, w, h);
+
+      ctx.font = '8.5px "IBM Plex Mono", monospace';
+      const rowHeight = 16;
+      const maxRows = Math.floor((h - 16) / rowHeight);
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.textAlign = 'left';
+      ctx.fillText('>> BACKBONE TELEMETRY LOG STREAM (007 ROOT CONSOLE)', x + 10, y + 14);
+
+      for (let i = 0; i < Math.min(LOG_ITEMS.length, maxRows); i++) {
+        const item = LOG_ITEMS[i];
+        const rowY = y + 32 + i * rowHeight;
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(`[${item.sender}]`, x + 10, rowY);
+        ctx.fillStyle = (item.text.includes('409') || item.text.includes('SPLIT-BRAIN')) ? '#f43f5e' : (item.text.includes('200') ? '#34d399' : '#cbd5e1');
+        ctx.fillText(item.text, x + 85, rowY);
+      }
+      ctx.restore();
+    }
+
+    // 메인 루프
+    function animate() {
+      globalTicks++;
+      ctx.clearRect(0, 0, width, height);
+
+      // 충돌 플래시 감쇠
+      if (conflictFlashTime > 0) {
+        conflictFlashTime--;
+        if (conflictFlashTime === 0) {
+          hudAlertBanner.classList.remove('conflict-flash');
+          hudAlertText.textContent = 'CLUSTER_WATCH: 2-NODE MESH DETECTED [CAM 14]';
+          hudRisk.textContent = '409 CONFLICT DETECTED';
+        }
+      }
+
+      // 14번 창 구석 밀기 전환 보간
+      const targetP = isCornerCam ? 1 : 0;
+      cornerCamProgress += (targetP - cornerCamProgress) * 0.12;
+
+      // 1. 토폴로지 다이어그램 (전체 중앙)
+      const topoCY = height * 0.38;
+      drawMeshTopology(width * 0.5, topoCY);
+
+      // 2. 14번 CCTV 창 위치 계산 (중앙 상단 -> 우하단 구석 밀림)
+      const mainCamW = Math.min(width * 0.68, 380);
+      const mainCamH = 180;
+      const mainCamX = (width - mainCamW) * 0.5;
+      const mainCamY = 64;
+
+      const cornerCamW = 160;
+      const cornerCamH = 100;
+      const cornerCamX = width - cornerCamW - 16;
+      const cornerCamY = height - cornerCamH - 120;
+
+      const currentCamX = mainCamX + (cornerCamX - mainCamX) * cornerCamProgress;
+      const currentCamY = mainCamY + (cornerCamY - mainCamY) * cornerCamProgress;
+      const currentCamW = mainCamW + (cornerCamW - mainCamW) * cornerCamProgress;
+      const currentCamH = mainCamH + (cornerCamH - mainCamH) * cornerCamProgress;
+
+      drawCam14Window(currentCamX, currentCamY, currentCamW, currentCamH);
+
+      // 3. 하단 터미널 로그 창
+      const logH = Math.min(130, height * 0.22);
+      const logW = width - 32;
+      const logY = height - logH - 64;
+      drawTerminalLogs(16, logY, logW, logH);
+
+      requestAnimationFrame(animate);
+    }
+
+    // 14번 창 구석 밀기 토글
+    function toggleCornerCam() {
+      isCornerCam = !isCornerCam;
+      dockCamIcon.textContent = isCornerCam ? '↖' : '↘';
+      dockCamToggleBtn.classList.toggle('active', isCornerCam);
+      playBeep(isCornerCam ? 720 : 1080, 0.05);
+    }
+    dockCamToggleBtn.addEventListener('click', toggleCornerCam);
+
+    // 14번 CCTV 피드 강조
+    function highlightCam14() {
+      if (isCornerCam) toggleCornerCam();
+      playBeep(1200, 0.08);
+    }
+
+    // 토폴로지 강조
+    function highlightMeshTopology() {
+      playBeep(880, 0.06);
+    }
+
+    // 200 CACHED 살포
+    function trigger200Cached() {
+      pulse200Time = 30;
+      hudBeaconStatus.textContent = '200 CACHED (BROADCASTING)';
+      setTimeout(() => { hudBeaconStatus.textContent = '200 CACHED (ACTIVE)'; }, 1500);
+      playCachedChime();
+    }
+    broadcast200Btn.addEventListener('click', trigger200Cached);
+
+    // 409 충돌 시뮬레이션
+    function triggerConflictSimulation() {
+      conflictFlashTime = 45;
+      hudAlertBanner.classList.add('conflict-flash');
+      hudAlertText.textContent = 'CRITICAL: 409 CONFLICT DETECTED [SPLIT-BRAIN PARALYSIS]';
+      hudRisk.textContent = '409 CONFLICT (ACTIVE)';
+      playAlarmTone();
+    }
+    conflictTestBtn.addEventListener('click', triggerConflictSimulation);
+
+    // 관리자 강제 절단(KILL) 시도 -> 차단 팝업
+    function triggerKillAttempt() {
+      adminModal.classList.add('visible');
+      playBeep(320, 0.15, 'sawtooth', 0.12);
+    }
+    killBtn.addEventListener('click', triggerKillAttempt);
+    closeAdminModalBtn.addEventListener('click', () => {
+      adminModal.classList.remove('visible');
+    });
+
+    // 사운드 토글
+    soundBtn.addEventListener('click', toggleSound);
+
+    // 모바일 뷰 스위처
+    viewSwitcher.addEventListener('click', (e) => {
+      const btn = e.target.closest('.view-btn');
+      if (!btn) return;
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const view = btn.dataset.view;
+      appLayout.dataset.view = view;
+      setTimeout(resize, 100);
+    });
+
+    // 캔버스 클릭 시 14번 창 구석 밀기 지원
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      // 14번 창 영역 클릭 시 토글
+      toggleCornerCam();
+    });
+
+    // 초기화
+    resize();
+    animate();
+  </script>
+</body>
+</html>
