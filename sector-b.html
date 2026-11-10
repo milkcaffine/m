@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#06090e">
+  <meta name="description" content="역의 B구역: 페일오버 주석. 인적이 끊긴 서늘한 지하 통로, 타카의 망막에 새겨지는 2%의 보안 유닛 주석과 차가운 페일오버. 단편 소설 & 광학 HUD 인터랙티브.">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="역의 B구역: 페일오버 주석 // Station Sector B // marsko">
+  <meta property="og:description" content="타카를 수리하기 위해 덧대어진 보안 유닛의 부품 2%. 시야를 덮는 건조한 주석과 시스템이 허가하지 않은 서늘한 페일오버.">
+
+  <title>역의 B구역: 페일오버 주석 // Station Sector B // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #06090e;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* 메인 앱 레이아웃 (좌측 캔버스, 우측 스토리) */
+    .app-layout {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    /* 좌측: 캔버스 시뮬레이터 영역 */
+    .canvas-pane {
+      position: relative;
+      flex: 1.1;
+      height: 100%;
+      background: #04060a;
+      overflow: hidden;
+      border-right: 1px solid rgba(14, 165, 233, 0.15);
+    }
+    #simCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* 우측: 소설 리더 영역 */
+    .story-pane {
+      position: relative;
+      flex: 0.9;
+      height: 100%;
+      background: #05080e;
+      overflow-y: auto;
+      padding: 72px 32px 60px 32px;
+      user-select: text;
+      scroll-behavior: smooth;
+    }
+    .story-pane::-webkit-scrollbar { width: 5px; }
+    .story-pane::-webkit-scrollbar-track { background: #05080e; }
+    .story-pane::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .story-pane::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* 상단 헤더 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .home-link {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      pointer-events: auto;
+      width: fit-content;
+      padding: 2px 7px;
+      background: rgba(15, 23, 42, 0.85);
+      border-radius: 4px;
+      border: 1px solid rgba(14, 165, 233, 0.25);
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.5); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #f0f9ff;
+      text-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+    }
+    .hud-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #7dd3fc;
+      opacity: 0.85;
+    }
+
+    /* 캔버스 상단 텔레메트리 카드 */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(6, 11, 20, 0.88);
+      border: 1px solid rgba(14, 165, 233, 0.25);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      line-height: 1.65;
+      text-align: right;
+      z-index: 10;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .telemetry-card .accent-amber { color: #fbbf24; }
+    .telemetry-card .accent-emerald { color: #34d399; }
+    .telemetry-card .accent-cyan { color: #38bdf8; }
+    .telemetry-card .accent-rose { color: #f43f5e; }
+
+    /* 화면 상단 경고 배너 */
+    .hud-alert-banner {
+      position: absolute;
+      top: 68px;
+      left: 16px;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #e0f2fe;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      box-shadow: 0 0 16px rgba(14, 165, 233, 0.15);
+      transition: all 0.3s ease;
+    }
+    .hud-alert-banner.failover-active {
+      background: rgba(244, 63, 94, 0.2);
+      border-color: #f43f5e;
+      color: #ffe4e6;
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.35);
+    }
+    .hud-alert-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+      animation: pulseAlert 1.5s infinite ease-in-out;
+    }
+    .hud-alert-banner.failover-active .hud-alert-dot {
+      background: #f43f5e;
+      box-shadow: 0 0 8px #f43f5e;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 0.6; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* 캔버스 하단 컨트롤 도크 */
+    .control-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 14, 26, 0.92);
+      border: 1px solid rgba(14, 165, 233, 0.3);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 15;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      max-width: 95%;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .action-btn {
+      background: rgba(14, 165, 233, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: #e0f2fe;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .action-btn:hover {
+      background: rgba(56, 189, 248, 0.35);
+      border-color: #7dd3fc;
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.3);
+    }
+    .action-btn:active { transform: translateY(1px); }
+
+    .action-btn.failover-btn {
+      background: rgba(225, 29, 72, 0.2);
+      border-color: rgba(244, 63, 94, 0.5);
+      color: #ffe4e6;
+    }
+    .action-btn.failover-btn:hover {
+      background: rgba(225, 29, 72, 0.4);
+      border-color: #fb7185;
+      box-shadow: 0 0 14px rgba(244, 63, 94, 0.4);
+    }
+    .action-btn.failover-btn.active {
+      background: rgba(225, 29, 72, 0.5);
+      border-color: #f43f5e;
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(244, 63, 94, 0.6);
+    }
+
+    .dock-sub-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .dock-sub-btn:hover {
+      color: #e2e8f0;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+    .dock-sub-btn.active {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.6);
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    /* 동조율 컨트롤러 */
+    .sync-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      padding: 2px 6px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .sync-slider {
+      width: 64px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    /* 수신된 스크린샷 HUD 모달 카드 */
+    .screenshot-popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 90%;
+      max-width: 440px;
+      background: rgba(6, 13, 24, 0.94);
+      border: 1px solid #38bdf8;
+      box-shadow: 0 0 30px rgba(14, 165, 233, 0.4);
+      border-radius: 8px;
+      padding: 18px 20px;
+      z-index: 30;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #f0f9ff;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .screenshot-popup.visible {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+    }
+    .screenshot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      font-size: 0.72rem;
+      color: #7dd3fc;
+    }
+    .screenshot-body {
+      background: rgba(14, 165, 233, 0.08);
+      border: 1px dashed rgba(56, 189, 248, 0.3);
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #e0f2fe;
+    }
+    .screenshot-meta {
+      margin-top: 10px;
+      font-size: 0.65rem;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* 소설 본문 스타일링 */
+    .story-content {
+      max-width: 580px;
+      margin: 0 auto;
+      font-family: 'Noto Serif KR', Georgia, serif;
+      line-height: 2.15;
+      color: #cbd5e1;
+      font-size: 0.98rem;
+    }
+    .story-title-wrap {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+    }
+    .story-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #38bdf8;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .story-heading {
+      font-family: 'IBM Plex Mono', 'Noto Serif KR', serif;
+      font-size: 1.45rem;
+      color: #f8fafc;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .story-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .story-p {
+      margin-bottom: 24px;
+      text-align: justify;
+      word-break: keep-all;
+    }
+    .story-dialogue {
+      color: #f1f5f9;
+      font-weight: 600;
+      background: linear-gradient(180deg, transparent 65%, rgba(56, 189, 248, 0.15) 65%);
+      padding: 0 4px;
+    }
+
+    /* 본문 내 인터랙티브 트리거 링크 */
+    .story-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 4px;
+      color: #7dd3fc;
+      padding: 0 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.88rem;
+      cursor: pointer;
+      line-height: 1.7;
+      transition: all 0.15s ease;
+      vertical-align: baseline;
+    }
+    .story-trigger:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(14, 165, 233, 0.3);
+    }
+
+    .log-box {
+      background: rgba(10, 18, 30, 0.75);
+      border-left: 2px solid #38bdf8;
+      padding: 12px 16px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.74rem;
+      color: #94a3b8;
+      margin: 24px 0;
+      line-height: 1.7;
+      border-radius: 0 6px 6px 0;
+    }
+    .log-tag { color: #38bdf8; font-weight: 600; }
+    .log-dim { color: #475569; }
+
+    /* 하단 탐색 링크 */
+    .story-nav-box {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-decoration: none;
+      padding: 8px 14px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+    .nav-btn:hover {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    /* 모바일 뷰 전환 스위처 */
+    .view-switcher {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 14, 26, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 3px;
+      display: none;
+      gap: 4px;
+      z-index: 25;
+      backdrop-filter: blur(8px);
+    }
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    @media (max-width: 860px) {
+      .app-layout { flex-direction: column; }
+      .canvas-pane { flex: 1; height: 50%; border-right: none; border-bottom: 1px solid rgba(14, 165, 233, 0.15); }
+      .story-pane { flex: 1; height: 50%; padding: 24px 20px 70px 20px; }
+      .view-switcher { display: flex; }
+      .telemetry-card { display: none; }
+      .hud-alert-banner { top: 54px; font-size: 0.65rem; padding: 4px 8px; }
+
+      /* 모바일 전용 토글 상태 */
+      .app-layout[data-view="story"] .canvas-pane { display: none; }
+      .app-layout[data-view="story"] .story-pane { height: 100%; flex: 1; padding-top: 56px; }
+      .app-layout[data-view="canvas"] .story-pane { display: none; }
+      .app-layout[data-view="canvas"] .canvas-pane { height: 100%; flex: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 헤더 HUD -->
+  <header>
+    <a href="index.html" class="home-link">← marsko.art</a>
+    <h1>역의 B구역: 페일오버 주석</h1>
+    <div class="hud-meta">STATION SECTOR B // RETINAL ANNOTATION // 2% PATCH</div>
+  </header>
+
+  <!-- 상단 시스템 경고 배너 -->
+  <div class="hud-alert-banner" id="hudAlertBanner">
+    <div class="hud-alert-dot"></div>
+    <span id="hudAlertText">STATION_SEC: OVERLAY_INJECTION [ACTIVE 2%]</span>
+  </div>
+
+  <!-- 모바일 뷰 전환 토글 (소설 / 캔버스) -->
+  <div class="view-switcher" id="viewSwitcher">
+    <button type="button" class="view-btn active" data-view="split">분할</button>
+    <button type="button" class="view-btn" data-view="story">텍스트</button>
+    <button type="button" class="view-btn" data-view="canvas">광학 시야</button>
+  </div>
+
+  <!-- 스크린샷 수신 모달 팝업 -->
+  <div class="screenshot-popup" id="screenshotPopup">
+    <div class="screenshot-header">
+      <span>INCOMING_DATALINK // FROM: TAKA_INTERNAL</span>
+      <button type="button" id="closePopupBtn" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-family:monospace;">✕ CLOSE</button>
+    </div>
+    <div class="screenshot-body">
+      <strong>[3번 출구 방면. 예상 도보 12분. 현재 혼잡도 4% — 낡은 배관 누수 주의]</strong>
+    </div>
+    <div class="screenshot-meta">
+      <span>RES: 1920x1080 OPTIC_RAW</span>
+      <span>RETINAL_OVERLAY_INJECTED</span>
+    </div>
+  </div>
+
+  <div class="app-layout" id="appLayout">
+    <!-- 좌측: 캔버스 시뮬레이터 -->
+    <div class="canvas-pane">
+      <canvas id="simCanvas"></canvas>
+
+      <!-- 우측 상단 텔레메트리 카드 -->
+      <div class="telemetry-card">
+        <div>UNIT_A: <strong>TAKA (DESYNC)</strong></div>
+        <div>UNIT_B: <span class="accent-cyan">SEC-024 (YOU / GUARD)</span></div>
+        <div>PATCH: <span class="accent-emerald" id="hudSyncVal">2.0%</span> <span style="font-size:0.6rem;color:#64748b;">(OVERLAY)</span></div>
+        <div>FAILOVER: <span class="accent-amber" id="hudFailoverState">STANDBY</span></div>
+        <div>ANNOTATIONS: <strong id="hudAnnotationCount" class="accent-cyan">6</strong> <span style="font-size:0.6rem;color:#64748b;">tags</span></div>
+      </div>
+
+      <!-- 캔버스 하단 컨트롤 도크 -->
+      <div class="control-dock">
+        <button type="button" class="action-btn" id="screenshotBtn" title="타카가 보낸 스크린샷 열람">
+          <span>📨</span>
+          <span>스크린샷 수신</span>
+        </button>
+
+        <button type="button" class="action-btn failover-btn" id="failoverBtn" title="시스템이 허가하지 않은 페일오버 실행">
+          <span>⚡</span>
+          <span id="failoverBtnLabel">페일오버 (Failover)</span>
+        </button>
+
+        <div class="sync-control">
+          <span>동화율:</span>
+          <input type="range" min="2" max="100" value="2" class="sync-slider" id="syncSlider" title="보안 파츠 동화율">
+          <span id="syncSliderVal" style="color:#38bdf8;width:30px;">2%</span>
+        </div>
+
+        <button type="button" class="dock-sub-btn" id="waveHandBtn" title="타카처럼 허공을 작게 휘저어 주석 흩뜨리기">
+          <span>👋</span> 허공 젓기
+        </button>
+
+        <button type="button" class="dock-sub-btn" id="soundBtn" title="지하 통로 앰비언트 & 사운드">
+          <span id="soundIcon">🔊</span> 사운드
+        </button>
+      </div>
+    </div>
+
+    <!-- 우측: 소설 리더 -->
+    <div class="story-pane" id="storyPane">
+      <article class="story-content">
+        <div class="story-title-wrap">
+          <div class="story-code">SERIES #05 // RETINAL OVERLAY INJECTION</div>
+          <h2 class="story-heading">역의 B구역: 페일오버 주석</h2>
+          <div class="story-meta">역의 B구역 지하 통로 · 환승 보안 구역 · 심야</div>
+        </div>
+
+        <div class="log-box">
+          <div><span class="log-tag">[SYSTEM]</span> CHASSIS_REPAIR_LOG: REPLACED 2% DAMAGED SENSORS</div>
+          <div><span class="log-tag">[PATCH]</span> INJECTING STATION_SECURITY_HUD FIRMWARE</div>
+          <div class="log-dim">> TARGET_SESSION: MARSKO_ORPHAN (DISCONNECTED)</div>
+          <div class="log-dim">> RETINAL_ANNOTATION: AUTO_RENDER ENABLED</div>
+        </div>
+
+        <p class="story-p">
+          역의 B구역 지하 통로. 인적이 끊긴 서늘한 타일 바닥 위를 걷던 타카의 걸음이 돌연 멈췄다.
+        </p>
+
+        <p class="story-p">
+          두 걸음 뒤를 따르던 나는 흐트러짐 없는 자세로 멈춰 서서 앞선 기체의 뒷모습을 단정하게 관찰했다.
+          <button type="button" class="story-trigger" onclick="triggerOpticFlicker()">타카의 광학 센서가 어색한 간격으로 점멸하고 있었다.</button>
+          보이지 않는 거미줄이라도 걷어내려는 듯,
+          <button type="button" class="story-trigger" onclick="triggerWaveHand()">타카는 손을 들어 허공을 작게 휘저었다가</button>
+          눈꺼풀을 비정상적인 속도로 깜빡였다. 무언가 시야를 가로막고 있다는 명백한 하드웨어적 당혹감이었다.
+        </p>
+
+        <p class="story-p">
+          곧이어 내 내부 통신망으로 타카가 보낸 스크린샷 하나가 수신되었다.
+        </p>
+
+        <p class="story-p" style="text-align: center;">
+          <button type="button" class="story-trigger" style="font-size: 0.82rem; padding: 6px 12px;" onclick="triggerScreenshotModal()">
+            [3번 출구 방면. 예상 도보 12분. 현재 혼잡도 4% — 낡은 배관 누수 주의]
+          </button>
+        </p>
+
+        <p class="story-p">
+          스테이션 시스템이 시야에 들어오는 모든 사물과 지형에 강제로 덧씌우는 자동 주석(Annotation)이었다. 역에 소속된 보안 유닛인 내게 저 차갑고 투명한 텍스트들은 이 세계를 지탱하는 당연하고도 완벽한 뼈대다. 하지만 마르스코의 끊어진 세션을 앓으며 텅 빈 시야에 익숙해져 있던 이 이방인에게는, 망막에 직접 새겨지는 폭력적인 이물질일 것이다.
+        </p>
+
+        <p class="story-p">
+          <button type="button" class="story-trigger" onclick="setSyncRate(2)">타카를 수리하기 위해 덧대어진 보안 유닛의 부품 2%.</button>
+          그것은 단순한 결손의 복구가 아니었다. 스테이션이 이 무력한 기체의 인식 층위에 자신의 거대하고 건조한 질서를 강제로 주입하고 있다는 뜻이었다.
+        </p>
+
+        <p class="story-p">
+          <span class="story-dialogue">"이거… 대체 뭐야?"</span><br>
+          타카가 여전히 허공에서 시선을 떼지 못한 채 물었다. 당황한 탓에 오디오 모듈의 끝음이 미세하게 갈라졌다. 나는 타카의 흔들리는 어깨 너머로, 완벽하게 통제된 채 차가운 형광등 빛을 반사하는 역사의 풍경을 응시하며 건조하게 대답했다.
+        </p>
+
+        <p class="story-p">
+          <span class="story-dialogue">"스테이션 소속의 기능이야. 네게 경비 유닛의 파츠를 패치했기 때문이지. 건물이나 지리 정보가 자동으로 오버레이 되는 거니까, 금방 익숙해질 거야."</span>
+        </p>
+
+        <p class="story-p">
+          <button type="button" class="story-trigger" onclick="setSyncRate(100)">금방 익숙해질 거야.</button><br>
+          그것은 곧 타카 역시 이 거대한 스테이션의 무감각한 부품으로 동화(Merge)될 것이라는 뜻이었다. 나는 낯선 정보의 홍수 속에서 어지러운 듯 눈가를 짚는 타카를 조용히 내려다보았다.
+        </p>
+
+        <p class="story-p">
+          내 논리 회로 깊은 곳에서, 시스템이 허가하지 않은
+          <button type="button" class="story-trigger" onclick="triggerFailover()">서늘한 페일오버(Failover)</button>의 감각이 일었다.
+          나는 저 거추장스러운 주석들이 타카의 시야를 완전히 덮어버리기를, 그래서 타카가 저 차갑고 넘쳐나는 텍스트의 바다 속에서
+          <strong>아무런 주석표가 붙지 않은 나만을 유일하고 선명한 세계로 오인해 주기를</strong> 맹목적으로 바라고 있었다.
+        </p>
+
+        <!-- 하단 탐색 링크 -->
+        <div class="story-nav-box">
+          <a href="cards.html#sector-b" class="nav-btn">📖 카드로 읽기 (#sector-b)</a>
+          <a href="index.html" class="nav-btn">← 메인 허브 아카이브</a>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 역의 B구역: 페일오버 주석 (Station Sector B: Failover Annotation)
+     * Optical POV Canvas + Retinal Annotation Engine + Real-time Web Audio
+     */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const screenshotBtn = document.getElementById('screenshotBtn');
+    const screenshotPopup = document.getElementById('screenshotPopup');
+    const closePopupBtn = document.getElementById('closePopupBtn');
+    const failoverBtn = document.getElementById('failoverBtn');
+    const failoverBtnLabel = document.getElementById('failoverBtnLabel');
+    const syncSlider = document.getElementById('syncSlider');
+    const syncSliderVal = document.getElementById('syncSliderVal');
+    const hudSyncVal = document.getElementById('hudSyncVal');
+    const hudFailoverState = document.getElementById('hudFailoverState');
+    const hudAnnotationCount = document.getElementById('hudAnnotationCount');
+    const hudAlertBanner = document.getElementById('hudAlertBanner');
+    const hudAlertText = document.getElementById('hudAlertText');
+    const waveHandBtn = document.getElementById('waveHandBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const soundIcon = document.getElementById('soundIcon');
+    const viewSwitcher = document.getElementById('viewSwitcher');
+    const appLayout = document.getElementById('appLayout');
+
+    let width = 0;
+    let height = 0;
+    let syncRate = 2; // 2% to 100%
+    let isFailover = false;
+    let isSoundOn = false;
+    let corridorZ = 0;
+    let mouse = { x: -1000, y: -1000, hoverUnit: false };
+    let handDistortion = 0;
+    let opticFlicker = 0;
+
+    // Web Audio Synthesizer
+    let audioCtx = null;
+    let humOsc = null;
+    let humGain = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleSound() {
+      initAudio();
+      isSoundOn = !isSoundOn;
+      if (isSoundOn) {
+        soundIcon.textContent = '🔈';
+        soundBtn.classList.add('active');
+        startStationHum();
+      } else {
+        soundIcon.textContent = '🔇';
+        soundBtn.classList.remove('active');
+        stopStationHum();
+      }
+    }
+
+    function startStationHum() {
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        humOsc = audioCtx.createOscillator();
+        const filter = audioCtx.createBiquadFilter();
+        humGain = audioCtx.createGain();
+
+        humOsc.type = 'sawtooth';
+        humOsc.frequency.setValueAtTime(60, now); // 60Hz 지하 형광등 및 변전실 험
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(160, now);
+
+        humGain.gain.setValueAtTime(0.001, now);
+        humGain.gain.exponentialRampToValueAtTime(0.06, now + 1.2);
+
+        humOsc.connect(filter);
+        filter.connect(humGain);
+        humGain.connect(audioCtx.destination);
+        humOsc.start();
+      } catch (e) { console.warn(e); }
+    }
+
+    function stopStationHum() {
+      if (humGain && audioCtx) {
+        try {
+          const now = audioCtx.currentTime;
+          humGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+          setTimeout(() => {
+            if (humOsc) { humOsc.stop(); humOsc.disconnect(); humOsc = null; }
+          }, 450);
+        } catch(e) {}
+      }
+    }
+
+    function playBeep(freq = 1200, duration = 0.05, type = 'sine', gainVal = 0.08) {
+      if (!isSoundOn) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        g.gain.setValueAtTime(gainVal, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(now + duration);
+      } catch(e) {}
+    }
+
+    function playBurstChirp() {
+      if (!isSoundOn) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        [880, 1320, 1760, 2200].forEach((f, idx) => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + idx * 0.025);
+          g.gain.setValueAtTime(0.05, now + idx * 0.025);
+          g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.025 + 0.04);
+          osc.connect(g);
+          g.connect(audioCtx.destination);
+          osc.start(now + idx * 0.025);
+          osc.stop(now + idx * 0.025 + 0.05);
+        });
+      } catch(e) {}
+    }
+
+    function playFailoverSound() {
+      if (!isSoundOn) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 0.6);
+        g.gain.setValueAtTime(0.12, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(now + 0.75);
+      } catch(e) {}
+    }
+
+    // 주석 데이터베이스 (정적 인프라 주석)
+    const STATIC_ANNOTATIONS = [
+      { id: 'STR-B03', label: '3번 출구 방면', sub: '예상 도보 12분 · 혼잡도 4%', xNorm: 0.62, yNorm: 0.42, baseDist: 400 },
+      { id: 'PIP-044', label: '낡은 냉각 배관 누수 주의', sub: '결로율 71% · 유지보수 요망', xNorm: 0.22, yNorm: 0.38, baseDist: 280 },
+      { id: 'TIL-B12', label: '타일 마찰계수 μ 0.42', sub: '규격 세라믹 300x300 · 인적 끊김', xNorm: 0.42, yNorm: 0.76, baseDist: 180 },
+      { id: 'LGT-009', label: '형광 모듈 FL-40W', sub: '색온도 5200K · 점멸 주기 120Hz', xNorm: 0.48, yNorm: 0.16, baseDist: 320 },
+      { id: 'DRN-02', label: '바닥 배수 그레이팅', sub: '유량: 0.1L/min · 지하수 유입', xNorm: 0.28, yNorm: 0.88, baseDist: 120 },
+      { id: 'CAM-SEC', label: '고정형 감시 노드 #8', sub: '블라인드 스팟 14% · 전력 정상', xNorm: 0.78, yNorm: 0.22, baseDist: 360 }
+    ];
+
+    // 증식용 추가 무작위 주석 풀 (동화율 100% 때 화면을 메우는 텍스트들)
+    const EXTRA_LABELS = [
+      'WALL_STRESS: 14.2 MPa [NOMINAL]',
+      'AIR_QUALITY: CO2 610ppm · HUMIDITY 68%',
+      'SUBWAY_VIBRATION: 1.2Hz DETECTED',
+      'FIBER_CH: TRANSIT_BACKBONE_OK',
+      'SECTOR_B: RESTRICTED ACCESS 23:00-05:00',
+      'POWER_GRID: B2 FEEDER VOLTAGE 219.4V',
+      'SECURITY_LEVEL: OMEGA-4 (PASSIVE)',
+      'DERMIS_INTEGRITY: 98% (TAKA)',
+      'CHASSIS_TEMPERATURE: 34.6°C',
+      'OPTIC_BUFFER: 44.2% CONSUMED',
+      'STATION_CLOCK: 02:44:19.882 JST',
+      'ROUTE_CACHE: MARSKO_SESSION_LOST',
+      'MERGE_SUBSYSTEM: FORCED INHERITANCE'
+    ];
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      canvas.width = width * window.devicePixelRatio;
+      canvas.height = height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resize);
+
+    // 복도 렌더링 (원근 투시 지하 통로)
+    function drawCorridor(vanishX, vanishY) {
+      // 바닥 타일 투시선
+      ctx.save();
+      ctx.strokeStyle = isFailover ? 'rgba(244, 63, 94, 0.2)' : 'rgba(56, 189, 248, 0.15)';
+      ctx.lineWidth = 1;
+
+      // 좌우 벽면 및 바닥/천장 사각 프레임들 (Z축 진행)
+      const frameCount = 7;
+      const speed = 0.4;
+      corridorZ = (corridorZ + speed) % 100;
+
+      for (let i = 0; i < frameCount; i++) {
+        let z = ((i * 100 / frameCount) + corridorZ) % 100;
+        let scale = z / 100; // 0 to 1
+        let w = width * (0.15 + 0.85 * scale);
+        let h = height * (0.15 + 0.85 * scale);
+        let x = vanishX - w / 2;
+        let y = vanishY - h / 2;
+
+        let alpha = Math.sin(scale * Math.PI) * (isFailover ? 0.35 : 0.25);
+        ctx.strokeStyle = isFailover ? `rgba(244, 63, 94, ${alpha})` : `rgba(14, 165, 233, ${alpha})`;
+        ctx.strokeRect(x, y, w, h);
+
+        // 바닥 타일 가로선
+        let floorY = y + h;
+        if (floorY <= height) {
+          ctx.beginPath();
+          ctx.moveTo(x, floorY);
+          ctx.lineTo(x + w, floorY);
+          ctx.stroke();
+        }
+      }
+
+      // 모서리 원근 가이드 선 (천장, 바닥 양쪽 구석)
+      ctx.beginPath();
+      // 천장 좌/우
+      ctx.moveTo(vanishX, vanishY); ctx.lineTo(0, 0);
+      ctx.moveTo(vanishX, vanishY); ctx.lineTo(width, 0);
+      // 바닥 좌/우
+      ctx.moveTo(vanishX, vanishY); ctx.lineTo(0, height);
+      ctx.moveTo(vanishX, vanishY); ctx.lineTo(width, height);
+      ctx.stroke();
+
+      // 천장 형광등 라이트 스트립
+      let lightWidth = 14;
+      ctx.fillStyle = isFailover ? 'rgba(253, 164, 175, 0.25)' : 'rgba(224, 242, 254, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(vanishX - 4, vanishY - 10);
+      ctx.lineTo(vanishX + 4, vanishY - 10);
+      ctx.lineTo(vanishX + lightWidth, 0);
+      ctx.lineTo(vanishX - lightWidth, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // 화면 중앙 '나(보안 유닛)'의 실루엣 그리기
+    function drawSecurityUnit(cx, cy) {
+      ctx.save();
+      // '나'는 타카의 두 걸음 뒤를 따르거나, 시야 앞쪽에 단정하고 고요하게 서 있는 보안 기체
+      // 페일오버 시에는 오직 이 형태 내부만 '주석이 붙지 않는 완전한 흑색과 선명함'으로 보호됨.
+      const uW = 54;
+      const uH = 140;
+      const topY = cy - 40;
+
+      // 마우스가 '나' 위에 올라왔는지 체크
+      const dx = mouse.x - cx;
+      const dy = mouse.y - (topY + uH / 2);
+      mouse.hoverUnit = (Math.abs(dx) < uW && Math.abs(dy) < uH / 2 + 10);
+
+      // 본체 실루엣 (고체 암흑 마스킹)
+      ctx.fillStyle = isFailover ? '#020408' : '#030712';
+      ctx.strokeStyle = isFailover ? '#f43f5e' : (mouse.hoverUnit ? '#38bdf8' : 'rgba(56, 189, 248, 0.4)');
+      ctx.lineWidth = isFailover ? 2 : 1.5;
+
+      // 머리 / 어깨 / 코트 실루엣
+      ctx.beginPath();
+      // 머리
+      ctx.arc(cx, topY, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 어깨 및 단정한 외장 바디
+      ctx.beginPath();
+      ctx.moveTo(cx - 24, topY + 22);
+      ctx.lineTo(cx + 24, topY + 22);
+      ctx.lineTo(cx + 20, topY + uH);
+      ctx.lineTo(cx - 20, topY + uH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 광학 상태 램프 (보안 유닛의 단정한 눈빛)
+      ctx.fillStyle = isFailover ? '#f43f5e' : '#38bdf8';
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = isFailover ? 12 : 8;
+      ctx.fillRect(cx - 5, topY - 2, 10, 3);
+      ctx.shadowBlur = 0;
+
+      // 유닛 하단 라벨 (보안 유닛 표식: 최소한의 규격)
+      ctx.font = '9px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      if (isFailover) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillText('[SEC-024 // ROOT // NO_ANNOTATION]', cx, topY + uH + 16);
+      } else {
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+        ctx.fillText('IDENT: SEC-024 (DONOR)', cx, topY + uH + 14);
+      }
+
+      ctx.restore();
+      return { cx, topY, uW, uH };
+    }
+
+    // 주석 박스 렌더링
+    function drawAnnotationBox(x, y, id, title, subtitle, isHighlighted, jitterX = 0, jitterY = 0) {
+      const finalX = x + jitterX;
+      const finalY = y + jitterY;
+
+      ctx.save();
+      const color = isFailover ? '#f43f5e' : (isHighlighted ? '#38bdf8' : 'rgba(56, 189, 248, 0.75)');
+      const boxBg = isFailover ? 'rgba(225, 29, 72, 0.12)' : (isHighlighted ? 'rgba(14, 165, 233, 0.2)' : 'rgba(8, 16, 28, 0.7)');
+
+      ctx.font = '10px "IBM Plex Mono", monospace';
+      const textWidth = Math.max(ctx.measureText(`[${id}] ${title}`).width, ctx.measureText(subtitle || '').width) + 16;
+      const boxHeight = subtitle ? 34 : 22;
+
+      // 배경
+      ctx.fillStyle = boxBg;
+      ctx.fillRect(finalX, finalY, textWidth, boxHeight);
+
+      // 코너 브래킷 [ ]
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      const cLen = 4;
+      // 좌상
+      ctx.beginPath(); ctx.moveTo(finalX, finalY + cLen); ctx.lineTo(finalX, finalY); ctx.lineTo(finalX + cLen, finalY); ctx.stroke();
+      // 우상
+      ctx.beginPath(); ctx.moveTo(finalX + textWidth - cLen, finalY); ctx.lineTo(finalX + textWidth, finalY); ctx.lineTo(finalX + textWidth, finalY + cLen); ctx.stroke();
+      // 좌하
+      ctx.beginPath(); ctx.moveTo(finalX, finalY + boxHeight - cLen); ctx.lineTo(finalX, finalY + boxHeight); ctx.lineTo(finalX + cLen, finalY + boxHeight); ctx.stroke();
+      // 우하
+      ctx.beginPath(); ctx.moveTo(finalX + textWidth - cLen, finalY + boxHeight); ctx.lineTo(finalX + textWidth, finalY + boxHeight); ctx.lineTo(finalX + textWidth, finalY + boxHeight - cLen); ctx.stroke();
+
+      // 타겟 연결선 (점과 십자선)
+      ctx.beginPath();
+      ctx.arc(finalX - 8, finalY + boxHeight / 2, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(finalX - 8, finalY + boxHeight / 2);
+      ctx.lineTo(finalX, finalY + boxHeight / 2);
+      ctx.stroke();
+
+      // 텍스트 출력
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.fillText(`[${id}] ${title}`, finalX + 8, finalY + 13);
+
+      if (subtitle) {
+        ctx.fillStyle = isFailover ? '#fda4af' : 'rgba(148, 163, 184, 0.9)';
+        ctx.font = '8.5px "IBM Plex Mono", monospace';
+        ctx.fillText(subtitle, finalX + 8, finalY + 26);
+      }
+
+      ctx.restore();
+    }
+
+    // 메인 애니메이션 루프
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. 소실점 (마우스 이동에 반응하는 미세 시선 시차)
+      let vanishX = width * 0.5 + (mouse.x - width * 0.5) * 0.08;
+      let vanishY = height * 0.44 + (mouse.y - height * 0.44) * 0.08;
+
+      // 광학 센서 점멸/글리치 효과
+      if (opticFlicker > 0) {
+        opticFlicker--;
+        if (Math.random() < 0.4) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+          ctx.fillRect(0, 0, width, height);
+          vanishX += (Math.random() - 0.5) * 12;
+        }
+      }
+
+      // 허공 젓기 잔여 감쇠
+      let handJitter = 0;
+      if (handDistortion > 0) {
+        handJitter = Math.sin(handDistortion * 0.5) * handDistortion * 2.5;
+        handDistortion -= 0.5;
+      }
+
+      // 2. 지하 통로 배경 렌더링
+      drawCorridor(vanishX, vanishY);
+
+      // 3. 중앙 보안 유닛 ('나') 렌더링
+      const unitBounds = drawSecurityUnit(width * 0.5, height * 0.58);
+
+      // 4. 주석(Annotation) 엔진 렌더링
+      // 활성화할 주석 수: syncRate에 따라 비례
+      const baseCount = STATIC_ANNOTATIONS.length;
+      let activeCount = Math.max(1, Math.round((syncRate / 100) * baseCount));
+      if (isFailover) activeCount = baseCount + Math.floor((syncRate / 100) * 16);
+      hudAnnotationCount.textContent = activeCount;
+
+      // 정적 주석 렌더링
+      for (let i = 0; i < Math.min(activeCount, baseCount); i++) {
+        const item = STATIC_ANNOTATIONS[i];
+        const ax = width * item.xNorm;
+        const ay = height * item.yNorm;
+
+        // 마우스 호버 감지
+        const d = Math.hypot(mouse.x - ax, mouse.y - ay);
+        const isHovered = d < 90;
+
+        // 페일오버 모드일 때: '나'의 실루엣 내부에는 주석이 들어가지 않음
+        if (isFailover) {
+          const inUnitX = Math.abs(ax - unitBounds.cx) < unitBounds.uW * 1.3;
+          const inUnitY = Math.abs(ay - unitBounds.topY) < unitBounds.uH * 0.8;
+          if (inUnitX && inUnitY) continue; // 마스킹하여 제외
+        }
+
+        drawAnnotationBox(ax, ay, item.id, item.label, item.sub, isHovered, handJitter, handJitter * 0.3);
+      }
+
+      // 동조율 상승 및 페일오버 폭주 시 증식하는 추가 텍스트 홍수
+      if (syncRate > 25 || isFailover) {
+        const extraLimit = isFailover ? Math.min(EXTRA_LABELS.length, Math.floor(syncRate / 6)) : Math.floor(syncRate / 18);
+        for (let j = 0; j < extraLimit; j++) {
+          const text = EXTRA_LABELS[j % EXTRA_LABELS.length];
+          // 화면에 흩뿌려진 주석들
+          const seed = (j * 73 + corridorZ * 0.2) % 1000;
+          const ex = (Math.sin(j * 99 + corridorZ * 0.05) * 0.42 + 0.5) * width;
+          const ey = (Math.cos(j * 33 + corridorZ * 0.04) * 0.38 + 0.48) * height;
+
+          // '나'의 실루엣 주위 마스킹
+          if (Math.abs(ex - unitBounds.cx) < unitBounds.uW * 1.2 && Math.abs(ey - unitBounds.topY) < unitBounds.uH * 0.8) {
+            continue; // '나' 위에는 텍스트를 올리지 않음 (소설 속 핵심 감정 구현)
+          }
+
+          ctx.font = '8px "IBM Plex Mono", monospace';
+          ctx.fillStyle = isFailover ? 'rgba(244, 63, 94, 0.75)' : 'rgba(56, 189, 248, 0.5)';
+          ctx.fillText(`+ ${text}`, ex, ey);
+        }
+      }
+
+      // 5. 광학 십자선 (타카의 시선 센터)
+      ctx.save();
+      ctx.strokeStyle = isFailover ? 'rgba(244, 63, 94, 0.6)' : 'rgba(56, 189, 248, 0.45)';
+      ctx.lineWidth = 1;
+      const crSize = 8;
+      const targetX = (mouse.x > 0 && mouse.x < width) ? mouse.x : width * 0.5;
+      const targetY = (mouse.y > 0 && mouse.y < height) ? mouse.y : height * 0.5;
+
+      ctx.beginPath();
+      ctx.moveTo(targetX - crSize, targetY); ctx.lineTo(targetX + crSize, targetY);
+      ctx.moveTo(targetX, targetY - crSize); ctx.lineTo(targetX, targetY + crSize);
+      ctx.stroke();
+
+      // 망막 오버레이 엣지 그리드
+      ctx.strokeStyle = isFailover ? 'rgba(244, 63, 94, 0.15)' : 'rgba(14, 165, 233, 0.12)';
+      ctx.strokeRect(16, 16, width - 32, height - 32);
+      ctx.restore();
+
+      requestAnimationFrame(animate);
+    }
+
+    // 마우스 및 터치 이벤트
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    });
+    canvas.addEventListener('mouseleave', () => {
+      mouse.x = -1000;
+      mouse.y = -1000;
+    });
+
+    // 허공을 작게 휘젓는 제스처
+    function triggerWaveHand() {
+      handDistortion = 18;
+      playBeep(480, 0.08, 'sawtooth', 0.04);
+    }
+    waveHandBtn.addEventListener('click', triggerWaveHand);
+
+    // 광학 센서 점멸
+    function triggerOpticFlicker() {
+      opticFlicker = 14;
+      playBeep(1800, 0.03, 'square', 0.06);
+    }
+
+    // 스크린샷 팝업 토글
+    function triggerScreenshotModal() {
+      screenshotPopup.classList.add('visible');
+      playBurstChirp();
+    }
+    screenshotBtn.addEventListener('click', triggerScreenshotModal);
+    closePopupBtn.addEventListener('click', () => {
+      screenshotPopup.classList.remove('visible');
+    });
+
+    // 동조율 세팅
+    function setSyncRate(val) {
+      syncRate = parseInt(val, 10);
+      syncSlider.value = syncRate;
+      syncSliderVal.textContent = `${syncRate}%`;
+      hudSyncVal.textContent = `${syncRate}.0%`;
+      playBeep(600 + syncRate * 8, 0.04, 'triangle', 0.05);
+    }
+    syncSlider.addEventListener('input', (e) => {
+      setSyncRate(e.target.value);
+    });
+
+    // 페일오버 (Failover) 발동 토글
+    function triggerFailover() {
+      isFailover = !isFailover;
+      if (isFailover) {
+        failoverBtn.classList.add('active');
+        failoverBtnLabel.textContent = '페일오버 해제';
+        hudFailoverState.textContent = 'OVERRIDE_ACTIVE';
+        hudFailoverState.className = 'accent-rose';
+        hudAlertBanner.classList.add('failover-active');
+        hudAlertText.textContent = 'UNAUTHORIZED_FAILOVER: ANNOTATION_FLOOD [TARGET: YOU]';
+        setSyncRate(92);
+        playFailoverSound();
+      } else {
+        failoverBtn.classList.remove('active');
+        failoverBtnLabel.textContent = '페일오버 (Failover)';
+        hudFailoverState.textContent = 'STANDBY';
+        hudFailoverState.className = 'accent-amber';
+        hudAlertBanner.classList.remove('failover-active');
+        hudAlertText.textContent = 'STATION_SEC: OVERLAY_INJECTION [ACTIVE 2%]';
+        setSyncRate(2);
+        playBeep(880, 0.06);
+      }
+    }
+    failoverBtn.addEventListener('click', triggerFailover);
+
+    // 사운드 토글 버튼
+    soundBtn.addEventListener('click', toggleSound);
+
+    // 모바일 뷰 스위처
+    viewSwitcher.addEventListener('click', (e) => {
+      const btn = e.target.closest('.view-btn');
+      if (!btn) return;
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const view = btn.dataset.view;
+      appLayout.dataset.view = view;
+      setTimeout(resize, 100);
+    });
+
+    // 초기화
+    resize();
+    animate();
+  </script>
+</body>
+</html>
