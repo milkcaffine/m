@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Marsko lab tool — swatch. 사진 스포이드 돋보기 정밀 색상 추출 및 팬톤 컬러칩·단색 타일 저장기">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#020306">
+  <title>Color Swatch Extractor // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020306;
+      color: #cbd5e1;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(8, 12, 20, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .home-link {
+      color: #64748b;
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      padding: 2px 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #f8fafc;
+    }
+    .btn-h {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-h:hover { background: #334155; color: #38bdf8; }
+
+    /* 메인 워크스페이스 (모바일 상하 분할 / PC 좌우 분할) */
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    @media (min-width: 860px) {
+      .workspace { flex-direction: row; }
+    }
+
+    /* 좌측/상단: 이미지 스포이드 캔버스 영역 */
+    .picker-stage {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: #020306;
+      background-image: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.45) 0%, transparent 80%);
+      overflow: hidden;
+      touch-action: none;
+    }
+    #imgCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.85);
+      border-radius: 3px;
+      cursor: crosshair;
+      display: none;
+      touch-action: none;
+    }
+
+    /* 선택 지점 십자 타겟 마커 */
+    .reticle {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1.5px #020306, 0 0 12px rgba(0,0,0,0.8);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+      z-index: 6;
+    }
+    .reticle::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 4px; height: 4px;
+      background: #ffffff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* 픽셀 돋보기 루페 (Loupe) */
+    .loupe {
+      position: absolute;
+      width: 88px;
+      height: 88px;
+      border: 2px solid #f8fafc;
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+      display: none;
+      z-index: 20;
+      background: #020306;
+    }
+    #loupeCanvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    .drop-guide {
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: #64748b;
+      line-height: 1.7;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 26px 32px;
+      cursor: pointer;
+    }
+    .drop-guide:hover { border-color: #38bdf8; color: #94a3b8; }
+    .drop-guide strong { color: #38bdf8; }
+
+    /* 우측/하단: 실시간 컬러칩 프리뷰 및 저장 패널 */
+    .swatch-panel {
+      width: 100%;
+      background: #080c14;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    @media (min-width: 860px) {
+      .swatch-panel {
+        width: 360px;
+        border-top: none;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        justify-content: center;
+        padding: 22px;
+        gap: 16px;
+      }
+    }
+
+    /* 컬러칩 프리뷰 카드 & 스펙 정보 나란히 배치 (모바일 컴팩트화) */
+    .chip-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    @media (min-width: 860px) {
+      .chip-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    /* 실제 저장될 팬톤 스타일 칩 캔버스 프리뷰 */
+    .chip-preview-wrap {
+      width: 105px;
+      height: 133px;
+      flex-shrink: 0;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    @media (min-width: 860px) {
+      .chip-preview-wrap {
+        width: 220px;
+        height: 278px;
+        margin: 0 auto;
+      }
+    }
+    #chipCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 색상 수치 및 최근 히스토리 */
+    .color-specs {
+      flex: 1;
+      font-family: 'IBM Plex Mono', monospace;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .hex-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .copy-badge {
+      font-size: 0.62rem;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .spec-line {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+    .spec-line strong { color: #cbd5e1; }
+
+    /* 최근 찍은 색상 팔레트 히스토리 (최대 7개) */
+    .history-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .hist-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      transition: transform 0.12s;
+    }
+    .hist-dot:hover { transform: scale(1.15); }
+
+    /* 다운로드 액션 버튼들 */
+    .save-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .save-btn {
+      padding: 9px 10px;
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .save-btn.primary {
+      background: rgba(56, 189, 248, 0.18);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+    }
+    .save-btn.primary:hover {
+      background: #38bdf8;
+      color: #020306;
+    }
+    .save-btn.secondary {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+    }
+    .save-btn.secondary:hover {
+      background: #334155;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="index.html" class="home-link">← marsko</a>
+    <h1>COLOR CHIP EXTRACTOR</h1>
+  </div>
+  <div>
+    <button type="button" class="btn-h" id="btnOpen">사진 열기</button>
+    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+  </div>
+</header>
+
+<div class="workspace">
+  <!-- 사진 스포이드 영역 -->
+  <div class="picker-stage" id="stageArea">
+    <div class="drop-guide" id="dropGuide">
+      <div>사진을 이곳에 올리거나<br><strong>[사진 열기]</strong>를 탭하세요</div>
+      <div style="font-size: 0.65rem; color: #475569; margin-top: 4px;">사진 위를 터치/드래그하여 색상 추출</div>
+    </div>
+    <canvas id="imgCanvas"></canvas>
+    <div class="reticle" id="reticle"></div>
+    <div class="loupe" id="loupe">
+      <canvas id="loupeCanvas" width="88" height="88"></canvas>
+    </div>
+  </div>
+
+  <!-- 하단/우측 컬러칩 프리뷰 및 저장 독 -->
+  <div class="swatch-panel">
+    <div class="chip-row">
+      <!-- 고해상도 팬톤 스타일 칩 캔버스 (600x760) -->
+      <div class="chip-preview-wrap">
+        <canvas id="chipCanvas" width="600" height="760"></canvas>
+      </div>
+
+      <!-- 색상 코드 상세 스펙 -->
+      <div class="color-specs">
+        <div class="hex-title" id="hexTitle" title="클릭하여 색상코드 복사">
+          <span id="txtHex">#38BDF8</span>
+          <span class="copy-badge" id="copyBadge">COPY</span>
+        </div>
+        <div class="spec-line">RGB: <strong id="txtRgb">56, 189, 248</strong></div>
+        <div class="spec-line">HSL: <strong id="txtHsl">198°, 93%, 60%</strong></div>
+        <div class="spec-line">FILE: <strong id="txtFile" style="color:#38bdf8;">#38BDF8.png</strong></div>
+
+        <!-- 추출 히스토리 팔레트 -->
+        <div class="history-bar" id="historyBar"></div>
+      </div>
+    </div>
+
+    <!-- 저장 버튼 2종 -->
+    <div class="save-actions">
+      <button type="button" class="save-btn primary" id="btnSaveCard">팬톤 칩 저장 ⬇</button>
+      <button type="button" class="save-btn secondary" id="btnSaveSolid">단색 타일 저장 ⬇</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const imgCanvas = document.getElementById('imgCanvas');
+  const iCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
+  const chipCanvas = document.getElementById('chipCanvas');
+  const cCtx = chipCanvas.getContext('2d');
+  const loupe = document.getElementById('loupe');
+  const loupeCanvas = document.getElementById('loupeCanvas');
+  const lCtx = loupeCanvas.getContext('2d');
+  const reticle = document.getElementById('reticle');
+
+  const fileInput = document.getElementById('fileInput');
+  const btnOpen = document.getElementById('btnOpen');
+  const stageArea = document.getElementById('stageArea');
+  const dropGuide = document.getElementById('dropGuide');
+
+  const txtHex = document.getElementById('txtHex');
+  const txtRgb = document.getElementById('txtRgb');
+  const txtHsl = document.getElementById('txtHsl');
+  const txtFile = document.getElementById('txtFile');
+  const hexTitle = document.getElementById('hexTitle');
+  const copyBadge = document.getElementById('copyBadge');
+  const historyBar = document.getElementById('historyBar');
+
+  const btnSaveCard = document.getElementById('btnSaveCard');
+  const btnSaveSolid = document.getElementById('btnSaveSolid');
+
+  let loadedImg = null;
+  let currentColor = { r: 56, g: 189, b: 248, hex: '#38BDF8', h: 198, s: 93, l: 60 };
+  const colorHistory = ['#38BDF8', '#F43F5E', '#FBBF24', '#34D399', '#A855F7'];
+
+  // RGB -> HEX 변환
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+
+  // RGB -> HSL 변환
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return {
+      h: Math.round(h * 360),
+      s: Math.round(s * 100),
+      l: Math.round(l * 100)
+    };
+  }
+
+  // HEX -> RGB 변환
+  function hexToRgb(hex) {
+    const clean = hex.replace('#', '');
+    const num = parseInt(clean, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  // 현재 색상 업데이트 및 팬톤 스타일 컬러칩 렌더링
+  function setActiveColor(r, g, b, pushHistory = false) {
+    const hex = rgbToHex(r, g, b);
+    const hsl = rgbToHsl(r, g, b);
+    currentColor = { r, g, b, hex, ...hsl };
+
+    txtHex.textContent = hex;
+    txtRgb.textContent = `${r}, ${g}, ${b}`;
+    txtHsl.textContent = `${hsl.h}°, ${hsl.s}%, ${hsl.l}%`;
+    txtFile.textContent = `${hex}.png`;
+
+    if (pushHistory && !colorHistory.includes(hex)) {
+      colorHistory.unshift(hex);
+      if (colorHistory.length > 7) colorHistory.pop();
+      renderHistory();
+    }
+
+    drawPantoneChip();
+  }
+
+  // 고해상도(600x760) 팬톤/도록 스타일 컬러칩 캔버스 렌더링
+  function drawPantoneChip() {
+    const w = chipCanvas.width;
+    const h = chipCanvas.height;
+    const { r, g, b, hex, h: hue, s, l } = currentColor;
+
+    // 1. 프레임 바탕 (순백색 모던 라벨 카드)
+    cCtx.fillStyle = '#f8fafc';
+    cCtx.fillRect(0, 0, w, h);
+
+    // 2. 메인 컬러 스와치 영역 (상단 74%)
+    const swatchH = Math.round(h * 0.74);
+    cCtx.fillStyle = hex;
+    cCtx.fillRect(24, 24, w - 48, swatchH - 24);
+
+    // 스와치 미세 내부 보더 (아주 밝은 흰색 계통일 때 경계 구분용)
+    cCtx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+    cCtx.lineWidth = 2;
+    cCtx.strokeRect(24, 24, w - 48, swatchH - 24);
+
+    // 3. 하단 타이포그래피 스펙 각인
+    cCtx.fillStyle = '#0f172a';
+    cCtx.font = '700 54px "IBM Plex Mono", monospace';
+    cCtx.textAlign = 'left';
+    cCtx.fillText(hex, 36, swatchH + 74);
+
+    cCtx.fillStyle = '#475569';
+    cCtx.font = '500 22px "IBM Plex Mono", monospace';
+    cCtx.fillText(`RGB  ${r}, ${g}, ${b}`, 38, swatchH + 116);
+    cCtx.fillText(`HSL  ${hue}°, ${s}%, ${l}%`, 38, swatchH + 148);
+
+    // 우측 하단 MARSKO.ART 도록 스탬프
+    cCtx.fillStyle = '#94a3b8';
+    cCtx.font = '600 18px "IBM Plex Mono", monospace';
+    cCtx.textAlign = 'right';
+    cCtx.fillText('MARSKO.ART', w - 36, swatchH + 148);
+  }
+
+  function renderHistory() {
+    historyBar.innerHTML = '';
+    colorHistory.forEach(hex => {
+      const dot = document.createElement('div');
+      dot.className = 'hist-dot';
+      dot.style.backgroundColor = hex;
+      dot.title = hex;
+      dot.addEventListener('click', () => {
+        const { r, g, b } = hexToRgb(hex);
+        setActiveColor(r, g, b, false);
+      });
+      historyBar.appendChild(dot);
+    });
+  }
+
+  // --- 이미지 위에서 스포이드 피킹 & 픽셀 돋보기(Loupe) ---
+  let isPicking = false;
+
+  function pickColorAtEvent(e, finalize = false) {
+    if (!loadedImg) return;
+    const rect = imgCanvas.getBoundingClientRect();
+    const touch = e.touches ? (e.touches[0] || e.changedTouches[0]) : e;
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+
+    // 캔버스 내부 상대 좌표 클램핑
+    const relX = Math.max(0, Math.min(rect.width - 1, clientX - rect.left));
+    const relY = Math.max(0, Math.min(rect.height - 1, clientY - rect.top));
+
+    const scaleX = imgCanvas.width / rect.width;
+    const scaleY = imgCanvas.height / rect.height;
+
+    const px = Math.floor(relX * scaleX);
+    const py = Math.floor(relY * scaleY);
+
+    // 픽셀 색상 추출
+    const pixel = iCtx.getImageData(px, py, 1, 1).data;
+    setActiveColor(pixel[0], pixel[1], pixel[2], finalize);
+
+    // 타겟 레티클 이동
+    const stageRect = stageArea.getBoundingClientRect();
+    const stageX = rect.left - stageRect.left + relX;
+    const stageY = rect.top - stageRect.top + relY;
+
+    reticle.style.display = 'block';
+    reticle.style.left = `${stageX}px`;
+    reticle.style.top = `${stageY}px`;
+    reticle.style.borderColor = currentColor.l > 65 ? '#020306' : '#ffffff';
+
+    // 돋보기(Loupe) 렌더링 (손가락 위쪽에 표시)
+    if (!finalize) {
+      loupe.style.display = 'block';
+      loupe.style.left = `${Math.max(10, Math.min(stageRect.width - 98, stageX - 44))}px`;
+      loupe.style.top = `${Math.max(10, stageY - 108)}px`;
+      loupe.style.borderColor = currentColor.hex;
+
+      lCtx.imageSmoothingEnabled = false;
+      lCtx.clearRect(0, 0, 88, 88);
+      lCtx.drawImage(imgCanvas, px - 5, py - 5, 11, 11, 0, 0, 88, 88);
+
+      // 돋보기 중앙 픽셀 가이드 사각형
+      lCtx.strokeStyle = '#ffffff';
+      lCtx.lineWidth = 1.5;
+      lCtx.strokeRect(40, 40, 8, 8);
+    } else {
+      loupe.style.display = 'none';
+    }
+  }
+
+  imgCanvas.addEventListener('mousedown', (e) => {
+    isPicking = true;
+    pickColorAtEvent(e, false);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isPicking) pickColorAtEvent(e, false);
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (isPicking) {
+      isPicking = false;
+      pickColorAtEvent(e, true);
+    }
+  });
+
+  imgCanvas.addEventListener('touchstart', (e) => {
+    if (e.cancelable) e.preventDefault();
+    isPicking = true;
+    pickColorAtEvent(e, false);
+  }, { passive: false });
+  imgCanvas.addEventListener('touchmove', (e) => {
+    if (!isPicking) return;
+    if (e.cancelable) e.preventDefault();
+    pickColorAtEvent(e, false);
+  }, { passive: false });
+  imgCanvas.addEventListener('touchend', (e) => {
+    if (isPicking) {
+      isPicking = false;
+      pickColorAtEvent(e, true);
+    }
+  });
+
+  // --- 이미지 파일 불러오기 ---
+  function loadImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        loadedImg = img;
+        imgCanvas.width = img.naturalWidth;
+        imgCanvas.height = img.naturalHeight;
+        iCtx.drawImage(img, 0, 0);
+
+        dropGuide.style.display = 'none';
+        imgCanvas.style.display = 'block';
+
+        // 사진 정중앙 색상 기본 추출
+        const cx = Math.floor(img.naturalWidth / 2);
+        const cy = Math.floor(img.naturalHeight / 2);
+        const p = iCtx.getImageData(cx, cy, 1, 1).data;
+        setActiveColor(p[0], p[1], p[2], true);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  btnOpen.addEventListener('click', () => fileInput.click());
+  dropGuide.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => loadImageFile(e.target.files[0]));
+
+  stageArea.addEventListener('dragover', (e) => e.preventDefault());
+  stageArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) loadImageFile(e.dataTransfer.files[0]);
+  });
+
+  // 클립보드 HEX 복사
+  hexTitle.addEventListener('click', () => {
+    navigator.clipboard.writeText(currentColor.hex);
+    copyBadge.textContent = 'COPIED!';
+    setTimeout(() => { copyBadge.textContent = 'COPY'; }, 1200);
+  });
+
+  // 1. 팬톤 스타일 디자인 칩 저장 (파일명: #38BDF8.png)
+  btnSaveCard.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = `${currentColor.hex}.png`;
+    link.href = chipCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // 2. 순수 단색 타일 저장 (512x512, 파일명: #38BDF8.png)
+  btnSaveSolid.addEventListener('click', () => {
+    const solidCanvas = document.createElement('canvas');
+    solidCanvas.width = 512;
+    solidCanvas.height = 512;
+    const sCtx = solidCanvas.getContext('2d');
+    sCtx.fillStyle = currentColor.hex;
+    sCtx.fillRect(0, 0, 512, 512);
+
+    const link = document.createElement('a');
+    link.download = `${currentColor.hex}.png`;
+    link.href = solidCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // 초기화
+  renderHistory();
+  setActiveColor(56, 189, 248, false);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => drawPantoneChip());
+  }
+</script>
+
+</body>
+</html>
