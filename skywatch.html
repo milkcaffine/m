@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#02040a">
+  <meta name="description" content="Marsko lab tool — Sky Watch Orbital Horizon. 지구 밤하늘 위성 궤도, 우주궤도 엘리베이터, 참치해적 쓰레기 수거 스테이션 & 보안로봇 HUD 관측소.">
+  <title>Sky Watch (Orbital Horizon) // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #02040a;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #skyCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #skyCanvas:active { cursor: grabbing; }
+
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .sound-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(15, 23, 42, 0.65);
+      color: #94a3b8;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .sound-btn:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); }
+    .sound-btn.active {
+      color: #34d399;
+      border-color: rgba(52, 211, 153, 0.55);
+      background: rgba(16, 185, 129, 0.14);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
+    }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+
+    .telemetry-card {
+      background: rgba(6, 10, 20, 0.78);
+      border: 1px solid rgba(103, 232, 249, 0.16);
+    }
+    .telemetry-card .accent-amber { color: #fbbf24; }
+    .telemetry-card .accent-emerald { color: #34d399; }
+
+    .control-dock {
+      max-width: min(1040px, 96%);
+      gap: 7px 10px;
+    }
+    .dock-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px 8px;
+      width: 100%;
+    }
+
+    .flash-overlay {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 30;
+      transition: opacity 0.25s ease-out;
+    }
+    .flash-overlay.flash {
+      opacity: 0.45;
+      transition: none;
+    }
+
+    @media (max-width: 720px) {
+      .telemetry-card { display: none; }
+      header h1 { font-size: 0.85rem; }
+      .control-dock { bottom: 10px; padding: 8px 10px; gap: 6px; }
+      .dock-sep { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <a href="index.html" class="home-link">← marsko</a>
+    <button type="button" class="sound-btn active" id="btnAudio">♪ NIGHT AUDIO: ON</button>
+  </div>
+  <h1>SKY WATCH // ORBITAL HORIZON</h1>
+  <div class="hud-meta" id="hudSub">SURFACE-TO-ORBIT OBSERVATORY · DRAG TO LOOK AROUND · CLICK TARGET TO LOCK</div>
+</header>
+
+<div class="telemetry-card" id="telemetryCard"></div>
+
+<canvas id="skyCanvas"></canvas>
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<div class="control-dock">
+  <div class="dock-row">
+    <button type="button" class="dock-btn active" id="btnModeSky">실사 밤하늘</button>
+    <button type="button" class="dock-btn" id="btnModeNvg">보안로봇 센서(NVG)</button>
+    <button type="button" class="dock-btn active" id="btnHud">HUD 오버레이: ON</button>
+    <div class="dock-sep"></div>
+    <button type="button" class="dock-btn active" id="btnTracks">위성 궤도선</button>
+    <button type="button" class="dock-btn active" id="btnElevator">우주궤도 엘리베이터</button>
+    <button type="button" class="dock-btn active" id="btnPirates">참치해적 수거선</button>
+    <div class="dock-sep"></div>
+    <button type="button" class="dock-btn" id="btnSave">📷 화면 저장</button>
+  </div>
+
+  <div class="dock-row">
+    <div class="slider-group">
+      <span>관측 위도</span>
+      <input type="range" id="latRange" min="0" max="60" step="0.5" value="37.5">
+      <span class="val" id="latVal">37.5°N</span>
+    </div>
+    <div class="dock-sep"></div>
+    <div class="slider-group">
+      <span>구름량</span>
+      <input type="range" id="cloudRange" min="0" max="100" value="45">
+      <span class="val" id="cloudVal">45%</span>
+    </div>
+    <div class="dock-sep"></div>
+    <div class="slider-group">
+      <span>시간 배속</span>
+      <input type="range" id="speedRange" min="0.2" max="4" step="0.2" value="1">
+      <span class="val" id="speedVal">1.0x</span>
+    </div>
+    <div class="dock-sep"></div>
+    <button type="button" class="dock-btn" id="btnSouthView">남쪽(엘리베이터) 정면</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('skyCanvas');
+  const ctx = canvas.getContext('2d');
+  const telemetryCard = document.getElementById('telemetryCard');
+  const flashOverlay = document.getElementById('flashOverlay');
+
+  const btnAudio = document.getElementById('btnAudio');
+  const btnModeSky = document.getElementById('btnModeSky');
+  const btnModeNvg = document.getElementById('btnModeNvg');
+  const btnHud = document.getElementById('btnHud');
+  const btnTracks = document.getElementById('btnTracks');
+  const btnElevator = document.getElementById('btnElevator');
+  const btnPirates = document.getElementById('btnPirates');
+  const btnSave = document.getElementById('btnSave');
+  const btnSouthView = document.getElementById('btnSouthView');
+
+  const latRange = document.getElementById('latRange');
+  const latVal = document.getElementById('latVal');
+  const cloudRange = document.getElementById('cloudRange');
+  const cloudVal = document.getElementById('cloudVal');
+  const speedRange = document.getElementById('speedRange');
+  const speedVal = document.getElementById('speedVal');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // View state (Azimuth 180 = South, Elevation 30 deg up)
+  let viewAz = 180;
+  let viewEl = 28;
+  let observerLat = 37.5;
+  let cloudDensity = 0.45;
+  let timeScale = 1.0;
+
+  let sensorMode = 'sky'; // 'sky' | 'nvg'
+  let hudOn = true;
+  let showTracks = true;
+  let showElevator = true;
+  let showPirates = true;
+
+  let simTime = 0;
+  let lockedTargetId = 'ISS';
+  let scanLineY = 0;
+
+  // ===== Web Audio (Night Observatory + Tactical Sentinel) =====
+  let audioCtx = null;
+  let audioMaster = null;
+  let windFilter = null;
+  let droneFilter = null;
+  let soundOn = true;
+
+  function createNoiseBuffer(c) {
+    const len = c.sampleRate * 4;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const ch = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      last = (last + 0.025 * w) / 1.025;
+      ch[i] = last * 2.0;
+    }
+    return buf;
+  }
+
+  function initAudio() {
+    if (!audioCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioCtx();
+      audioMaster = audioCtx.createGain();
+      audioMaster.gain.value = 0;
+      audioMaster.connect(audioCtx.destination);
+
+      // Deep night ambient drone
+      droneFilter = audioCtx.createBiquadFilter();
+      droneFilter.type = 'lowpass';
+      droneFilter.frequency.value = 210;
+      droneFilter.Q.value = 1.2;
+      droneFilter.connect(audioMaster);
+
+      [55.0, 82.41, 110.0, 164.81].forEach((hz, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = i === 1 ? 'triangle' : 'sine';
+        osc.frequency.value = hz + (i % 2 === 0 ? 0.12 : -0.12);
+        const g = audioCtx.createGain();
+        g.gain.value = [0.22, 0.09, 0.08, 0.035][i];
+        osc.connect(g);
+        g.connect(droneFilter);
+        osc.start();
+      });
+
+      // Soft nocturnal wind
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = createNoiseBuffer(audioCtx);
+      noise.loop = true;
+      windFilter = audioCtx.createBiquadFilter();
+      windFilter.type = 'bandpass';
+      windFilter.frequency.value = 340;
+      windFilter.Q.value = 0.8;
+      const wg = audioCtx.createGain();
+      wg.gain.value = 0.14;
+      noise.connect(windFilter);
+      windFilter.connect(wg);
+      wg.connect(audioMaster);
+      noise.start();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function unlockAudio() {
+    if (!soundOn) return;
+    initAudio();
+    audioMaster.gain.setTargetAtTime(0.6, audioCtx.currentTime, 0.25);
+  }
+
+  function updateAudioMood() {
+    if (!audioCtx || !droneFilter || !windFilter) return;
+    const now = audioCtx.currentTime;
+    droneFilter.frequency.setTargetAtTime(sensorMode === 'nvg' ? 320 : 210, now, 0.2);
+    windFilter.frequency.setTargetAtTime(240 + cloudDensity * 280, now, 0.2);
+  }
+
+  function playLockChirp(isPirate = false) {
+    if (!audioCtx || !soundOn) return;
+    const now = audioCtx.currentTime;
+    const freqs = isPirate ? [740, 520, 880] : [880, 1174];
+    freqs.forEach((f, idx) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = hudOn ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(f, now + idx * 0.065);
+      const env = audioCtx.createGain();
+      env.gain.setValueAtTime(0.0001, now + idx * 0.065);
+      env.gain.exponentialRampToValueAtTime(0.055, now + idx * 0.065 + 0.015);
+      env.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.065 + 0.14);
+      osc.connect(env);
+      env.connect(audioMaster);
+      osc.start(now + idx * 0.065);
+      osc.stop(now + idx * 0.065 + 0.15);
+    });
+  }
+
+  function playShutterSound() {
+    if (!audioCtx || !soundOn) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1400, now);
+    osc.frequency.exponentialRampToValueAtTime(420, now + 0.07);
+    const env = audioCtx.createGain();
+    env.gain.setValueAtTime(0.08, now);
+    env.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    osc.connect(env);
+    env.connect(audioMaster);
+    osc.start(now);
+    osc.stop(now + 0.09);
+  }
+
+  function toggleAudio() {
+    soundOn = !soundOn;
+    if (soundOn) {
+      initAudio();
+      audioMaster.gain.setTargetAtTime(0.6, audioCtx.currentTime, 0.25);
+    } else if (audioCtx && audioMaster) {
+      audioMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+    }
+    btnAudio.classList.toggle('active', soundOn);
+    btnAudio.textContent = soundOn ? '♪ NIGHT AUDIO: ON' : '♪ NIGHT AUDIO: OFF';
+  }
+
+  btnAudio.addEventListener('click', toggleAudio);
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target && e.target.closest && e.target.closest('#btnAudio')) return;
+    unlockAudio();
+  });
+  window.addEventListener('keydown', unlockAudio);
+
+  // ===== Sky Projection (Azimuth/Elevation -> Screen X/Y) =====
+  function wrapDeg180(d) {
+    let x = ((d + 180) % 360 + 360) % 360 - 180;
+    return x;
+  }
+
+  function projectSky(azDeg, elDeg) {
+    const fovScale = Math.min(width, height) * 0.0125; // ~80 deg vertical FOV
+    const dAz = wrapDeg180(azDeg - viewAz);
+    // Perspective compression near zenith
+    const azCompression = Math.cos(Math.max(0, Math.min(85, elDeg)) * Math.PI / 180 * 0.65);
+    const x = width * 0.5 + dAz * azCompression * fovScale;
+    const y = height * 0.55 - (elDeg - viewEl) * fovScale;
+    const visible = Math.abs(dAz) < 95 && elDeg > -12 && elDeg < 92;
+    return { x, y, visible, dAz };
+  }
+
+  // ===== Procedural Stars, Milky Way & Clouds =====
+  const stars = [];
+  const milkyWay = [];
+  const clouds = [];
+  const mountainPoints = [];
+
+  function initSkyAssets() {
+    stars.length = 0;
+    for (let i = 0; i < 420; i++) {
+      stars.push({
+        az: Math.random() * 360,
+        el: 2 + Math.pow(Math.random(), 0.72) * 86,
+        r: Math.random() * 1.35 + 0.35,
+        alpha: Math.random() * 0.65 + 0.3,
+        phase: Math.random() * Math.PI * 2,
+        tint: ['#ffffff', '#dbeafe', '#fef3c7', '#e0f2fe'][Math.floor(Math.random() * 4)]
+      });
+    }
+
+    milkyWay.length = 0;
+    for (let i = 0; i < 90; i++) {
+      const t = i / 90;
+      const az = (60 + t * 220 + (Math.random() - 0.5) * 28) % 360;
+      const el = 10 + Math.sin(t * Math.PI) * 65 + (Math.random() - 0.5) * 14;
+      milkyWay.push({ az, el, r: 24 + Math.random() * 42, a: 0.015 + Math.random() * 0.025 });
+    }
+
+    clouds.length = 0;
+    for (let i = 0; i < 28; i++) {
+      clouds.push({
+        az: Math.random() * 360,
+        el: 3 + Math.random() * 34,
+        w: 14 + Math.random() * 24,
+        h: 2.5 + Math.random() * 5.5,
+        speed: 0.25 + Math.random() * 0.45,
+        alpha: 0.14 + Math.random() * 0.24
+      });
+    }
+
+    mountainPoints.length = 0;
+    for (let az = 0; az <= 360; az += 4) {
+      const h =
+        2.4 +
+        Math.sin(az * 0.08) * 1.5 +
+        Math.cos(az * 0.21) * 0.9 +
+        Math.sin(az * 0.47) * 0.45;
+      mountainPoints.push({ az, el: Math.max(0.4, h) });
+    }
+  }
+
+  // ===== Satellites, Starlink Train & Tuna-Pirate Scavengers =====
+  const satellites = [
+    {
+      id: 'ISS',
+      name: 'ISS (ZARYA)',
+      kind: 'station',
+      azStart: 255,
+      azEnd: 85,
+      peakEl: 68,
+      period: 42,
+      offset: 0.18,
+      altKm: 408,
+      velKms: 7.66,
+      mag: -3.2
+    },
+    {
+      id: 'HST',
+      name: 'HUBBLE (HST)',
+      kind: 'sat',
+      azStart: 115,
+      azEnd: 295,
+      peakEl: 46,
+      period: 56,
+      offset: 0.55,
+      altKm: 538,
+      velKms: 7.59,
+      mag: 1.4
+    },
+    {
+      id: 'TUNA-01',
+      name: 'TUNA-PIRATE SCAVENGER-01',
+      kind: 'pirate',
+      azStart: 220,
+      azEnd: 40,
+      peakEl: 52,
+      period: 48,
+      offset: 0.42,
+      altKm: 465,
+      velKms: 7.63,
+      status: 'NET PULSE ACTIVE'
+    },
+    {
+      id: 'TUNA-02',
+      name: 'SCAVENGER ARK-07',
+      kind: 'pirate',
+      azStart: 135,
+      azEnd: 325,
+      peakEl: 34,
+      period: 64,
+      offset: 0.78,
+      altKm: 590,
+      velKms: 7.56,
+      status: 'DEBRIS HARVESTING'
+    }
+  ];
+
+  // Starlink train (10 satellites in formation)
+  const starlinkTrain = {
+    id: 'STARLINK',
+    name: 'STARLINK-G8 TRAIN (10x)',
+    kind: 'train',
+    azStart: 285,
+    azEnd: 105,
+    peakEl: 58,
+    period: 52,
+    offset: 0.08,
+    altKm: 540,
+    velKms: 7.59,
+    count: 10,
+    spacing: 0.014
+  };
+
+  function evalArcPos(sat, phase) {
+    // phase in [0, 1]
+    const p = ((phase % 1) + 1) % 1;
+    const dAz = wrapDeg180(sat.azEnd - sat.azStart);
+    const az = (sat.azStart + dAz * p + 360) % 360;
+    const el = Math.sin(p * Math.PI) * sat.peakEl;
+    return { az, el, p };
+  }
+
+  // Screen positions of clickable targets each frame
+  let screenTargets = [];
+
+  // ===== Drawing Helpers =====
+  function drawSkyBackground() {
+    const horizonProj = projectSky(viewAz, 0);
+    const horizonY = Math.max(height * 0.2, Math.min(height * 1.15, horizonProj.y));
+
+    const grad = ctx.createLinearGradient(0, 0, 0, horizonY);
+    if (sensorMode === 'nvg') {
+      grad.addColorStop(0, '#010a08');
+      grad.addColorStop(0.55, '#041a15');
+      grad.addColorStop(1, '#0b2e24');
+    } else {
+      grad.addColorStop(0, '#02040a');
+      grad.addColorStop(0.55, '#071022');
+      grad.addColorStop(0.88, '#10203b');
+      grad.addColorStop(1, '#1b3152');
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Milky way soft band
+    if (sensorMode === 'sky') {
+      milkyWay.forEach(m => {
+        const pt = projectSky(m.az, m.el);
+        if (!pt.visible) return;
+        const g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, m.r);
+        g.addColorStop(0, `rgba(148, 178, 235, ${m.a})`);
+        g.addColorStop(1, 'rgba(148, 178, 235, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Stars
+    stars.forEach(s => {
+      const pt = projectSky(s.az, s.el);
+      if (!pt.visible) return;
+      const twinkle = 0.72 + 0.28 * Math.sin(simTime * 2.1 + s.phase);
+      ctx.globalAlpha = s.alpha * twinkle;
+      ctx.fillStyle = sensorMode === 'nvg' ? '#6ee7b7' : s.tint;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawGeoBelt() {
+    if (!showTracks) return;
+    // Geostationary arc peak elevation in the South = 90 - observerLat (approx)
+    const geoPeakEl = Math.max(8, 86 - observerLat);
+    ctx.save();
+    ctx.setLineDash([4, 7]);
+    ctx.strokeStyle = sensorMode === 'nvg' ? 'rgba(52, 211, 153, 0.22)' : 'rgba(103, 232, 249, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    let started = false;
+    for (let az = 95; az <= 265; az += 3) {
+      const t = (az - 95) / 170;
+      const el = Math.sin(t * Math.PI) * geoPeakEl;
+      const pt = projectSky(az, el);
+      if (pt.visible) {
+        if (!started) { ctx.moveTo(pt.x, pt.y); started = true; }
+        else ctx.lineTo(pt.x, pt.y);
+      } else {
+        started = false;
+      }
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Stationary GEO dots
+    for (let az = 120; az <= 240; az += 15) {
+      const t = (az - 95) / 170;
+      const el = Math.sin(t * Math.PI) * geoPeakEl;
+      const pt = projectSky(az, el);
+      if (!pt.visible) continue;
+      ctx.fillStyle = sensorMode === 'nvg' ? 'rgba(110, 231, 183, 0.6)' : 'rgba(186, 230, 253, 0.55)';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawSpaceElevator() {
+    if (!showElevator) return;
+    // Anchored at equator due South (az = 180).
+    // At lat = 0, anchor is near zenith (90 deg). As lat increases, anchor tilts south: el ~ 90 - lat * 1.05
+    const anchorEl = Math.max(18, 90 - observerLat * 1.05);
+    const groundEl = 1.8;
+    const baseAz = 180;
+
+    const basePt = projectSky(baseAz, groundEl);
+    const topPt = projectSky(baseAz, anchorEl);
+    if (!basePt.visible && !topPt.visible) return;
+
+    // Shadow terminator along the cable (lower 38% in Earth's shadow, upper 62% sunlit!)
+    const shadowFrac = 0.38;
+    const termEl = groundEl + (anchorEl - groundEl) * shadowFrac;
+    const termPt = projectSky(baseAz, termEl);
+
+    ctx.save();
+    // 1. Shadowed lower segment
+    ctx.strokeStyle = sensorMode === 'nvg' ? 'rgba(52, 211, 153, 0.25)' : 'rgba(71, 85, 105, 0.45)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(basePt.x, basePt.y);
+    ctx.lineTo(termPt.x, termPt.y);
+    ctx.stroke();
+
+    // 2. Sunlit upper tether glowing silver-gold
+    const cableGrad = ctx.createLinearGradient(termPt.x, termPt.y, topPt.x, topPt.y);
+    if (sensorMode === 'nvg') {
+      cableGrad.addColorStop(0, 'rgba(52, 211, 153, 0.85)');
+      cableGrad.addColorStop(0.5, 'rgba(167, 243, 208, 0.95)');
+      cableGrad.addColorStop(1, 'rgba(110, 231, 183, 0.35)');
+    } else {
+      cableGrad.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+      cableGrad.addColorStop(0.35, 'rgba(224, 242, 254, 0.95)');
+      cableGrad.addColorStop(1, 'rgba(147, 197, 253, 0.35)');
+    }
+    ctx.strokeStyle = cableGrad;
+    ctx.lineWidth = 1.8;
+    ctx.shadowColor = sensorMode === 'nvg' ? '#34d399' : '#bae6fd';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(termPt.x, termPt.y);
+    ctx.lineTo(topPt.x, topPt.y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Terminator glint
+    ctx.fillStyle = sensorMode === 'nvg' ? '#a7f3d0' : '#fde68a';
+    ctx.beginPath();
+    ctx.arc(termPt.x, termPt.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Geostationary Anchor / Counterweight Beacon
+    ctx.fillStyle = sensorMode === 'nvg' ? '#6ee7b7' : '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(topPt.x, topPt.y, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Climber pods ascending slowly along the cable
+    [0, 0.52].forEach((offset) => {
+      const cf = ((simTime * 0.035 + offset) % 1);
+      const cEl = groundEl + (anchorEl - groundEl) * cf;
+      const cPt = projectSky(baseAz, cEl);
+      if (cPt.visible) {
+        const pulse = 0.6 + 0.4 * Math.sin(simTime * 6 + offset * 10);
+        ctx.fillStyle = cf > shadowFrac
+          ? `rgba(253, 224, 71, ${pulse})`
+          : `rgba(56, 189, 248, ${pulse})`;
+        ctx.beginPath();
+        ctx.arc(cPt.x, cPt.y, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    if (hudOn && topPt.visible) {
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = sensorMode === 'nvg' ? '#6ee7b7' : '#93c5fd';
+      ctx.fillText('ORBITAL ELEVATOR // GEO ANCHOR 35,786km', topPt.x + 8, topPt.y + 3);
+    }
+
+    screenTargets.push({
+      id: 'ELEVATOR',
+      name: 'ORBITAL ELEVATOR TETHER',
+      kind: 'elevator',
+      x: topPt.x,
+      y: topPt.y,
+      az: baseAz,
+      el: anchorEl,
+      altKm: 35786,
+      velKms: 3.07
+    });
+    ctx.restore();
+  }
+
+  function drawClouds() {
+    if (cloudDensity <= 0.01) return;
+    ctx.save();
+    clouds.forEach(c => {
+      const az = (c.az + simTime * c.speed) % 360;
+      const pt = projectSky(az, c.el);
+      if (!pt.visible) return;
+      const pxW = c.w * (Math.min(width, height) * 0.0125);
+      const pxH = c.h * (Math.min(width, height) * 0.0125);
+      const g = ctx.createRadialGradient(pt.x, pt.y, pxH * 0.2, pt.x, pt.y, pxW * 0.6);
+      const alpha = c.alpha * cloudDensity;
+      if (sensorMode === 'nvg') {
+        g.addColorStop(0, `rgba(20, 75, 58, ${alpha * 0.9})`);
+        g.addColorStop(1, 'rgba(20, 75, 58, 0)');
+      } else {
+        g.addColorStop(0, `rgba(148, 163, 184, ${alpha})`);
+        g.addColorStop(0.55, `rgba(71, 85, 105, ${alpha * 0.55})`);
+        g.addColorStop(1, 'rgba(30, 41, 59, 0)');
+      }
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(pt.x, pt.y, pxW * 0.6, pxH * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  function drawSatellites() {
+    const activeList = showPirates
+      ? satellites
+      : satellites.filter(s => s.kind !== 'pirate');
+
+    activeList.forEach(sat => {
+      // Optional track arc
+      if (showTracks) {
+        ctx.save();
+        ctx.setLineDash(sat.kind === 'pirate' ? [3, 5] : [6, 6]);
+        ctx.strokeStyle = sat.kind === 'pirate'
+          ? 'rgba(251, 191, 36, 0.28)'
+          : (sensorMode === 'nvg' ? 'rgba(52, 211, 153, 0.25)' : 'rgba(56, 189, 248, 0.26)');
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        let started = false;
+        for (let p = 0; p <= 1.001; p += 0.025) {
+          const pos = evalArcPos(sat, p);
+          const pt = projectSky(pos.az, pos.el);
+          if (pt.visible) {
+            if (!started) { ctx.moveTo(pt.x, pt.y); started = true; }
+            else ctx.lineTo(pt.x, pt.y);
+          } else {
+            started = false;
+          }
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const phase = ((simTime / sat.period) + sat.offset) % 1;
+      const pos = evalArcPos(sat, phase);
+      const pt = projectSky(pos.az, pos.el);
+      if (!pt.visible) return;
+
+      ctx.save();
+      if (sat.kind === 'pirate') {
+        // Tuna-Pirate Scavenger Station with beacon + occasional collection laser pulse
+        const pulse = 0.55 + 0.45 * Math.sin(simTime * 7);
+        ctx.fillStyle = `rgba(251, 191, 36, ${pulse})`;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Scavenger magnetic net / laser pulse
+        if (Math.sin(simTime * 2.4 + sat.offset * 10) > 0.72) {
+          const targetX = pt.x + Math.cos(simTime * 5) * 26;
+          const targetY = pt.y + Math.sin(simTime * 4) * 18;
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.75)';
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.moveTo(pt.x, pt.y);
+          ctx.lineTo(targetX, targetY);
+          ctx.stroke();
+          ctx.fillStyle = '#fda4af';
+          ctx.beginPath();
+          ctx.arc(targetX, targetY, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // ISS / Hubble bright satellite dot + soft halo
+        const r = sat.id === 'ISS' ? 3.8 : 2.6;
+        ctx.fillStyle = sat.id === 'ISS' ? '#fef08a' : '#e0f2fe';
+        ctx.shadowColor = sat.id === 'ISS' ? '#fde047' : '#38bdf8';
+        ctx.shadowBlur = sat.id === 'ISS' ? 12 : 6;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      if (hudOn) {
+        ctx.font = '600 10px "IBM Plex Mono", monospace';
+        ctx.fillStyle = sat.kind === 'pirate' ? '#fbbf24' : (sensorMode === 'nvg' ? '#6ee7b7' : '#e2e8f0');
+        ctx.fillText(sat.id, pt.x + 8, pt.y - 6);
+      }
+
+      screenTargets.push({
+        id: sat.id,
+        name: sat.name,
+        kind: sat.kind,
+        x: pt.x,
+        y: pt.y,
+        az: pos.az,
+        el: pos.el,
+        altKm: sat.altKm,
+        velKms: sat.velKms,
+        status: sat.status || 'ORBITAL PASS'
+      });
+      ctx.restore();
+    });
+
+    // Starlink Train
+    if (showTracks) {
+      ctx.save();
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = 'rgba(167, 139, 250, 0.22)';
+      ctx.beginPath();
+      let started = false;
+      for (let p = 0; p <= 1.001; p += 0.025) {
+        const pos = evalArcPos(starlinkTrain, p);
+        const pt = projectSky(pos.az, pos.el);
+        if (pt.visible) {
+          if (!started) { ctx.moveTo(pt.x, pt.y); started = true; }
+          else ctx.lineTo(pt.x, pt.y);
+        } else {
+          started = false;
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const basePhase = ((simTime / starlinkTrain.period) + starlinkTrain.offset) % 1;
+    for (let i = 0; i < starlinkTrain.count; i++) {
+      const p = (basePhase - i * starlinkTrain.spacing + 1) % 1;
+      const pos = evalArcPos(starlinkTrain, p);
+      const pt = projectSky(pos.az, pos.el);
+      if (!pt.visible) continue;
+      ctx.fillStyle = sensorMode === 'nvg' ? '#a7f3d0' : '#f1f5f9';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 1.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (i === 0) {
+        screenTargets.push({
+          id: starlinkTrain.id,
+          name: starlinkTrain.name,
+          kind: 'train',
+          x: pt.x,
+          y: pt.y,
+          az: pos.az,
+          el: pos.el,
+          altKm: starlinkTrain.altKm,
+          velKms: starlinkTrain.velKms,
+          status: 'FORMATION TRANSIT'
+        });
+        if (hudOn) {
+          ctx.font = '600 10px "IBM Plex Mono", monospace';
+          ctx.fillStyle = '#c4b5fd';
+          ctx.fillText('STARLINK-TRAIN', pt.x + 8, pt.y - 6);
+        }
+      }
+    }
+  }
+
+  function drawHorizonSilhouette() {
+    ctx.save();
+    ctx.beginPath();
+    let started = false;
+    let firstX = 0;
+    let lastX = width;
+    for (let az = viewAz - 95; az <= viewAz + 95; az += 3) {
+      const normAz = ((az % 360) + 360) % 360;
+      const idx = Math.floor(normAz / 4) % mountainPoints.length;
+      const mEl = mountainPoints[idx].el;
+      const pt = projectSky(normAz, mEl);
+      if (!started) {
+        ctx.moveTo(pt.x, pt.y);
+        firstX = pt.x;
+        started = true;
+      } else {
+        ctx.lineTo(pt.x, pt.y);
+      }
+      lastX = pt.x;
+    }
+    ctx.lineTo(lastX, height + 20);
+    ctx.lineTo(firstX, height + 20);
+    ctx.closePath();
+    ctx.fillStyle = sensorMode === 'nvg' ? '#02120d' : '#03060e';
+    ctx.fill();
+    ctx.strokeStyle = sensorMode === 'nvg' ? 'rgba(52, 211, 153, 0.35)' : 'rgba(56, 189, 248, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTacticalHudOverlay() {
+    if (!hudOn) return;
+    const hudColor = sensorMode === 'nvg' ? 'rgba(52, 211, 153, 0.65)' : 'rgba(56, 189, 248, 0.55)';
+    const hudDim = sensorMode === 'nvg' ? 'rgba(52, 211, 153, 0.16)' : 'rgba(56, 189, 248, 0.14)';
+
+    ctx.save();
+    // Subtle scanline sweep
+    scanLineY = (scanLineY + 1.4) % height;
+    ctx.fillStyle = sensorMode === 'nvg' ? 'rgba(52, 211, 153, 0.04)' : 'rgba(56, 189, 248, 0.03)';
+    ctx.fillRect(0, scanLineY, width, 2);
+
+    // Center optical reticle
+    const cx = width * 0.5;
+    const cy = height * 0.5;
+    ctx.strokeStyle = hudDim;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 44, 0, Math.PI * 2);
+    ctx.moveTo(cx - 60, cy); ctx.lineTo(cx - 24, cy);
+    ctx.moveTo(cx + 24, cy); ctx.lineTo(cx + 60, cy);
+    ctx.moveTo(cx, cy - 60); ctx.lineTo(cx, cy - 24);
+    ctx.moveTo(cx, cy + 24); ctx.lineTo(cx, cy + 60);
+    ctx.stroke();
+
+    // Azimuth compass tape near top center
+    ctx.font = '500 10px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'center';
+    const cardinals = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
+    for (let az = 0; az < 360; az += 15) {
+      const dAz = wrapDeg180(az - viewAz);
+      if (Math.abs(dAz) > 45) continue;
+      const tx = cx + dAz * 5.2;
+      ctx.strokeStyle = hudColor;
+      ctx.beginPath();
+      ctx.moveTo(tx, 20);
+      ctx.lineTo(tx, az % 45 === 0 ? 30 : 25);
+      ctx.stroke();
+      if (az % 45 === 0) {
+        ctx.fillStyle = hudColor;
+        ctx.fillText(cardinals[az] || `${az}°`, tx, 42);
+      }
+    }
+
+    // Locked target bracket
+    const target = screenTargets.find(t => t.id === lockedTargetId) || screenTargets[0];
+    if (target) {
+      lockedTargetId = target.id;
+      const s = 14;
+      ctx.strokeStyle = target.kind === 'pirate' ? '#fbbf24' : (sensorMode === 'nvg' ? '#34d399' : '#38bdf8');
+      ctx.lineWidth = 1.5;
+      // Corner brackets
+      ctx.beginPath();
+      ctx.moveTo(target.x - s, target.y - s + 5); ctx.lineTo(target.x - s, target.y - s); ctx.lineTo(target.x - s + 5, target.y - s);
+      ctx.moveTo(target.x + s - 5, target.y - s); ctx.lineTo(target.x + s, target.y - s); ctx.lineTo(target.x + s, target.y - s + 5);
+      ctx.moveTo(target.x - s, target.y + s - 5); ctx.lineTo(target.x - s, target.y + s); ctx.lineTo(target.x - s + 5, target.y + s);
+      ctx.moveTo(target.x + s - 5, target.y + s); ctx.lineTo(target.x + s, target.y + s); ctx.lineTo(target.x + s, target.y + s - 5);
+      ctx.stroke();
+
+      ctx.textAlign = 'left';
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fillText(`LOCK [${target.id}] ${target.altKm}km`, target.x + 18, target.y + 4);
+    }
+
+    // Corner sensor frame
+    ctx.strokeStyle = hudColor;
+    ctx.lineWidth = 1.5;
+    const m = 18;
+    const b = 16;
+    ctx.beginPath();
+    ctx.moveTo(m, m + b); ctx.lineTo(m, m); ctx.lineTo(m + b, m);
+    ctx.moveTo(width - m - b, m); ctx.lineTo(width - m, m); ctx.lineTo(width - m, m + b);
+    ctx.moveTo(m, height - m - b); ctx.lineTo(m, height - m); ctx.lineTo(m + b, height - m);
+    ctx.moveTo(width - m - b, height - m); ctx.lineTo(width - m, height - m); ctx.lineTo(width - m, height - m - b);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function updateTelemetry() {
+    const target = screenTargets.find(t => t.id === lockedTargetId);
+    const dirStr = `${((viewAz % 360) + 360) % 360 | 0}° AZ · ${viewEl.toFixed(0)}° EL`;
+    telemetryCard.innerHTML = `
+      <div>SENTINEL SYS: <strong>${sensorMode === 'nvg' ? 'NVG-IR' : 'OPTICAL'}</strong> · HUD <strong>${hudOn ? 'ON' : 'OFF'}</strong></div>
+      <div>LOOK VECTOR: <strong>${dirStr}</strong> · LAT <strong>${observerLat.toFixed(1)}°N</strong></div>
+      <div>LOCK TARGET: <strong class="${target && target.kind === 'pirate' ? 'accent-amber' : 'accent-emerald'}">${target ? target.name : 'SCANNING...'}</strong></div>
+      ${target ? `<div>ALT <strong>${target.altKm} km</strong> · VEL <strong>${target.velKms} km/s</strong></div>` : ''}
+    `;
+  }
+
+  // ===== Render Loop =====
+  let lastTs = performance.now();
+  function render(ts) {
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    simTime += dt * timeScale;
+    screenTargets = [];
+
+    drawSkyBackground();
+    drawGeoBelt();
+    drawSpaceElevator();
+    drawSatellites();
+    drawClouds();
+    drawHorizonSilhouette();
+    drawTacticalHudOverlay();
+    updateTelemetry();
+
+    requestAnimationFrame(render);
+  }
+
+  // ===== Pointer Interaction (Pan + Target Lock) =====
+  let isDragging = false;
+  let lastX = 0;
+  let lastY = 0;
+  let downX = 0;
+  let downY = 0;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    lastX = downX = e.clientX;
+    lastY = downY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    viewAz = (viewAz - dx * 0.18 + 360) % 360;
+    viewEl = Math.max(8, Math.min(82, viewEl + dy * 0.14));
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    if (isDragging && Math.hypot(e.clientX - downX, e.clientY - downY) < 6) {
+      let best = null;
+      let bestDist = 42;
+      screenTargets.forEach(t => {
+        const d = Math.hypot(t.x - e.clientX, t.y - e.clientY);
+        if (d < bestDist) {
+          bestDist = d;
+          best = t;
+        }
+      });
+      if (best) {
+        lockedTargetId = best.id;
+        playLockChirp(best.kind === 'pirate');
+      } else {
+        playLockChirp(false);
+      }
+    }
+    isDragging = false;
+  });
+  canvas.addEventListener('pointercancel', () => { isDragging = false; });
+
+  // ===== UI Controls =====
+  btnModeSky.addEventListener('click', () => {
+    sensorMode = 'sky';
+    btnModeSky.classList.add('active');
+    btnModeNvg.classList.remove('active');
+    updateAudioMood();
+  });
+  btnModeNvg.addEventListener('click', () => {
+    sensorMode = 'nvg';
+    btnModeNvg.classList.add('active');
+    btnModeSky.classList.remove('active');
+    updateAudioMood();
+  });
+  btnHud.addEventListener('click', () => {
+    hudOn = !hudOn;
+    btnHud.classList.toggle('active', hudOn);
+    btnHud.textContent = hudOn ? 'HUD 오버레이: ON' : 'HUD 오버레이: OFF';
+  });
+  btnTracks.addEventListener('click', () => {
+    showTracks = !showTracks;
+    btnTracks.classList.toggle('active', showTracks);
+  });
+  btnElevator.addEventListener('click', () => {
+    showElevator = !showElevator;
+    btnElevator.classList.toggle('active', showElevator);
+  });
+  btnPirates.addEventListener('click', () => {
+    showPirates = !showPirates;
+    btnPirates.classList.toggle('active', showPirates);
+  });
+
+  btnSouthView.addEventListener('click', () => {
+    viewAz = 180;
+    viewEl = Math.max(22, Math.min(65, (90 - observerLat) * 0.55));
+  });
+
+  btnSave.addEventListener('click', () => {
+    playShutterSound();
+    flashOverlay.classList.add('flash');
+    requestAnimationFrame(() => {
+      setTimeout(() => flashOverlay.classList.remove('flash'), 30);
+    });
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    link.download = `marsko-skywatch-${stamp}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  latRange.addEventListener('input', (e) => {
+    observerLat = parseFloat(e.target.value);
+    latVal.textContent = `${observerLat.toFixed(1)}°N`;
+  });
+  cloudRange.addEventListener('input', (e) => {
+    cloudDensity = parseFloat(e.target.value) / 100;
+    cloudVal.textContent = `${e.target.value}%`;
+    updateAudioMood();
+  });
+  speedRange.addEventListener('input', (e) => {
+    timeScale = parseFloat(e.target.value);
+    speedVal.textContent = `${timeScale.toFixed(1)}x`;
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  initSkyAssets();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
