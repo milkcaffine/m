@@ -60,6 +60,26 @@
       backdrop-filter: blur(4px);
     }
     .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .header-top { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+    .sound-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(15, 23, 42, 0.65);
+      color: #94a3b8;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .sound-btn:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); }
+    .sound-btn.active {
+      color: #34d399;
+      border-color: rgba(52, 211, 153, 0.55);
+      background: rgba(16, 185, 129, 0.14);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
+    }
     h1 {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.95rem;
@@ -158,9 +178,12 @@
 <body>
 
 <header>
-  <a href="index.html" class="home-link">← marsko</a>
+  <div class="header-top">
+    <a href="index.html" class="home-link">← marsko</a>
+    <button type="button" class="sound-btn active" id="btnAudio">♪ GALAXY AUDIO: ON</button>
+  </div>
   <h1>N-BODY GALAXY SIMULATOR</h1>
-  <div class="hud-meta">GRAVITATIONAL KINEMATICS · 60 FPS</div>
+  <div class="hud-meta">GRAVITATIONAL KINEMATICS · CONTAINED ORBIT</div>
 </header>
 
 <div class="telemetry-card">
@@ -206,6 +229,83 @@
   const btnReset = document.getElementById('btnReset');
   const gravityRange = document.getElementById('gravityRange');
   const trailRange = document.getElementById('trailRange');
+  const btnAudio = document.getElementById('btnAudio');
+
+  // ===== Web Audio: Reactive Galaxy Drone =====
+  let audioCtx = null;
+  let audioMaster = null;
+  let droneFilter = null;
+  let audioOn = true;
+
+  function ensureGalaxyAudio() {
+    if (!audioCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      audioCtx = new AudioCtx();
+      audioMaster = audioCtx.createGain();
+      audioMaster.gain.value = 0;
+      audioMaster.connect(audioCtx.destination);
+
+      droneFilter = audioCtx.createBiquadFilter();
+      droneFilter.type = 'lowpass';
+      droneFilter.frequency.value = 220;
+      droneFilter.Q.value = 1.6;
+      droneFilter.connect(audioMaster);
+
+      // Deep G1 cosmic harmonic drone
+      [49.0, 73.42, 98.0, 146.83].forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = idx === 0 ? 'sine' : 'triangle';
+        osc.frequency.value = freq;
+        const g = audioCtx.createGain();
+        g.gain.value = [0.22, 0.1, 0.06, 0.03][idx];
+        osc.connect(g);
+        g.connect(droneFilter);
+        osc.start();
+      });
+
+      // Soft cosmic nebula noise
+      const len = audioCtx.sampleRate * 3;
+      const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+      const ch = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        last = (last + 0.025 * w) / 1.025;
+        ch[i] = last * 1.5;
+      }
+      const noiseSrc = audioCtx.createBufferSource();
+      noiseSrc.buffer = buf;
+      noiseSrc.loop = true;
+      const noiseBP = audioCtx.createBiquadFilter();
+      noiseBP.type = 'bandpass';
+      noiseBP.frequency.value = 340;
+      noiseBP.Q.value = 0.8;
+      const noiseG = audioCtx.createGain();
+      noiseG.gain.value = 0.16;
+      noiseSrc.connect(noiseBP);
+      noiseBP.connect(noiseG);
+      noiseG.connect(audioMaster);
+      noiseSrc.start();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    audioMaster.gain.setTargetAtTime(audioOn ? 0.65 : 0, audioCtx.currentTime, 0.25);
+  }
+
+  btnAudio.addEventListener('click', () => {
+    audioOn = !audioOn;
+    ensureGalaxyAudio();
+    btnAudio.classList.toggle('active', audioOn);
+    btnAudio.textContent = audioOn ? '♪ GALAXY AUDIO: ON' : '♪ GALAXY AUDIO: OFF';
+  });
+
+  function unlockDefaultAudio() {
+    if (audioOn && !audioMaster) ensureGalaxyAudio();
+    window.removeEventListener('pointerdown', unlockDefaultAudio);
+    window.removeEventListener('keydown', unlockDefaultAudio);
+  }
+  window.addEventListener('pointerdown', unlockDefaultAudio, { passive: true });
+  window.addEventListener('keydown', unlockDefaultAudio, { passive: true });
 
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
@@ -360,6 +460,19 @@
         ay += dy * force;
       }
 
+      // 부드러운 우주 경계 중력 우물 (화면 밖 이탈 방지 및 궤도 복귀)
+      const viewHalf = Math.min(width, height) * 0.48 / Math.max(0.4, zoom);
+      const limitR = isCore[i] === 1 ? viewHalf * 0.72 : viewHalf * 1.05;
+      const distOrigin = Math.hypot(px, py);
+      if (distOrigin > limitR) {
+        const excess = distOrigin - limitR;
+        const pull = (isCore[i] === 1 ? 0.0022 : 0.0014) * excess;
+        ax -= (px / distOrigin) * pull;
+        ay -= (py / distOrigin) * pull;
+        velX[i] *= 0.992;
+        velY[i] *= 0.992;
+      }
+
       // 오일러-베를레 속도 갱신
       velX[i] += ax * DT;
       velY[i] += ay * DT;
@@ -367,6 +480,14 @@
       // 위치 갱신
       posX[i] += velX[i] * DT;
       posY[i] += velY[i] * DT;
+    }
+
+    // 오디오 필터를 마우스 블랙홀 / 코어 근접도에 반응시키기
+    if (droneFilter && audioOn && audioCtx) {
+      let targetFreq = 210;
+      if (mouseAttractor.active) targetFreq = 460;
+      else if (currentScenario !== 'single') targetFreq = 270;
+      droneFilter.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.35);
     }
   }
 
