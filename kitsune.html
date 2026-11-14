@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#04050a">
+  <meta name="description" content="Marsko lab fiction — 여우점(Fox Omikuji). 이나리 신사의 여우가 봐주는 오늘의 오미쿠지와 심야 차방 우라이나리로 이어지는 0.98m 골목의 입구.">
+  <title>여우점 // 이나리 신사 오미쿠지 // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #030408;
+      color: #e2e8f0;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #shrineCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .sound-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(15, 23, 42, 0.65);
+      color: #94a3b8;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .sound-btn:hover { color: #fbbf24; border-color: rgba(251, 191, 36, 0.45); }
+    .sound-btn.active {
+      color: #fbbf24;
+      border-color: rgba(251, 191, 36, 0.55);
+      background: rgba(251, 191, 36, 0.12);
+    }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+    }
+
+    .telemetry-card {
+      background: rgba(10, 8, 12, 0.8);
+      border: 1px solid rgba(248, 113, 113, 0.22);
+    }
+    .telemetry-card strong { color: #fbbf24; }
+    .telemetry-card .fox-cyan { color: #67e8f9; }
+
+    /* 중앙 신사 오미쿠지 패널 */
+    .shrine-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 15;
+      width: min(410px, 90vw);
+      background: rgba(10, 9, 14, 0.84);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      border-radius: 14px;
+      padding: 20px 22px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.65), 0 0 30px rgba(220, 38, 38, 0.08);
+      text-align: center;
+    }
+    .shrine-kicker {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 1.8px;
+      color: #f87171;
+      margin-bottom: 6px;
+    }
+    .shrine-lead {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #cbd5e1;
+      margin-bottom: 14px;
+    }
+
+    .birth-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .birth-row label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+    .birth-input {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 6px;
+      color: #f8fafc;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      padding: 5px 10px;
+      outline: none;
+    }
+    .birth-input:focus { border-color: #fbbf24; }
+    .privacy-note {
+      font-size: 0.67rem;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+
+    .draw-btn {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(251, 191, 36, 0.55);
+      background: rgba(251, 191, 36, 0.14);
+      color: #fde68a;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .draw-btn:hover {
+      background: rgba(251, 191, 36, 0.25);
+      box-shadow: 0 0 18px rgba(251, 191, 36, 0.25);
+    }
+
+    /* 오미쿠지 결과지 */
+    .omikuji-slip {
+      display: none;
+      margin-top: 16px;
+      padding: 16px 14px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(252, 248, 236, 0.96), rgba(241, 233, 212, 0.96));
+      color: #1e293b;
+      border: 2px solid #991b1b;
+      text-align: left;
+      animation: slipUnfold 0.35s ease;
+    }
+    .omikuji-slip.open { display: block; }
+    @keyframes slipUnfold {
+      from { opacity: 0; transform: translateY(8px) scaleY(0.92); }
+      to { opacity: 1; transform: translateY(0) scaleY(1); }
+    }
+    .slip-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 1px dashed rgba(153, 27, 27, 0.35);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .slip-rank {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #991b1b;
+      letter-spacing: 2px;
+    }
+    .slip-rank.is-bad { color: #0f172a; }
+    .slip-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #64748b;
+    }
+    .slip-verse {
+      font-size: 0.82rem;
+      line-height: 1.55;
+      color: #334155;
+      margin-bottom: 10px;
+      font-style: italic;
+    }
+    .slip-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 10px;
+      font-size: 0.74rem;
+      color: #334155;
+      border-top: 1px dashed rgba(153, 27, 27, 0.25);
+      padding-top: 8px;
+    }
+    .slip-grid strong { color: #7f1d1d; }
+
+    /* 우라이나리 골목 연결 트리거 */
+    .alley-trigger {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(103, 232, 249, 0.55);
+      color: #e2e8f0;
+      text-align: center;
+      box-shadow: 0 0 22px rgba(103, 232, 249, 0.22);
+    }
+    .alley-trigger.open { display: block; animation: slipUnfold 0.4s ease; }
+    .alley-whisper {
+      font-size: 0.76rem;
+      line-height: 1.5;
+      color: #bae6fd;
+      margin-bottom: 9px;
+    }
+    .alley-portal-btn {
+      display: inline-block;
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 6px;
+      background: rgba(251, 191, 36, 0.18);
+      border: 1px solid #fbbf24;
+      color: #fde68a;
+      transition: all 0.15s ease;
+    }
+    .alley-portal-btn:hover {
+      background: rgba(251, 191, 36, 0.32);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+    }
+
+    .subtle-link {
+      display: inline-block;
+      margin-top: 11px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #64748b;
+      text-decoration: none;
+    }
+    .subtle-link:hover { color: #fbbf24; }
+
+    @media (max-width: 720px) {
+      .telemetry-card { display: none; }
+      header h1 { font-size: 0.85rem; }
+      .shrine-panel { padding: 16px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <a href="index.html" class="home-link">← marsko</a>
+    <button type="button" class="sound-btn active" id="btnAudio">♪ SHRINE AUDIO: ON</button>
+  </div>
+  <h1>FOX OMIKUJI // 여우점</h1>
+  <div class="hud-meta">INARI SHRINE GATE · PRELUDE TO URAINARI 0.98m ALLEY</div>
+</header>
+
+<div class="telemetry-card" id="telemetryCard">
+  <div>신사 경내: <strong>야간 강우</strong></div>
+  <div>여우불(狐火): <strong class="fox-cyan" id="wispHud">0 / 3</strong></div>
+  <div>골목 경계: <strong id="gateHud">잠김</strong></div>
+</div>
+
+<canvas id="shrineCanvas"></canvas>
+
+<div class="shrine-panel">
+  <div class="shrine-kicker">INARI SHRINE · OMIKUJI</div>
+  <p class="shrine-lead">돌계단 위 붉은 토리이 아래, 석상 여우가 가만히 당신을 올려다봅니다. 방울을 흔들어 오늘의 괘를 뽑아보세요.</p>
+
+  <div class="birth-row">
+    <label for="birthInput">생일 (선택)</label>
+    <input type="date" id="birthInput" class="birth-input">
+  </div>
+  <div class="privacy-note">생일은 서버에 저장·전송되지 않으며, 브라우저 내 오늘의 괘 산출에만 사용됩니다.</div>
+
+  <button type="button" class="draw-btn" id="btnDraw">🔔 방울 흔들고 오늘의 여우점 뽑기</button>
+
+  <div class="omikuji-slip" id="omikujiSlip">
+    <div class="slip-head">
+      <span class="slip-rank" id="slipRank">대길 (大吉)</span>
+      <span class="slip-sub" id="slipDate">NO. 07</span>
+    </div>
+    <p class="slip-verse" id="slipVerse"></p>
+    <div class="slip-grid" id="slipGrid"></div>
+  </div>
+
+  <div class="alley-trigger" id="alleyTrigger">
+    <div class="alley-whisper" id="alleyWhisper"></div>
+    <a href="rojiura.html" class="alley-portal-btn">▶ 0.98m 골목(우라이나리)으로 들어가기</a>
+  </div>
+
+  <div>
+    <a href="rojiura.html" class="subtle-link">신사 뒤편 0.98m 빗속 골목 바로 가기 →</a>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('shrineCanvas');
+  const ctx = canvas.getContext('2d');
+  const btnAudio = document.getElementById('btnAudio');
+  const btnDraw = document.getElementById('btnDraw');
+  const birthInput = document.getElementById('birthInput');
+  const omikujiSlip = document.getElementById('omikujiSlip');
+  const slipRank = document.getElementById('slipRank');
+  const slipDate = document.getElementById('slipDate');
+  const slipVerse = document.getElementById('slipVerse');
+  const slipGrid = document.getElementById('slipGrid');
+  const alleyTrigger = document.getElementById('alleyTrigger');
+  const alleyWhisper = document.getElementById('alleyWhisper');
+  const wispHud = document.getElementById('wispHud');
+  const gateHud = document.getElementById('gateHud');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+  let simTime = 0;
+  let drawCount = 0;
+  let collectedWisps = 0;
+  let gateOpen = false;
+
+  // ===== Web Audio (Night Rain + Shrine Bell + Omikuji Chime) =====
+  let audioCtx = null;
+  let audioMaster = null;
+  let soundOn = true;
+
+  function createRainNoise(c) {
+    const len = c.sampleRate * 3;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const ch = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      last = (last + 0.04 * w) / 1.04;
+      ch[i] = last * 1.6;
+    }
+    return buf;
+  }
+
+  function initAudio() {
+    if (!audioCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioCtx();
+      audioMaster = audioCtx.createGain();
+      audioMaster.gain.value = 0;
+      audioMaster.connect(audioCtx.destination);
+
+      const rain = audioCtx.createBufferSource();
+      rain.buffer = createRainNoise(audioCtx);
+      rain.loop = true;
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 850;
+      bp.Q.value = 0.6;
+      const rg = audioCtx.createGain();
+      rg.gain.value = 0.16;
+      rain.connect(bp);
+      bp.connect(rg);
+      rg.connect(audioMaster);
+      rain.start();
+
+      [65.41, 98.0].forEach((hz, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = hz;
+        const g = audioCtx.createGain();
+        g.gain.value = i === 0 ? 0.12 : 0.05;
+        osc.connect(g);
+        g.connect(audioMaster);
+        osc.start();
+      });
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function unlockAudio() {
+    if (!soundOn) return;
+    initAudio();
+    audioMaster.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.25);
+  }
+
+  function playShrineBell(isPortal = false) {
+    if (!audioCtx || !soundOn) return;
+    const now = audioCtx.currentTime;
+    const notes = isPortal ? [587.33, 880, 1174.66, 1567.98] : [1046.5, 1318.5, 1567.98];
+    notes.forEach((hz, idx) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(hz, now + idx * 0.07);
+      const env = audioCtx.createGain();
+      env.gain.setValueAtTime(0.0001, now + idx * 0.07);
+      env.gain.exponentialRampToValueAtTime(0.07, now + idx * 0.07 + 0.02);
+      env.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.07 + 1.4);
+      osc.connect(env);
+      env.connect(audioMaster);
+      osc.start(now + idx * 0.07);
+      osc.stop(now + idx * 0.07 + 1.45);
+    });
+  }
+
+  btnAudio.addEventListener('click', () => {
+    soundOn = !soundOn;
+    if (soundOn) {
+      initAudio();
+      audioMaster.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.25);
+    } else if (audioCtx && audioMaster) {
+      audioMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+    }
+    btnAudio.classList.toggle('active', soundOn);
+    btnAudio.textContent = soundOn ? '♪ SHRINE AUDIO: ON' : '♪ SHRINE AUDIO: OFF';
+  });
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target && e.target.closest && e.target.closest('#btnAudio')) return;
+    unlockAudio();
+  });
+
+  // ===== Omikuji Data =====
+  const FORTUNES = [
+    {
+      rank: '대길 (大吉)',
+      bad: false,
+      verse: '안개 걷힌 밤하늘에 여우불이 길을 밝히니, 뜻밖의 인연이 찻잔을 데우고 기다린다.',
+      wish: '머지않아 이루어짐',
+      wait: '비 그칠 무렵 찾아옴',
+      dir: '남동쪽 좁은 골목',
+      fox: '오늘 밤은 좋은 차 한 잔이 행운을 굳힌다.'
+    },
+    {
+      rank: '중길 (中吉)',
+      bad: false,
+      verse: '서두르면 길을 잃고 천천히 걸으면 숨겨진 처마 밑에 닿는다.',
+      wish: '한 템포 늦추면 성사',
+      wait: '익숙한 목소리로 옴',
+      dir: '서쪽 돌계단 아래',
+      fox: '우산 끝에 맺힌 빗방울 수를 세어보라.'
+    },
+    {
+      rank: '소길 (小吉)',
+      bad: false,
+      verse: '작은 등불 하나면 긴 밤을 건너기에 충분하다. 사소한 친절이 돌아온다.',
+      wish: '작은 것부터 풀림',
+      wait: '늦은 밤 소식이 옴',
+      dir: '북쪽 오래된 담장',
+      fox: '주머니 속 동전 하나를 아껴두라.'
+    },
+    {
+      rank: '길 (吉)',
+      bad: false,
+      verse: '바람은 차갑지만 걸음은 가볍다. 어제의 고민은 오늘 비에 씻겨 나간다.',
+      wish: '무난히 성취됨',
+      wait: '기다리던 쪽에서 먼저 옴',
+      dir: '동쪽 네온 불빛 너머',
+      fox: '고개를 숙이지 말고 지붕 위를 보라.'
+    },
+    {
+      rank: '말길 (末吉)',
+      bad: false,
+      verse: '아직은 구름이 짙으나 끝자락에 금빛이 비친다. 자정 이후 운이 트인다.',
+      wish: '끝에 가서야 열림',
+      wait: '약속보다 조금 늦음',
+      dir: '신사 뒤편 좁은 틈',
+      fox: '조급해하면 여우가 장난을 친다.'
+    },
+    {
+      rank: '흉 (凶)',
+      bad: true,
+      verse: '큰길에는 그림자가 짙고 빗줄기가 시야를 가린다. 정면 돌파는 피할 것.',
+      wish: '오늘은 잠시 미룰 것',
+      wait: '다른 골목에서 엇갈림',
+      dir: '큰길은 피하고 뒷골목으로',
+      fox: '흉을 피하려면 폭 0.98m 틈으로 몸을 숨겨라.'
+    },
+    {
+      rank: '대흉 (大凶)',
+      bad: true,
+      verse: '여우의 꼬리가 앞을 스치고 등롱 불이 꺼진다. 평범한 길로는 집에 닿지 못할 밤.',
+      wish: '잠시 멈춰 숨을 고를 것',
+      wait: '다방 안에서만 만날 수 있음',
+      dir: '우라이나리 (裏稲荷)',
+      fox: '지금 당장 신사 뒤편 0.98m 골목으로 피해라!'
+    }
+  ];
+
+  function hashString(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return Math.abs(h);
+  }
+
+  function openUrainariGate(reasonText) {
+    gateOpen = true;
+    gateHud.textContent = '열림 (0.98m)';
+    alleyWhisper.textContent = reasonText;
+    alleyTrigger.classList.add('open');
+    playShrineBell(true);
+  }
+
+  btnDraw.addEventListener('click', () => {
+    drawCount += 1;
+    const birth = birthInput.value;
+    const today = new Date().toISOString().slice(0, 10);
+
+    let idx;
+    if (birth && drawCount === 1) {
+      idx = hashString(`${today}|${birth}`) % FORTUNES.length;
+    } else {
+      idx = Math.floor(Math.random() * FORTUNES.length);
+    }
+    const f = FORTUNES[idx];
+
+    slipRank.textContent = f.rank;
+    slipRank.classList.toggle('is-bad', f.bad);
+    slipDate.textContent = birth ? `${today} · 생일괘` : `${today} · #${drawCount}`;
+    slipVerse.textContent = f.verse;
+    slipGrid.innerHTML = `
+      <div><strong>소원:</strong> ${f.wish}</div>
+      <div><strong>기다리는 이:</strong> ${f.wait}</div>
+      <div><strong>방위:</strong> ${f.dir}</div>
+      <div><strong>여우의 말:</strong> ${f.fox}</div>
+    `;
+    omikujiSlip.classList.add('open');
+    playShrineBell(false);
+
+    if (f.bad) {
+      openUrainariGate('여우 석상의 눈이 붉게 번쩍입니다. "흉한 기운이 짙구나... 신사 뒤편 폭 0.98m 골목의 심야 차방 [우라이나리]에서 따뜻한 차를 마시면 액운이 빗나갈 것이다."');
+    } else if (drawCount >= 3 || collectedWisps >= 3) {
+      openUrainariGate('여우불이 신사 뒤편 어둠 속으로 좁은 문을 열어 보입니다. "단골이 될 상이구나. 0.98m 골목 끝 우라이나리의 새 점장이 너를 기다리고 있다."');
+    }
+  });
+
+  // ===== Canvas Shrine Scene (Torii, Fox Wisps, Rain) =====
+  const drops = Array.from({ length: 140 }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    len: 10 + Math.random() * 14,
+    spd: 0.45 + Math.random() * 0.45
+  }));
+
+  const wisps = Array.from({ length: 5 }, (_, i) => ({
+    x: 0.14 + (i * 0.18),
+    y: 0.25 + (i % 2) * 0.28,
+    phase: Math.random() * Math.PI * 2,
+    caught: false
+  }));
+
+  canvas.addEventListener('pointerdown', (e) => {
+    for (const w of wisps) {
+      if (w.caught) continue;
+      const wx = w.x * width + Math.sin(simTime * 1.4 + w.phase) * 28;
+      const wy = w.y * height + Math.cos(simTime * 1.9 + w.phase) * 18;
+      if (Math.hypot(wx - e.clientX, wy - e.clientY) < 34) {
+        w.caught = true;
+        collectedWisps += 1;
+        wispHud.textContent = `${Math.min(3, collectedWisps)} / 3`;
+        playShrineBell(collectedWisps >= 3);
+        if (collectedWisps >= 3 && !gateOpen) {
+          openUrainariGate('여우불 셋을 모두 모았습니다! 토리이 뒤편에 폭 0.98m의 빗속 골목 [우라이나리]로 이어지는 길이 열렸습니다.');
+        }
+        return;
+      }
+    }
+  });
+
+  function drawTorii() {
+    const cx = width * 0.5;
+    const baseY = height * 0.86;
+    const h = Math.min(height * 0.62, 420);
+    const w = Math.min(width * 0.58, 340);
+
+    ctx.save();
+    // Subtle crimson aura behind torii
+    const aura = ctx.createRadialGradient(cx, baseY - h * 0.45, 10, cx, baseY - h * 0.45, w * 0.85);
+    aura.addColorStop(0, gateOpen ? 'rgba(103, 232, 249, 0.18)' : 'rgba(220, 38, 38, 0.16)');
+    aura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = aura;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = '#450a0a';
+    ctx.strokeStyle = '#991b1b';
+    ctx.lineWidth = 2;
+
+    // Pillars
+    ctx.fillRect(cx - w * 0.34, baseY - h, 14, h);
+    ctx.fillRect(cx + w * 0.34 - 14, baseY - h, 14, h);
+
+    // Top lintel (Kasagi)
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.52, baseY - h - 12);
+    ctx.quadraticCurveTo(cx, baseY - h + 6, cx + w * 0.52, baseY - h - 12);
+    ctx.lineTo(cx + w * 0.48, baseY - h + 8);
+    ctx.quadraticCurveTo(cx, baseY - h + 18, cx - w * 0.48, baseY - h + 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Secondary beam (Nuki)
+    ctx.fillRect(cx - w * 0.4, baseY - h * 0.78, w * 0.8, 10);
+
+    // Lanterns on both sides
+    [-1, 1].forEach(side => {
+      const lx = cx + side * w * 0.46;
+      const ly = baseY - h * 0.34;
+      const g = ctx.createRadialGradient(lx, ly, 2, lx, ly, 48);
+      g.addColorStop(0, 'rgba(251, 191, 36, 0.48)');
+      g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 48, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(lx - 5, ly - 8, 10, 14);
+    });
+    ctx.restore();
+  }
+
+  function render() {
+    simTime += 0.016;
+    ctx.fillStyle = '#030408';
+    ctx.fillRect(0, 0, width, height);
+
+    drawTorii();
+
+    // Fox wisps
+    wisps.forEach(w => {
+      if (w.caught) return;
+      const wx = w.x * width + Math.sin(simTime * 1.4 + w.phase) * 28;
+      const wy = w.y * height + Math.cos(simTime * 1.9 + w.phase) * 18;
+      const g = ctx.createRadialGradient(wx, wy, 1, wx, wy, 22);
+      g.addColorStop(0, 'rgba(103, 232, 249, 0.95)');
+      g.addColorStop(0.4, 'rgba(56, 189, 248, 0.35)');
+      g.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(wx, wy, 22, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Night rain
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    drops.forEach(d => {
+      d.y = (d.y + d.spd * 0.02) % 1;
+      const rx = d.x * width;
+      const ry = d.y * height;
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx - 2, ry + d.len);
+    });
+    ctx.stroke();
+
+    requestAnimationFrame(render);
+  }
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
