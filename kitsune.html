@@ -213,6 +213,26 @@
       padding-top: 8px;
     }
     .slip-grid strong { color: #7f1d1d; }
+    .save-card-btn {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(30, 41, 59, 0.85);
+      color: #e2e8f0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.76rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .save-card-btn.open { display: block; }
+    .save-card-btn:hover {
+      border-color: #67e8f9;
+      color: #67e8f9;
+      background: rgba(15, 23, 42, 0.95);
+    }
 
     /* 우라이나리 골목 연결 트리거 */
     .alley-trigger {
@@ -307,6 +327,7 @@
     <p class="slip-verse" id="slipVerse"></p>
     <div class="slip-grid" id="slipGrid"></div>
   </div>
+  <button type="button" class="save-card-btn" id="btnSaveCard">📷 여우점 카드 이미지로 저장</button>
 
   <div class="alley-trigger" id="alleyTrigger">
     <div class="alley-whisper" id="alleyWhisper"></div>
@@ -324,6 +345,7 @@
   const ctx = canvas.getContext('2d');
   const btnAudio = document.getElementById('btnAudio');
   const btnDraw = document.getElementById('btnDraw');
+  const btnSaveCard = document.getElementById('btnSaveCard');
   const birthInput = document.getElementById('birthInput');
   const omikujiSlip = document.getElementById('omikujiSlip');
   const slipRank = document.getElementById('slipRank');
@@ -533,10 +555,12 @@
       idx = Math.floor(Math.random() * FORTUNES.length);
     }
     const f = FORTUNES[idx];
+    currentFortune = f;
+    currentFortuneTag = birth ? `${today} · 생일괘` : `${today} · #${drawCount}`;
 
     slipRank.textContent = f.rank;
     slipRank.classList.toggle('is-bad', f.bad);
-    slipDate.textContent = birth ? `${today} · 생일괘` : `${today} · #${drawCount}`;
+    slipDate.textContent = currentFortuneTag;
     slipVerse.textContent = f.verse;
     slipGrid.innerHTML = `
       <div><strong>소원:</strong> ${f.wish}</div>
@@ -545,6 +569,7 @@
       <div><strong>여우의 말:</strong> ${f.fox}</div>
     `;
     omikujiSlip.classList.add('open');
+    btnSaveCard.classList.add('open');
     playShrineBell(false);
 
     if (f.bad) {
@@ -640,12 +665,230 @@
     ctx.restore();
   }
 
+  let currentFortune = null;
+  let currentFortuneTag = '';
+
+  function drawInariFox(c, fx, fy, scale, dirSign, breathOffset, withWisp) {
+    c.save();
+    c.translate(fx, fy);
+    c.scale(scale, scale);
+
+    // Subtle ground aura
+    const aura = c.createRadialGradient(0, 6, 2, 0, 6, 26);
+    aura.addColorStop(0, 'rgba(103, 232, 249, 0.25)');
+    aura.addColorStop(1, 'rgba(103, 232, 249, 0)');
+    c.fillStyle = aura;
+    c.beginPath();
+    c.arc(0, 6, 26, 0, Math.PI * 2);
+    c.fill();
+
+    // Fluffy tail curled to the side
+    c.fillStyle = '#f8fafc';
+    c.beginPath();
+    c.ellipse(-dirSign * 11, 2 + breathOffset * 0.5, 6.5, 3.8, -dirSign * 0.45, 0, Math.PI * 2);
+    c.fill();
+
+    // Sitting white fox body
+    c.fillStyle = '#f8fafc';
+    c.beginPath();
+    c.moveTo(-9, 7);
+    c.lineTo(-6, -12 + breathOffset);
+    c.lineTo(6, -12 + breathOffset);
+    c.lineTo(9, 7);
+    c.closePath();
+    c.fill();
+
+    // Traditional Inari red scarf
+    c.fillStyle = '#f43f5e';
+    c.fillRect(-6.5, -11 + breathOffset, 13, 3.2);
+
+    // Head
+    const hx = dirSign * 3.2;
+    const hy = -18 + breathOffset;
+    c.fillStyle = '#f8fafc';
+    c.beginPath();
+    c.arc(hx, hy, 7.6, 0, Math.PI * 2);
+    c.fill();
+
+    // Pointy ears with vermilion tips
+    c.fillStyle = '#f8fafc';
+    c.beginPath();
+    c.moveTo(hx - 6.5, hy - 3);
+    c.lineTo(hx - 9.5 + dirSign * 1.5, hy - 14.5);
+    c.lineTo(hx - 1.5, hy - 6.5);
+    c.closePath();
+    c.moveTo(hx + 1.5, hy - 6.5);
+    c.lineTo(hx + 9.5 + dirSign * 1.5, hy - 14.5);
+    c.lineTo(hx + 6.5, hy - 3);
+    c.closePath();
+    c.fill();
+
+    c.fillStyle = '#f43f5e';
+    c.beginPath();
+    c.arc(hx - 8 + dirSign, hy - 12.2, 1.7, 0, Math.PI * 2);
+    c.arc(hx + 8 + dirSign, hy - 12.2, 1.7, 0, Math.PI * 2);
+    c.fill();
+
+    // Golden eyes
+    c.fillStyle = '#fbbf24';
+    c.shadowColor = '#fbbf24';
+    c.shadowBlur = 8;
+    c.beginPath();
+    c.arc(hx - 2.6 + dirSign * 1.5, hy - 0.5, 1.5, 0, Math.PI * 2);
+    c.arc(hx + 2.6 + dirSign * 1.5, hy - 0.5, 1.5, 0, Math.PI * 2);
+    c.fill();
+    c.shadowBlur = 0;
+
+    if (withWisp) {
+      const orbX = hx + dirSign * 18;
+      const orbY = hy - 8;
+      const og = c.createRadialGradient(orbX, orbY, 1, orbX, orbY, 12);
+      og.addColorStop(0, 'rgba(224, 242, 254, 0.95)');
+      og.addColorStop(0.45, 'rgba(56, 189, 248, 0.55)');
+      og.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      c.fillStyle = og;
+      c.beginPath();
+      c.arc(orbX, orbY, 12, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
+  }
+
+  function wrapLines(c, text, maxW) {
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    for (const w of words) {
+      const test = line ? `${line} ${w}` : w;
+      if (c.measureText(test).width > maxW && line) {
+        lines.push(line);
+        line = w;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  btnSaveCard.addEventListener('click', () => {
+    if (!currentFortune) return;
+    const cw = 680;
+    const ch = 960;
+    const out = document.createElement('canvas');
+    out.width = cw;
+    out.height = ch;
+    const oc = out.getContext('2d');
+
+    // Deep night shrine background
+    const bg = oc.createLinearGradient(0, 0, 0, ch);
+    bg.addColorStop(0, '#04050c');
+    bg.addColorStop(1, '#120810');
+    oc.fillStyle = bg;
+    oc.fillRect(0, 0, cw, ch);
+
+    // Subtle crimson aura behind fox
+    const glow = oc.createRadialGradient(cw * 0.5, 190, 10, cw * 0.5, 190, 210);
+    glow.addColorStop(0, currentFortune.bad ? 'rgba(244, 63, 94, 0.25)' : 'rgba(251, 191, 36, 0.22)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    oc.fillStyle = glow;
+    oc.fillRect(0, 0, cw, 380);
+
+    // Header label
+    oc.textAlign = 'center';
+    oc.font = '600 16px "IBM Plex Mono", monospace';
+    oc.fillStyle = '#f87171';
+    oc.fillText('INARI SHRINE · FOX OMIKUJI', cw * 0.5, 58);
+
+    // Cute Urainari white fox illustration
+    drawInariFox(oc, cw * 0.5, 215, 3.1, 1, 0, true);
+
+    // Cream parchment omikuji card
+    const px = 56;
+    const py = 278;
+    const pw = cw - 112;
+    const ph = 590;
+    oc.fillStyle = '#faf5e6';
+    oc.fillRect(px, py, pw, ph);
+    oc.strokeStyle = '#991b1b';
+    oc.lineWidth = 4;
+    oc.strokeRect(px, py, pw, ph);
+    oc.lineWidth = 1.5;
+    oc.strokeRect(px + 10, py + 10, pw - 20, ph - 20);
+
+    // Rank & Date
+    oc.textAlign = 'left';
+    oc.font = '800 44px sans-serif';
+    oc.fillStyle = currentFortune.bad ? '#0f172a' : '#991b1b';
+    oc.fillText(currentFortune.rank, px + 36, py + 76);
+
+    oc.textAlign = 'right';
+    oc.font = '500 18px "IBM Plex Mono", monospace';
+    oc.fillStyle = '#64748b';
+    oc.fillText(currentFortuneTag, px + pw - 36, py + 72);
+
+    // Dashed divider
+    oc.strokeStyle = 'rgba(153, 27, 27, 0.35)';
+    oc.setLineDash([6, 6]);
+    oc.beginPath();
+    oc.moveTo(px + 34, py + 104);
+    oc.lineTo(px + pw - 34, py + 104);
+    oc.stroke();
+    oc.setLineDash([]);
+
+    // Verse
+    oc.textAlign = 'left';
+    oc.font = 'italic 22px sans-serif';
+    oc.fillStyle = '#334155';
+    const vLines = wrapLines(oc, currentFortune.verse, pw - 72);
+    vLines.forEach((ln, idx) => {
+      oc.fillText(ln, px + 36, py + 150 + idx * 34);
+    });
+
+    // Fortune details
+    const rows = [
+      ['소원', currentFortune.wish],
+      ['기다리는 이', currentFortune.wait],
+      ['방위', currentFortune.dir],
+      ['여우의 말', currentFortune.fox]
+    ];
+    let ry = py + 275;
+    rows.forEach(([k, v]) => {
+      oc.font = '700 19px sans-serif';
+      oc.fillStyle = '#7f1d1d';
+      oc.fillText(`${k}:`, px + 36, ry);
+      oc.font = '500 19px sans-serif';
+      oc.fillStyle = '#1e293b';
+      const valLines = wrapLines(oc, v, pw - 190);
+      valLines.forEach((vl, li) => {
+        oc.fillText(vl, px + 152, ry + li * 28);
+      });
+      ry += Math.max(46, valLines.length * 28 + 20);
+    });
+
+    // Footer stamp
+    oc.textAlign = 'center';
+    oc.font = '600 15px "IBM Plex Mono", monospace';
+    oc.fillStyle = '#94a3b8';
+    oc.fillText('URAINARI 0.98m ALLEY · marsko.art/kitsune.html', cw * 0.5, ch - 38);
+
+    playShrineBell(true);
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.download = `marsko-kitsune-${stamp}.png`;
+    link.href = out.toDataURL('image/png');
+    link.click();
+  });
+
   function render() {
     simTime += 0.016;
     ctx.fillStyle = '#030408';
     ctx.fillRect(0, 0, width, height);
 
     drawTorii();
+    // Cute Urainari guide fox sitting at the shrine steps
+    const breath = Math.sin(simTime * 2.2) * 0.8;
+    drawInariFox(ctx, width * 0.5 + Math.min(width * 0.24, 165), height * 0.84, 1.55, -1, breath, gateOpen);
 
     // Fox wisps
     wisps.forEach(w => {
