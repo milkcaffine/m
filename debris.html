@@ -62,6 +62,36 @@
       backdrop-filter: blur(4px);
     }
     .home-link:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .header-top { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+    .sound-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(15, 23, 42, 0.65);
+      color: #94a3b8;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .sound-btn:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); }
+    .sound-btn.active {
+      color: #34d399;
+      border-color: rgba(52, 211, 153, 0.55);
+      background: rgba(16, 185, 129, 0.14);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
+    }
+    .shutter-flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 30;
+      transition: opacity 0.22s ease-out;
+    }
+    .shutter-flash.flash { opacity: 0.45; transition: none; }
     h1 {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.95rem;
@@ -183,10 +213,14 @@
 <body>
 
 <header id="topHeader">
-  <a href="index.html" class="home-link">← marsko</a>
+  <div class="header-top">
+    <a href="index.html" class="home-link">← marsko</a>
+    <button type="button" class="sound-btn" id="btnAudio">♪ ISS AUDIO: OFF</button>
+  </div>
   <h1>LEO DEBRIS SWEEPER // 420km</h1>
   <div class="hud-meta">ORBITAL SALVAGE · CUPOLA OBSERVATION DECK</div>
 </header>
+<div class="shutter-flash" id="shutterFlash"></div>
 
 <div class="telemetry-card" id="telemetryCard">
   <div>ORBIT VEL: <strong>7.66 km/s</strong></div>
@@ -204,6 +238,7 @@
   <div class="dock-sep" id="pulseSep"></div>
 
   <button type="button" class="dock-btn" id="btnPulse">EMP 파편 감속 펄스</button>
+  <button type="button" class="dock-btn" id="btnSnap" style="display:none;">📷 스냅샷 저장</button>
 
   <div class="dock-sep"></div>
 
@@ -226,6 +261,9 @@
   const btnSweeper = document.getElementById('btnSweeper');
   const btnCupola = document.getElementById('btnCupola');
   const btnPulse = document.getElementById('btnPulse');
+  const btnSnap = document.getElementById('btnSnap');
+  const btnAudio = document.getElementById('btnAudio');
+  const shutterFlash = document.getElementById('shutterFlash');
   const pulseSep = document.getElementById('pulseSep');
   const speedRange = document.getElementById('speedRange');
 
@@ -234,9 +272,116 @@
 
   // --- Web Audio API 사운드 합성 ---
   let audioCtx = null;
+  let issMaster = null;
+  let issAudioOn = false;
+  let issBeepTimer = null;
+
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function startIssAmbient() {
+    initAudio();
+    if (!issMaster) {
+      issMaster = audioCtx.createGain();
+      issMaster.gain.value = 0;
+      issMaster.connect(audioCtx.destination);
+
+      // 1. ISS 선내 생명유지장치(ECLSS) 환기 험 + 저주파 선체 공명
+      const len = audioCtx.sampleRate * 3;
+      const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        last = (last + 0.03 * w) / 1.03;
+        data[i] = last * 1.6;
+      }
+      const cabinSrc = audioCtx.createBufferSource();
+      cabinSrc.buffer = buf;
+      cabinSrc.loop = true;
+      const cabinLP = audioCtx.createBiquadFilter();
+      cabinLP.type = 'lowpass';
+      cabinLP.frequency.value = 190;
+      const cabinGain = audioCtx.createGain();
+      cabinGain.gain.value = 0.28;
+      cabinSrc.connect(cabinLP);
+      cabinLP.connect(cabinGain);
+      cabinGain.connect(issMaster);
+      cabinSrc.start();
+
+      // 2. 깊은 우주 드론 (65.4Hz C2 + 98Hz G2)
+      const droneLP = audioCtx.createBiquadFilter();
+      droneLP.type = 'lowpass';
+      droneLP.frequency.value = 240;
+      droneLP.connect(issMaster);
+
+      const lfo = audioCtx.createOscillator();
+      lfo.frequency.value = 0.08;
+      const lfoG = audioCtx.createGain();
+      lfoG.gain.value = 90;
+      lfo.connect(lfoG);
+      lfoG.connect(droneLP.frequency);
+      lfo.start();
+
+      [65.41, 98.0, 130.81].forEach((f, idx) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = idx === 0 ? 'sine' : 'triangle';
+        osc.frequency.value = f;
+        const g = audioCtx.createGain();
+        g.gain.value = [0.18, 0.08, 0.05][idx];
+        osc.connect(g);
+        g.connect(droneLP);
+        osc.start();
+      });
+
+      // 3. 간헐적 ISS 텔레메트리 교신 비프 (Quindar-style)
+      const scheduleBeep = () => {
+        issBeepTimer = setTimeout(() => {
+          if (issAudioOn && audioCtx) {
+            const now = audioCtx.currentTime;
+            [1100, 880].forEach((freq, i) => {
+              const t = now + i * 0.11;
+              const o = audioCtx.createOscillator();
+              o.type = 'sine';
+              o.frequency.setValueAtTime(freq, t);
+              const g = audioCtx.createGain();
+              g.gain.setValueAtTime(0.0001, t);
+              g.gain.exponentialRampToValueAtTime(0.032, t + 0.015);
+              g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+              o.connect(g);
+              g.connect(issMaster);
+              o.start(t);
+              o.stop(t + 0.1);
+            });
+          }
+          scheduleBeep();
+        }, 12000 + Math.random() * 14000);
+      };
+      scheduleBeep();
+    }
+
+    issAudioOn = !issAudioOn;
+    issMaster.gain.setTargetAtTime(issAudioOn ? 0.7 : 0, audioCtx.currentTime, 0.25);
+    btnAudio.classList.toggle('active', issAudioOn);
+    btnAudio.textContent = issAudioOn ? '♪ ISS AUDIO: ON' : '♪ ISS AUDIO: OFF';
+  }
+
+  function playShutterClick() {
+    initAudio();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(900, now);
+    osc.frequency.exponentialRampToValueAtTime(160, now + 0.05);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.07);
   }
 
   function playSalvageChime() {
@@ -933,6 +1078,23 @@
       // 2. 큐폴라 8각 관측 창문 프레임
       drawCupolaWindow();
 
+      // 2-1. ISS 상공 지역 텔레메트리 오버레이
+      const regions = [
+        'NORTH PACIFIC · 420km',
+        'TOKYO NIGHT SKYLINE · 35.6°N',
+        'AURORA OVAL · 64.2°N',
+        'SIBERIAN STEPPE · 55.1°N',
+        'SAHARA TERMINATOR · 23.4°N',
+        'ATLANTIC STORM BELT · 18.8°N'
+      ];
+      const regIdx = Math.floor((timeTick * 0.08) % regions.length);
+      ctx.save();
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
+      ctx.textAlign = 'right';
+      ctx.fillText(`ISS GROUND TRACK // ${regions[regIdx]}`, width - 22, height - 74);
+      ctx.restore();
+
       // 3. 관측창 글래스 HUD (마우스/터치 타겟 레이더 락온)
       if (hoveredDebris) {
         drawObservationHUD(hoveredDebris);
@@ -1065,6 +1227,7 @@
     topHeader.style.opacity = '1';
     telemetryCard.style.opacity = '1';
     btnPulse.style.display = 'inline-block';
+    btnSnap.style.display = 'none';
     if (pulseSep) pulseSep.style.display = 'block';
   });
 
@@ -1075,7 +1238,22 @@
     topHeader.style.opacity = '0.35';
     telemetryCard.style.opacity = '0';
     btnPulse.style.display = 'none';
-    if (pulseSep) pulseSep.style.display = 'none';
+    btnSnap.style.display = 'inline-block';
+    if (pulseSep) pulseSep.style.display = 'inline-block';
+  });
+
+  btnAudio.addEventListener('click', startIssAmbient);
+
+  btnSnap.addEventListener('click', () => {
+    playShutterClick();
+    shutterFlash.classList.add('flash');
+    requestAnimationFrame(() => {
+      setTimeout(() => shutterFlash.classList.remove('flash'), 30);
+    });
+    const link = document.createElement('a');
+    link.download = `iss_cupola_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
   });
 
   btnPulse.addEventListener('click', () => {
