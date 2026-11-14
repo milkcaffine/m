@@ -7,7 +7,8 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#09090b">
   <link rel="stylesheet" href="assets/marsko-hud.css">
-  <title>X 사진 최적화 & 미니 다크룸 // marsko</title>
+  <title>X 사진 최적화 &amp; 파노라마 분할기 // marsko</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
@@ -175,14 +176,42 @@
     .back { text-align: center; margin-bottom: 12px; font-size: 0.85rem; }
     .back a { color: #64748b; text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
     .back a:hover { color: #38bdf8; }
+    .hidden { display: none !important; }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .preview-grid img {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+      display: block;
+    }
+    .split-panel input[type="number"] {
+      width: 72px;
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      color: #f4f4f5;
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
    <div class="back"><a href="index.html">← marsko</a></div>
-  <h1>X 사진 최적화 & 미니 다크룸</h1>
-  <p class="sub">X 규격 리사이즈 · 흑백 현상 · 샤프니스 보정</p>
+  <h1>X 사진 최적화 &amp; 파노라마 분할기</h1>
+  <p class="sub">X 규격 리사이즈 · 흑백 현상 · 3·4분할 격자 슬라이서</p>
+
+  <div class="segmented-control" id="toolTabs" style="margin-bottom: 14px;">
+    <button type="button" data-tab="darkroom" class="active">리사이즈 &amp; 다크룸</button>
+    <button type="button" data-tab="split">파노라마 3·4분할</button>
+  </div>
 
   <div class="dropzone" id="dropzone">
     <span>📷 편집할 사진 선택</span>
@@ -190,6 +219,7 @@
     <input type="file" id="fileInput" accept="image/*">
   </div>
 
+  <div id="darkroomSection">
   <div id="previewArea">
     <div class="preview-info">
       <span>실시간 미리보기</span>
@@ -265,6 +295,42 @@
     <button class="btn btn-reset" id="resetBtn" disabled>초기화</button>
     <button class="btn btn-primary" id="downloadBtn" disabled>최적화 이미지 저장</button>
   </div>
+  </div>
+
+  <div id="splitSection" class="hidden">
+    <div class="control-panel split-panel">
+      <div class="control-row">
+        <label>분할 개수</label>
+        <div class="segmented-control" id="splitControl" style="width:160px;">
+          <button type="button" data-val="3">3분할</button>
+          <button type="button" data-val="4" class="active">4분할</button>
+        </div>
+      </div>
+      <div class="control-row">
+        <label for="maxHeightSelect">높이(해상도) 제한</label>
+        <select id="maxHeightSelect">
+          <option value="2048" selected>2048px (추천 / 최고화질)</option>
+          <option value="1200">1200px (가벼운 용량)</option>
+          <option value="0">원본 유지 (무손실)</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <label for="gapPx">간격(Gap) 보정 (px)</label>
+        <input type="number" id="gapPx" value="12" min="0" max="60" inputmode="numeric">
+      </div>
+    </div>
+    <div id="splitPreviewArea" style="display:none; margin-top:14px;">
+      <div class="preview-info">
+        <span>미리보기 (왼쪽부터 차례대로 등록)</span>
+        <span id="splitResInfo"></span>
+      </div>
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+    <div class="btn-group" style="flex-direction:column;">
+      <button type="button" class="btn btn-primary" id="saveZipBtn" disabled>ZIP 압축파일로 받기</button>
+      <button type="button" class="btn btn-reset" id="saveIndivBtn" style="flex:1;" disabled>각각 개별 저장</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -305,6 +371,7 @@
         resetBtn.disabled = false;
         downloadBtn.disabled = false;
         applyEdits();
+        processSplit();
       };
       originalImg.src = ev.target.result;
     };
@@ -469,6 +536,119 @@
       link.click();
     }, 'image/jpeg', 0.98);
   });
+
+  // ===== 탭 전환 & 파노라마 3·4분할 =====
+  const toolTabs = document.getElementById('toolTabs');
+  const darkroomSection = document.getElementById('darkroomSection');
+  const splitSection = document.getElementById('splitSection');
+  const splitControl = document.getElementById('splitControl');
+  const maxHeightSelect = document.getElementById('maxHeightSelect');
+  const gapPxInput = document.getElementById('gapPx');
+  const splitPreviewArea = document.getElementById('splitPreviewArea');
+  const previewGrid = document.getElementById('previewGrid');
+  const splitResInfo = document.getElementById('splitResInfo');
+  const saveZipBtn = document.getElementById('saveZipBtn');
+  const saveIndivBtn = document.getElementById('saveIndivBtn');
+
+  let currentSplit = 4;
+  let sliceBlobs = [];
+
+  function setTab(tab) {
+    toolTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    darkroomSection.classList.toggle('hidden', tab !== 'darkroom');
+    splitSection.classList.toggle('hidden', tab !== 'split');
+    if (tab === 'split' && originalImg) processSplit();
+  }
+
+  toolTabs.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    setTab(e.target.dataset.tab);
+  });
+
+  splitControl.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    splitControl.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    currentSplit = parseInt(e.target.dataset.val, 10);
+    if (originalImg) processSplit();
+  });
+
+  maxHeightSelect.addEventListener('change', () => { if (originalImg) processSplit(); });
+  gapPxInput.addEventListener('input', () => { if (originalImg) processSplit(); });
+
+  function processSplit() {
+    if (!originalImg) return;
+    const N = currentSplit;
+    const gap = Math.max(0, parseInt(gapPxInput.value, 10) || 0);
+    const maxH = parseInt(maxHeightSelect.value, 10);
+    const srcW = originalImg.naturalWidth;
+    const srcH = originalImg.naturalHeight;
+    let scale = 1;
+    if (maxH > 0 && srcH > maxH) scale = maxH / srcH;
+
+    const targetH = Math.round(srcH * scale);
+    const targetW = Math.round(srcW * scale);
+    const scaledGap = Math.round(gap * scale);
+    const sliceW = Math.floor((targetW - (N - 1) * scaledGap) / N);
+    if (sliceW <= 0) return;
+
+    splitResInfo.textContent = `각 조각: ${sliceW}×${targetH}px`;
+    sliceBlobs = [];
+    previewGrid.innerHTML = '';
+
+    for (let i = 0; i < N; i++) {
+      const c = document.createElement('canvas');
+      c.width = sliceW;
+      c.height = targetH;
+      const cx = c.getContext('2d');
+      cx.imageSmoothingEnabled = true;
+      cx.imageSmoothingQuality = 'high';
+      const srcSliceW = sliceW / scale;
+      const srcGap = scaledGap / scale;
+      cx.drawImage(originalImg, i * (srcSliceW + srcGap), 0, srcSliceW, srcH, 0, 0, sliceW, targetH);
+
+      c.toBlob((blob) => {
+        sliceBlobs[i] = blob;
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(blob);
+        previewGrid.appendChild(img);
+        if (sliceBlobs.filter(Boolean).length === N) {
+          saveZipBtn.disabled = false;
+          saveIndivBtn.disabled = false;
+          splitPreviewArea.style.display = 'block';
+        }
+      }, 'image/jpeg', 0.95);
+    }
+  }
+
+  saveZipBtn.addEventListener('click', async () => {
+    if (!sliceBlobs.length) return;
+    saveZipBtn.textContent = '압축 중...';
+    saveZipBtn.disabled = true;
+    const zip = new JSZip();
+    sliceBlobs.forEach((blob, idx) => zip.file(`x_split_${idx + 1}.jpg`, blob));
+    const content = await zip.generateAsync({ type: 'blob' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `twitter_${currentSplit}split_${Date.now()}.zip`;
+    link.click();
+    saveZipBtn.textContent = 'ZIP 압축파일로 받기';
+    saveZipBtn.disabled = false;
+  });
+
+  saveIndivBtn.addEventListener('click', () => {
+    sliceBlobs.forEach((blob, idx) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `x_split_${idx + 1}.jpg`;
+        link.click();
+      }, idx * 250);
+    });
+  });
+
+  const urlMode = new URLSearchParams(window.location.search).get('mode');
+  if (urlMode === 'split') setTab('split');
 </script>
 
 </body>

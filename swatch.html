@@ -285,6 +285,31 @@
       grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
+    .save-btn.full {
+      grid-column: 1 / -1;
+    }
+    .palette-row {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+    }
+    .palette-row.visible { display: flex; }
+    .palette-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.64rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .palette-dots {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
     .save-btn {
       padding: 9px 10px;
       border-radius: 8px;
@@ -365,10 +390,17 @@
       </div>
     </div>
 
-    <!-- 저장 버튼 2종 -->
+    <!-- 자동 추출 대표색 5종 -->
+    <div class="palette-row" id="paletteRow">
+      <span class="palette-label">AUTO 5</span>
+      <div class="palette-dots" id="paletteDots"></div>
+    </div>
+
+    <!-- 저장 버튼 3종 -->
     <div class="save-actions">
       <button type="button" class="save-btn primary" id="btnSaveCard">팬톤 칩 저장 ⬇</button>
       <button type="button" class="save-btn secondary" id="btnSaveSolid">단색 타일 저장 ⬇</button>
+      <button type="button" class="save-btn secondary full" id="btnSavePalette" disabled>5색 팔레트 카드 저장 ⬇</button>
     </div>
   </div>
 </div>
@@ -398,6 +430,69 @@
 
   const btnSaveCard = document.getElementById('btnSaveCard');
   const btnSaveSolid = document.getElementById('btnSaveSolid');
+  const btnSavePalette = document.getElementById('btnSavePalette');
+  const paletteRow = document.getElementById('paletteRow');
+  const paletteDots = document.getElementById('paletteDots');
+  let autoPalette = [];
+
+  function extractAutoPalette(img, k = 5) {
+    const tmp = document.createElement('canvas');
+    const scale = Math.min(150 / img.naturalWidth, 150 / img.naturalHeight, 1);
+    const tw = Math.max(1, Math.round(img.naturalWidth * scale));
+    const th = Math.max(1, Math.round(img.naturalHeight * scale));
+    tmp.width = tw;
+    tmp.height = th;
+    const tCtx = tmp.getContext('2d');
+    tCtx.drawImage(img, 0, 0, tw, th);
+    const data = tCtx.getImageData(0, 0, tw, th).data;
+    const pixels = [];
+    for (let i = 0; i < data.length; i += 16) {
+      pixels.push([data[i], data[i + 1], data[i + 2]]);
+    }
+    if (!pixels.length) return [];
+
+    let centers = Array.from({ length: k }, () => pixels[Math.floor(Math.random() * pixels.length)]);
+    for (let iter = 0; iter < 10; iter++) {
+      const clusters = Array.from({ length: k }, () => []);
+      for (const p of pixels) {
+        let minD = Infinity, best = 0;
+        for (let j = 0; j < k; j++) {
+          const d = (p[0] - centers[j][0]) ** 2 + (p[1] - centers[j][1]) ** 2 + (p[2] - centers[j][2]) ** 2;
+          if (d < minD) { minD = d; best = j; }
+        }
+        clusters[best].push(p);
+      }
+      for (let j = 0; j < k; j++) {
+        if (clusters[j].length) {
+          const sum = clusters[j].reduce((a, c) => [a[0] + c[0], a[1] + c[1], a[2] + c[2]], [0, 0, 0]);
+          centers[j] = [sum[0] / clusters[j].length, sum[1] / clusters[j].length, sum[2] / clusters[j].length];
+        }
+      }
+    }
+    centers.sort((a, b) => (0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]) - (0.2126 * b[0] + 0.7152 * b[1] + 0.0722 * b[2]));
+    return centers.map(c => ({
+      r: Math.round(c[0]),
+      g: Math.round(c[1]),
+      b: Math.round(c[2]),
+      hex: '#' + [c[0], c[1], c[2]].map(v => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase()
+    }));
+  }
+
+  function renderAutoPalette(colors) {
+    autoPalette = colors;
+    paletteDots.innerHTML = '';
+    colors.forEach(c => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'hist-dot';
+      dot.style.background = c.hex;
+      dot.title = c.hex;
+      dot.addEventListener('click', () => setActiveColor(c.r, c.g, c.b, false));
+      paletteDots.appendChild(dot);
+    });
+    paletteRow.classList.toggle('visible', colors.length > 0);
+    btnSavePalette.disabled = colors.length === 0;
+  }
 
   let loadedImg = null;
   let currentColor = { r: 56, g: 189, b: 248, hex: '#38BDF8', h: 198, s: 93, l: 60 };
@@ -613,11 +708,12 @@
         dropGuide.style.display = 'none';
         imgCanvas.style.display = 'block';
 
-        // 사진 정중앙 색상 기본 추출
+        // 사진 정중앙 색상 기본 추출 + 대표색 5종 추출
         const cx = Math.floor(img.naturalWidth / 2);
         const cy = Math.floor(img.naturalHeight / 2);
         const p = iCtx.getImageData(cx, cy, 1, 1).data;
         setActiveColor(p[0], p[1], p[2], true);
+        renderAutoPalette(extractAutoPalette(img, 5));
       };
       img.src = ev.target.result;
     };
@@ -662,6 +758,54 @@
     link.download = `${currentColor.hex}.png`;
     link.href = solidCanvas.toDataURL('image/png');
     link.click();
+  });
+
+  // 3. 5색 팔레트 카드 저장 (사진 + 5종 컬러칩)
+  btnSavePalette.addEventListener('click', () => {
+    if (!loadedImg || !autoPalette.length) return;
+    const baseW = 1200;
+    const scale = baseW / loadedImg.naturalWidth;
+    const renderedH = Math.round(loadedImg.naturalHeight * scale);
+    const pad = 60;
+    const paletteAreaH = 240;
+    const out = document.createElement('canvas');
+    out.width = baseW + pad * 2;
+    out.height = renderedH + pad * 2 + paletteAreaH;
+    const oCtx = out.getContext('2d');
+
+    oCtx.fillStyle = '#FFFFFF';
+    oCtx.fillRect(0, 0, out.width, out.height);
+    oCtx.drawImage(loadedImg, pad, pad, baseW, renderedH);
+
+    const chipsY = pad + renderedH + 56;
+    const slotW = baseW / autoPalette.length;
+    const chipSize = 88;
+    autoPalette.forEach((c, idx) => {
+      const cx = pad + idx * slotW + slotW / 2;
+      const tx = cx - chipSize / 2;
+      oCtx.save();
+      oCtx.fillStyle = c.hex;
+      oCtx.shadowColor = 'rgba(0,0,0,0.12)';
+      oCtx.shadowBlur = 10;
+      oCtx.shadowOffsetY = 4;
+      oCtx.beginPath();
+      oCtx.roundRect(tx, chipsY, chipSize, chipSize, 12);
+      oCtx.fill();
+      oCtx.shadowColor = 'transparent';
+      oCtx.fillStyle = '#212529';
+      oCtx.font = '600 18px "IBM Plex Mono", monospace';
+      oCtx.textAlign = 'center';
+      oCtx.textBaseline = 'top';
+      oCtx.fillText(c.hex, cx, chipsY + chipSize + 16);
+      oCtx.restore();
+    });
+
+    out.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `palette_${Date.now()}.jpg`;
+      link.click();
+    }, 'image/jpeg', 0.96);
   });
 
   // 초기화
