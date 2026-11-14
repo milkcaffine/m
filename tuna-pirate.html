@@ -189,6 +189,9 @@
   <div class="header-top">
     <a href="index.html" class="home-link">← marsko</a>
     <button type="button" class="sound-btn active" id="btnAudio">♪ SEA/SPACE AUDIO: ON</button>
+    <button type="button" class="sound-btn" data-diff="easy">이지</button>
+    <button type="button" class="sound-btn active" data-diff="normal">보통</button>
+    <button type="button" class="sound-btn" data-diff="hard">하드</button>
   </div>
   <h1>TUNA-PIRATE CHRONICLE</h1>
   <div class="hud-meta" id="hudSub">ACT 1 · DEEP-SEA TUNA TRAWLER // CLICK TARGETS OR USE DOCK</div>
@@ -240,18 +243,106 @@
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
 
-  // ===== Game State =====
-  // act: 1 = Tuna Trawler, 2 = Ocean & Space-Debris Scavenger, 3 = Orbital Scavenger (via Elevator), 4 = Space Tuna-Pirate
+  const DIFF_CONFIG = {
+    easy: {
+      label: '이지',
+      rewardMult: 1.5,
+      costMult: 0.65,
+      speedMult: 0.85,
+      autoAllowed: true,
+      autoDefault: true,
+      autoIntervalMult: 0.72,
+      tunaDrain: 9.0
+    },
+    normal: {
+      label: '보통',
+      rewardMult: 1.0,
+      costMult: 1.0,
+      speedMult: 1.0,
+      autoAllowed: true,
+      autoDefault: false,
+      autoIntervalMult: 1.0,
+      tunaDrain: 6.5
+    },
+    hard: {
+      label: '하드',
+      rewardMult: 0.75,
+      costMult: 1.8,
+      speedMult: 1.55,
+      autoAllowed: false,
+      autoDefault: false,
+      autoIntervalMult: 1.0,
+      tunaDrain: 4.0
+    }
+  };
+
+  let currentDiff = 'normal';
   let act = 1;
   let credits = 0;
   let totalHauled = 0;
   let tunaStock = 100; // drops to 0 in Act 1
-  let autoMode = true;
+  let autoMode = DIFF_CONFIG[currentDiff].autoDefault;
   let netLevel = 1;
   let engineLevel = 1;
+  let fleetBonus = 0;
   let elevatorAnim = 0; // 0..1 transition animation when entering Act 3
   let isAscending = false;
   let simTime = 0;
+
+  function getNetCost() {
+    return Math.round(50 * netLevel * DIFF_CONFIG[currentDiff].costMult);
+  }
+  function getEngineCost() {
+    return Math.round(80 * engineLevel * DIFF_CONFIG[currentDiff].costMult);
+  }
+  function getNextCost() {
+    const base = ACT_INFO[act].nextCost;
+    const scale = act === 4 ? Math.pow(1.8, fleetBonus) : 1;
+    return Math.round(base * scale * DIFF_CONFIG[currentDiff].costMult);
+  }
+  function syncAutoBtn() {
+    const cfg = DIFF_CONFIG[currentDiff];
+    if (!cfg.autoAllowed) {
+      autoMode = false;
+      btnAuto.classList.remove('active');
+      btnAuto.textContent = '자동 조업: 불가(수동)';
+    } else {
+      btnAuto.classList.toggle('active', autoMode);
+      btnAuto.textContent = autoMode ? '자동 조업: ON' : '자동 조업: OFF';
+    }
+  }
+  function setDifficulty(diff) {
+    if (!DIFF_CONFIG[diff]) return;
+    currentDiff = diff;
+    const cfg = DIFF_CONFIG[diff];
+    document.querySelectorAll('[data-diff]').forEach(b => {
+      b.classList.toggle('active', b.dataset.diff === diff);
+    });
+    act = 1;
+    credits = 0;
+    totalHauled = 0;
+    tunaStock = 100;
+    netLevel = 1;
+    engineLevel = 1;
+    fleetBonus = 0;
+    elevatorAnim = 0;
+    isAscending = false;
+    items.length = 0;
+    beams.length = 0;
+    floats.length = 0;
+    storyModal.classList.remove('open');
+    autoMode = cfg.autoDefault;
+    syncAutoBtn();
+    updateAudioStage();
+    for (let i = 0; i < 4; i++) spawnItem();
+    if (diff === 'easy') {
+      setLog('이지', '자동 조업 ON · 넉넉한 보상과 빠른 성장으로 4막 스토리를 편하게 즐기세요!');
+    } else if (diff === 'normal') {
+      setLog('보통', '직접 클릭해 잡거나 필요할 때 [자동 조업]을 켜서 진행할 수 있습니다.');
+    } else {
+      setLog('하드', '자동 조업 불가! 빠르게 지나가는 목표물을 직접 클릭·투하해 사냥하세요.');
+    }
+  }
 
   const ACT_INFO = {
     1: {
@@ -412,16 +503,19 @@
 
   function spawnItem() {
     const seaY = height * 0.56;
+    const cfg = DIFF_CONFIG[currentDiff];
+    const sm = cfg.speedMult;
+    const rm = cfg.rewardMult;
     if (act === 1) {
       if (tunaStock <= 0) return;
       items.push({
         kind: 'tuna',
         x: Math.random() < 0.5 ? -30 : width + 30,
         y: seaY + 28 + Math.random() * (height - seaY - 140),
-        vx: (Math.random() < 0.5 ? 1 : -1) * (45 + Math.random() * 55),
-        vy: (Math.random() - 0.5) * 12,
+        vx: (Math.random() < 0.5 ? 1 : -1) * (45 + Math.random() * 55) * sm,
+        vy: (Math.random() - 0.5) * 12 * sm,
         r: 12,
-        val: 14 * netLevel,
+        val: Math.round(14 * netLevel * rm),
         label: '참다랑어'
       });
     } else if (act === 2) {
@@ -430,10 +524,10 @@
         kind: isRocket ? 'fairing' : 'plastic',
         x: Math.random() < 0.5 ? -30 : width + 30,
         y: seaY + (isRocket ? 8 : 16 + Math.random() * 65),
-        vx: (Math.random() < 0.5 ? 1 : -1) * (35 + Math.random() * 40),
+        vx: (Math.random() < 0.5 ? 1 : -1) * (35 + Math.random() * 40) * sm,
         vy: 0,
         r: isRocket ? 16 : 11,
-        val: (isRocket ? 52 : 22) * netLevel,
+        val: Math.round((isRocket ? 52 : 22) * netLevel * rm),
         label: isRocket ? '로켓 페어링' : '해양 쓰레기'
       });
     } else if (act === 3) {
@@ -442,10 +536,10 @@
         kind: isSat ? 'debris_gold' : 'debris',
         x: Math.random() < 0.5 ? -30 : width + 30,
         y: 80 + Math.random() * (height * 0.62),
-        vx: (Math.random() < 0.5 ? 1 : -1) * (55 + Math.random() * 65),
-        vy: (Math.random() - 0.5) * 18,
+        vx: (Math.random() < 0.5 ? 1 : -1) * (55 + Math.random() * 65) * sm,
+        vy: (Math.random() - 0.5) * 18 * sm,
         r: isSat ? 14 : 10,
-        val: (isSat ? 95 : 40) * netLevel,
+        val: Math.round((isSat ? 95 : 40) * netLevel * rm),
         label: isSat ? '폐위성 코어' : '궤도 파편'
       });
     } else {
@@ -456,10 +550,10 @@
         kind,
         x: Math.random() < 0.5 ? -40 : width + 40,
         y: 85 + Math.random() * (height * 0.6),
-        vx: (Math.random() < 0.5 ? 1 : -1) * (kind === 'cargo' ? 75 : 55),
-        vy: (Math.random() - 0.5) * 14,
+        vx: (Math.random() < 0.5 ? 1 : -1) * (kind === 'cargo' ? 75 : 55) * sm,
+        vy: (Math.random() - 0.5) * 14 * sm,
         r: kind === 'cargo' ? 19 : 13,
-        val: (kind === 'cargo' ? 210 : (kind === 'marsko_pod' ? 160 : 85)) * netLevel,
+        val: Math.round((kind === 'cargo' ? 210 : (kind === 'marsko_pod' ? 160 : 85)) * netLevel * rm),
         label: kind === 'cargo' ? '궤도 화물선' : (kind === 'marsko_pod' ? '마스코 밀수 포드' : '고철 파편')
       });
     }
@@ -473,7 +567,7 @@
     playCatchSfx(item.kind === 'fairing' || item.kind === 'cargo' || item.kind === 'marsko_pod');
 
     if (act === 1) {
-      tunaStock = Math.max(0, tunaStock - 6.5);
+      tunaStock = Math.max(0, tunaStock - DIFF_CONFIG[currentDiff].tunaDrain);
       if (tunaStock === 0) {
         items.length = 0;
         setLog('속보', '공해상 참치 자원이 완전히 고갈되었습니다! 이제 배를 개조해 쓰레기를 건져 올릴 때입니다.');
@@ -743,13 +837,14 @@
       <div>그물 Lv.${netLevel} · 추진기 Lv.${engineLevel}</div>
     `;
 
-    const netCost = 50 * netLevel;
-    const engCost = 80 * engineLevel;
+    const netCost = getNetCost();
+    const engCost = getEngineCost();
+    const nextCost = getNextCost();
     btnUpgNet.textContent = `그물 강화 (${netCost}₡)`;
     btnUpgEngine.textContent = `선단·추진기 (${engCost}₡)`;
-    btnNextAct.textContent = `${info.nextLabel} (${info.nextCost}₡)`;
+    btnNextAct.textContent = `${info.nextLabel} (${nextCost}₡)`;
 
-    const canAdvance = credits >= info.nextCost && (act !== 1 || tunaStock === 0);
+    const canAdvance = credits >= nextCost && (act !== 1 || tunaStock === 0);
     btnNextAct.classList.toggle('upgrade-ready', canAdvance);
   }
 
@@ -782,7 +877,7 @@
 
     if (autoMode && !isAscending) {
       autoTimer += dt;
-      const autoInterval = Math.max(0.55, 1.8 - engineLevel * 0.2);
+      const autoInterval = Math.max(0.4, (1.8 - engineLevel * 0.2) * DIFF_CONFIG[currentDiff].autoIntervalMult);
       if (autoTimer >= autoInterval && items.length > 0) {
         autoTimer = 0;
         castNetOnce();
@@ -827,16 +922,23 @@
     }
   });
 
+  document.querySelectorAll('[data-diff]').forEach(btn => {
+    btn.addEventListener('click', () => setDifficulty(btn.dataset.diff));
+  });
+
   btnAuto.addEventListener('click', () => {
+    if (!DIFF_CONFIG[currentDiff].autoAllowed) {
+      setLog('하드', '하드 모드에서는 자동 조업을 사용할 수 없습니다! 직접 클릭하거나 [그물 투하]를 누르세요.');
+      return;
+    }
     autoMode = !autoMode;
-    btnAuto.classList.toggle('active', autoMode);
-    btnAuto.textContent = autoMode ? '자동 조업: ON' : '자동 조업: OFF';
+    syncAutoBtn();
   });
 
   btnCast.addEventListener('click', castNetOnce);
 
   btnUpgNet.addEventListener('click', () => {
-    const cost = 50 * netLevel;
+    const cost = getNetCost();
     if (credits < cost) { setLog('안내', `그물 강화에는 ${cost}₡가 필요합니다.`); return; }
     credits -= cost;
     netLevel += 1;
@@ -845,25 +947,26 @@
   });
 
   btnUpgEngine.addEventListener('click', () => {
-    const cost = 80 * engineLevel;
+    const cost = getEngineCost();
     if (credits < cost) { setLog('안내', `추진기 강화에는 ${cost}₡가 필요합니다.`); return; }
     credits -= cost;
     engineLevel += 1;
     playCatchSfx(true);
-    setLog('개조', `자동 조업 속도가 Lv.${engineLevel}로 빨라졌습니다!`);
+    setLog('개조', `자동 조업/출현 속도가 Lv.${engineLevel}로 빨라졌습니다!`);
   });
 
   btnNextAct.addEventListener('click', () => {
     const info = ACT_INFO[act];
+    const nextCost = getNextCost();
     if (act === 1 && tunaStock > 0) {
       setLog('안내', '아직 바다에 참치가 남아 있습니다! 참치가 고갈될 때까지 조업하세요.');
       return;
     }
-    if (credits < info.nextCost) {
-      setLog('안내', `${info.nextLabel}에는 ${info.nextCost}₡가 필요합니다.`);
+    if (credits < nextCost) {
+      setLog('안내', `${info.nextLabel}에는 ${nextCost}₡가 필요합니다.`);
       return;
     }
-    credits -= info.nextCost;
+    credits -= nextCost;
     items.length = 0;
 
     if (act === 1) {
@@ -873,7 +976,7 @@
       showStory(
         'ACT 2 · SEA SCAVENGER',
         '바다 청소부로 전업',
-        '이제 바다에 떠다니는 쓰레기와 불타 떨어지는 로켓 페어링을 건져 올립니다. 450₡를 모아 수평선 너머 적도 우주 엘리베이터에 탑승하세요!'
+        `이제 바다에 떠다니는 쓰레기와 불타 떨어지는 로켓 페어링을 건져 올립니다. ${getNextCost()}₡를 모아 수평선 너머 적도 우주 엘리베이터에 탑승하세요!`
       );
     } else if (act === 2) {
       isAscending = true;
@@ -896,7 +999,7 @@
     } else {
       netLevel += 2;
       engineLevel += 1;
-      info.nextCost = Math.round(info.nextCost * 1.8);
+      fleetBonus += 1;
       setLog('FLEET', '우주 참치해적 선단이 한 척 더 증강되었습니다!');
     }
   });
@@ -906,7 +1009,7 @@
     height = canvas.height = window.innerHeight;
   });
 
-  for (let i = 0; i < 4; i++) spawnItem();
+  setDifficulty('normal');
   requestAnimationFrame(render);
 })();
 </script>
