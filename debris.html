@@ -215,7 +215,7 @@
 <header id="topHeader">
   <div class="header-top">
     <a href="index.html" class="home-link">← marsko</a>
-    <button type="button" class="sound-btn" id="btnAudio">♪ ISS AUDIO: OFF</button>
+    <button type="button" class="sound-btn active" id="btnAudio">♪ ISS AUDIO: ON</button>
   </div>
   <h1>LEO DEBRIS SWEEPER // 420km</h1>
   <div class="hud-meta">ORBITAL SALVAGE · CUPOLA OBSERVATION DECK</div>
@@ -273,7 +273,7 @@
   // --- Web Audio API 사운드 합성 ---
   let audioCtx = null;
   let issMaster = null;
-  let issAudioOn = false;
+  let issAudioOn = true;
   let issBeepTimer = null;
 
   function initAudio() {
@@ -281,7 +281,7 @@
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
 
-  function startIssAmbient() {
+  function ensureIssAudioNodes() {
     initAudio();
     if (!issMaster) {
       issMaster = audioCtx.createGain();
@@ -361,12 +361,26 @@
       };
       scheduleBeep();
     }
-
-    issAudioOn = !issAudioOn;
     issMaster.gain.setTargetAtTime(issAudioOn ? 0.7 : 0, audioCtx.currentTime, 0.25);
+  }
+
+  function startIssAmbient() {
+    issAudioOn = !issAudioOn;
+    ensureIssAudioNodes();
     btnAudio.classList.toggle('active', issAudioOn);
     btnAudio.textContent = issAudioOn ? '♪ ISS AUDIO: ON' : '♪ ISS AUDIO: OFF';
   }
+
+  // 브라우저 오토플레이 정책 대응: 첫 인터랙션 시 기본 ON 오디오 자동 개시
+  function unlockDefaultAudio() {
+    if (issAudioOn && !issMaster) {
+      ensureIssAudioNodes();
+    }
+    window.removeEventListener('pointerdown', unlockDefaultAudio);
+    window.removeEventListener('keydown', unlockDefaultAudio);
+  }
+  window.addEventListener('pointerdown', unlockDefaultAudio, { passive: true });
+  window.addEventListener('keydown', unlockDefaultAudio, { passive: true });
 
   function playShutterClick() {
     initAudio();
@@ -1078,7 +1092,7 @@
       // 2. 큐폴라 8각 관측 창문 프레임
       drawCupolaWindow();
 
-      // 2-1. ISS 상공 지역 텔레메트리 오버레이
+      // 2-1. ISS 상공 지역 & 큐폴라 수거 카운터 오버레이
       const regions = [
         'NORTH PACIFIC · 420km',
         'TOKYO NIGHT SKYLINE · 35.6°N',
@@ -1090,10 +1104,38 @@
       const regIdx = Math.floor((timeTick * 0.08) % regions.length);
       ctx.save();
       ctx.font = '600 10px "IBM Plex Mono", monospace';
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.85)';
       ctx.textAlign = 'right';
+      ctx.fillText(`COLLECTED // ${salvagedKg} kg (CLICK OBJECT)`, width - 22, height - 90);
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.72)';
       ctx.fillText(`ISS GROUND TRACK // ${regions[regIdx]}`, width - 22, height - 74);
       ctx.restore();
+
+      // 2-2. 큐폴라 클릭 수거 빔 & 팝업 텍스트
+      for (let i = cupolaCaptures.length - 1; i >= 0; i--) {
+        const cap = cupolaCaptures[i];
+        cap.alpha -= 0.025;
+        cap.y -= 0.6;
+        if (cap.alpha <= 0) {
+          cupolaCaptures.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.strokeStyle = `rgba(52, 211, 153, ${cap.alpha * 0.75})`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(width * 0.5, height);
+        ctx.lineTo(cap.x, cap.y + 10);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.font = '700 11px "IBM Plex Mono", monospace';
+        ctx.fillStyle = `rgba(52, 211, 153, ${cap.alpha})`;
+        ctx.textAlign = 'center';
+        ctx.fillText(cap.label, cap.x, cap.y);
+        ctx.restore();
+      }
 
       // 3. 관측창 글래스 HUD (마우스/터치 타겟 레이더 락온)
       if (hoveredDebris) {
@@ -1194,6 +1236,37 @@
     requestAnimationFrame(loop);
   }
 
+  const cupolaCaptures = [];
+
+  function tryCupolaCollect(clientX, clientY) {
+    if (mode !== 'cupola') return;
+    let bestIdx = -1;
+    let bestDist = 48;
+    for (let i = 0; i < debrisList.length; i++) {
+      const d = debrisList[i];
+      const dist = Math.hypot(d.x - clientX, d.y - clientY);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx !== -1) {
+      const target = debrisList[bestIdx];
+      const gained = target.mass || 25;
+      salvagedKg += gained;
+      hudScore.textContent = salvagedKg;
+      playSalvageChime();
+      cupolaCaptures.push({
+        x: target.x,
+        y: target.y - 10,
+        label: `+${gained} kg`,
+        alpha: 1.0
+      });
+      if (hoveredDebris === target) hoveredDebris = null;
+      debrisList[bestIdx] = createDebris(false);
+    }
+  }
+
   function handlePointer(clientX, clientY) {
     mousePos.x = clientX;
     mousePos.y = clientY;
@@ -1204,6 +1277,10 @@
     }
   }
 
+  canvas.addEventListener('mousedown', (e) => {
+    handlePointer(e.clientX, e.clientY);
+    tryCupolaCollect(e.clientX, e.clientY);
+  });
   canvas.addEventListener('mousemove', (e) => handlePointer(e.clientX, e.clientY));
   canvas.addEventListener('mouseleave', () => {
     mousePos.active = false;
@@ -1211,7 +1288,10 @@
   });
 
   canvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length > 0) handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length > 0) {
+      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+      tryCupolaCollect(e.touches[0].clientX, e.touches[0].clientY);
+    }
   }, { passive: true });
   canvas.addEventListener('touchmove', (e) => {
     if (e.touches.length > 0) handlePointer(e.touches[0].clientX, e.touches[0].clientY);
