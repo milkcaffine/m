@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Marsko lab tool — NIGHTLINE: ASCII & dot-art urban nocturnal ambient sound terminal.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#06080d">
+  <title>NIGHTLINE // Urban Ambient Terminal — marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #06080d;
+      --panel: #0b0f18;
+      --panel-2: #101624;
+      --border: #1b2436;
+      --border-hi: #2b3a55;
+      --text: #d6e0f0;
+      --muted: #7a8aa6;
+      --dim: #4a5770;
+      --amber: #f5b942;
+      --cyan: #38bdf8;
+      --emerald: #34d399;
+      --pink: #f472b6;
+    }
+
+    body {
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 16px 12px 32px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .brand h1 {
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      color: var(--amber);
+      font-weight: 700;
+    }
+    .brand .sub {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .master-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .power-btn {
+      font-family: inherit;
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-hi);
+      background: #141c2c;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .power-btn:hover { border-color: var(--amber); color: var(--amber); }
+    .power-btn.is-on {
+      background: rgba(52, 211, 153, 0.14);
+      border-color: var(--emerald);
+      color: var(--emerald);
+      box-shadow: 0 0 14px rgba(52, 211, 153, 0.22);
+    }
+
+    /* ASCII / Dot Viewport */
+    .crt-frame {
+      position: relative;
+      background: #04060a;
+      border: 1px solid var(--border-hi);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85), 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+    #asciiCanvas {
+      width: 100%;
+      height: 270px;
+      display: block;
+    }
+    .crt-scanline {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%);
+      background-size: 100% 4px;
+      opacity: 0.45;
+    }
+    .crt-hud-top {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.66rem;
+      color: rgba(245, 185, 66, 0.85);
+      pointer-events: none;
+      text-shadow: 0 0 6px rgba(245, 185, 66, 0.35);
+    }
+    .crt-hud-bottom {
+      position: absolute;
+      bottom: 8px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* Section Card */
+    .rack {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .rack-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      letter-spacing: 0.05em;
+    }
+    .rack-head strong { color: var(--cyan); font-weight: 600; }
+
+    /* Base Ambient Modes */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 560px) {
+      .mode-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .mode-btn {
+      font-family: inherit;
+      text-align: left;
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: all 0.15s ease;
+    }
+    .mode-btn:hover { border-color: var(--border-hi); color: var(--text); }
+    .mode-btn strong { font-size: 0.76rem; }
+    .mode-btn span { font-size: 0.64rem; color: var(--dim); }
+    .mode-btn.active {
+      border-color: var(--cyan);
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--text);
+    }
+    .mode-btn.active strong { color: var(--cyan); }
+    .mode-btn.active span { color: #93c5fd; }
+
+    /* Urban Sound Switches */
+    .switch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 560px) {
+      .switch-grid { grid-template-columns: 1fr; }
+    }
+
+    .sw-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .sw-card.active {
+      border-color: rgba(245, 185, 66, 0.45);
+      background: rgba(245, 185, 66, 0.04);
+    }
+    .sw-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .sw-info { display: flex; flex-direction: column; gap: 2px; }
+    .sw-title { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+    .sw-desc { font-size: 0.65rem; color: var(--muted); }
+    .sw-actions { display: flex; align-items: center; gap: 6px; }
+
+    .toggle-pill {
+      font-family: inherit;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 4px;
+      border: 1px solid var(--border-hi);
+      background: #0b0f18;
+      color: var(--dim);
+      cursor: pointer;
+      min-width: 56px;
+      transition: all 0.15s ease;
+    }
+    .sw-card.active .toggle-pill {
+      border-color: var(--amber);
+      color: var(--amber);
+      background: rgba(245, 185, 66, 0.12);
+    }
+    .mini-btn {
+      font-family: inherit;
+      font-size: 0.64rem;
+      padding: 4px 7px;
+      border-radius: 4px;
+      border: 1px solid var(--border-hi);
+      background: #0b0f18;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .mini-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.66rem;
+      color: var(--muted);
+    }
+    input[type="range"] {
+      flex: 1;
+      height: 4px;
+      background: #070a10;
+      border-radius: 999px;
+      accent-color: var(--amber);
+      cursor: pointer;
+    }
+    .master-vol { width: 88px; flex: none; accent-color: var(--emerald); }
+    .vol-num { width: 32px; text-align: right; color: var(--text); }
+
+    /* Presets */
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .preset-btn {
+      font-family: inherit;
+      font-size: 0.7rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-hi);
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .preset-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    footer {
+      text-align: center;
+      font-size: 0.68rem;
+      color: var(--dim);
+      padding-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <a href="index.html" class="home-link">← marsko.art</a>
+      <h1>NIGHTLINE.sh</h1>
+      <span class="sub">Urban Nocturnal Ambient Terminal</span>
+    </div>
+    <div class="master-controls">
+      <span style="font-size:0.68rem; color:var(--muted);">MASTER</span>
+      <input type="range" id="masterVol" class="master-vol" min="0" max="100" value="75" aria-label="마스터 볼륨">
+      <button type="button" id="powerBtn" class="power-btn">[ POWER: OFF ]</button>
+    </div>
+  </header>
+
+  <section class="crt-frame">
+    <canvas id="asciiCanvas"></canvas>
+    <div class="crt-scanline"></div>
+    <div class="crt-hud-top">
+      <span id="hudLine">CHUO-SOBU LOCAL // CAR 04</span>
+      <span id="hudClock">01:42:00</span>
+    </div>
+    <div class="crt-hud-bottom">
+      <span id="hudLayers">ACTIVE: NONE</span>
+      <span id="hudState">STANDBY — PRESS POWER</span>
+    </div>
+  </section>
+
+  <!-- Base Ambient Mode -->
+  <section class="rack">
+    <div class="rack-head">
+      <span><strong>00 // BASE AMBIENT</strong> (심신안정 · 집중 · 치유)</span>
+      <div class="slider-row" style="width:140px;">
+        <span>PAD</span>
+        <input type="range" id="padVol" min="0" max="100" value="45" aria-label="베이스 엠비언트 볼륨">
+        <span class="vol-num" id="padVolTxt">45%</span>
+      </div>
+    </div>
+    <div class="mode-grid" id="modeGrid">
+      <button type="button" class="mode-btn active" data-mode="off">
+        <strong>[ OFF ]</strong>
+        <span>환경음만 재생</span>
+      </button>
+      <button type="button" class="mode-btn" data-mode="relax">
+        <strong>[ RELAX ]</strong>
+        <span>432Hz 심신안정 드론</span>
+      </button>
+      <button type="button" class="mode-btn" data-mode="focus">
+        <strong>[ FOCUS ]</strong>
+        <span>14Hz 집중 바이노럴</span>
+      </button>
+      <button type="button" class="mode-btn" data-mode="heal">
+        <strong>[ HEAL ]</strong>
+        <span>528Hz 치유 세타파</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Urban Environment Switches -->
+  <section class="rack">
+    <div class="rack-head">
+      <span><strong>01–04 // URBAN SOUND LAYERS</strong></span>
+      <span>WEB AUDIO PROCEDURAL SYNTH</span>
+    </div>
+    <div class="switch-grid">
+      <div class="sw-card active" data-ch="train">
+        <div class="sw-top">
+          <div class="sw-info">
+            <span class="sw-title">01. NIGHT TRAIN</span>
+            <span class="sw-desc">밤기차 레일 이음매 &amp; 객차 진동</span>
+          </div>
+          <div class="sw-actions">
+            <button type="button" class="toggle-pill">[ ON ]</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <span>VOL</span>
+          <input type="range" class="ch-vol" data-ch="train" min="0" max="100" value="70">
+          <span class="vol-num">70%</span>
+        </div>
+      </div>
+
+      <div class="sw-card" data-ch="rain">
+        <div class="sw-top">
+          <div class="sw-info">
+            <span class="sw-title">02. URBAN RAIN</span>
+            <span class="sw-desc">차창 빗소리 &amp; 젖은 아스팔트</span>
+          </div>
+          <div class="sw-actions">
+            <button type="button" class="toggle-pill">[ OFF ]</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <span>VOL</span>
+          <input type="range" class="ch-vol" data-ch="rain" min="0" max="100" value="55">
+          <span class="vol-num">55%</span>
+        </div>
+      </div>
+
+      <div class="sw-card" data-ch="hum">
+        <div class="sw-top">
+          <div class="sw-info">
+            <span class="sw-title">03. VENDING HUM</span>
+            <span class="sw-desc">60Hz 형광등 &amp; 심야 자판기</span>
+          </div>
+          <div class="sw-actions">
+            <button type="button" class="toggle-pill">[ OFF ]</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <span>VOL</span>
+          <input type="range" class="ch-vol" data-ch="hum" min="0" max="100" value="40">
+          <span class="vol-num">40%</span>
+        </div>
+      </div>
+
+      <div class="sw-card" data-ch="chime">
+        <div class="sw-top">
+          <div class="sw-info">
+            <span class="sw-title">04. STATION CHIME</span>
+            <span class="sw-desc">간헐적 역 발차 차임 &amp; 건널목</span>
+          </div>
+          <div class="sw-actions">
+            <button type="button" class="mini-btn" id="triggerChimeBtn" title="지금 울리기">PING</button>
+            <button type="button" class="toggle-pill">[ OFF ]</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <span>VOL</span>
+          <input type="range" class="ch-vol" data-ch="chime" min="0" max="100" value="50">
+          <span class="vol-num">50%</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scene Presets -->
+  <section class="rack">
+    <div class="rack-head">
+      <span><strong>PRESETS</strong></span>
+      <span>원클릭 장면 전환</span>
+    </div>
+    <div class="preset-row">
+      <button type="button" class="preset-btn" data-preset="last-train">막차 창가 (Relax + Train + Rain)</button>
+      <button type="button" class="preset-btn" data-preset="midnight-code">심야 코딩 (Focus + Rain + Hum)</button>
+      <button type="button" class="preset-btn" data-preset="platform-2am">새벽 2시 승강장 (Heal + Rain + Chime)</button>
+      <button type="button" class="preset-btn" data-preset="dry-express">건조한 급행열차 (Off + Train)</button>
+    </div>
+  </section>
+
+  <footer>
+    100% Client-side Web Audio Synthesis &bull; No external audio files
+  </footer>
+</div>
+
+<script>
+(() => {
+  // ===== State =====
+  const state = {
+    power: false,
+    mode: 'off', // off | relax | focus | heal
+    padVol: 0.45,
+    masterVol: 0.75,
+    channels: {
+      train: { on: true, vol: 0.70 },
+      rain:  { on: false, vol: 0.55 },
+      hum:   { on: false, vol: 0.40 },
+      chime: { on: false, vol: 0.50 }
+    }
+  };
+
+  // ===== Web Audio Engine =====
+  let ctx = null;
+  let masterGain = null;
+  let analyser = null;
+  let padGain = null;
+  let padNodes = [];
+  let chGains = {};
+  let noiseBuffer = null;
+  let railTimer = null;
+  let chimeTimer = null;
+  let trainBeatStep = 0;
+
+  function createNoiseBuffer(audioCtx) {
+    const len = audioCtx.sampleRate * 3;
+    const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    let lastOut = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      // Soft pink-ish blend
+      lastOut = (lastOut + 0.04 * white) / 1.04;
+      data[i] = white * 0.45 + lastOut * 1.4;
+    }
+    return buf;
+  }
+
+  function initAudio() {
+    if (ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    ctx = new AudioCtx();
+    noiseBuffer = createNoiseBuffer(ctx);
+
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0;
+
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 64;
+
+    masterGain.connect(analyser);
+    analyser.connect(ctx.destination);
+
+    // Base Pad Bus
+    padGain = ctx.createGain();
+    padGain.gain.value = state.padVol;
+    padGain.connect(masterGain);
+
+    // 1. Night Train Rumble
+    const trainGain = ctx.createGain();
+    trainGain.gain.value = state.channels.train.on ? state.channels.train.vol : 0;
+    trainGain.connect(masterGain);
+    chGains.train = trainGain;
+
+    const rumbleSrc = ctx.createBufferSource();
+    rumbleSrc.buffer = noiseBuffer;
+    rumbleSrc.loop = true;
+    const rumbleLP = ctx.createBiquadFilter();
+    rumbleLP.type = 'lowpass';
+    rumbleLP.frequency.value = 115;
+    rumbleLP.Q.value = 1.2;
+    const rumbleLevel = ctx.createGain();
+    rumbleLevel.gain.value = 0.55;
+    rumbleSrc.connect(rumbleLP);
+    rumbleLP.connect(rumbleLevel);
+    rumbleLevel.connect(trainGain);
+    rumbleSrc.start();
+
+    // 2. Urban Rain
+    const rainGain = ctx.createGain();
+    rainGain.gain.value = state.channels.rain.on ? state.channels.rain.vol : 0;
+    rainGain.connect(masterGain);
+    chGains.rain = rainGain;
+
+    const rainSrc = ctx.createBufferSource();
+    rainSrc.buffer = noiseBuffer;
+    rainSrc.loop = true;
+    const rainBP = ctx.createBiquadFilter();
+    rainBP.type = 'bandpass';
+    rainBP.frequency.value = 1650;
+    rainBP.Q.value = 0.45;
+    const rainLP = ctx.createBiquadFilter();
+    rainLP.type = 'lowpass';
+    rainLP.frequency.value = 3800;
+    const rainLevel = ctx.createGain();
+    rainLevel.gain.value = 0.42;
+    rainSrc.connect(rainBP);
+    rainBP.connect(rainLP);
+    rainLP.connect(rainLevel);
+    rainLevel.connect(rainGain);
+    rainSrc.start();
+
+    // 3. Vending / Fluorescent 60Hz Hum
+    const humGain = ctx.createGain();
+    humGain.gain.value = state.channels.hum.on ? state.channels.hum.vol : 0;
+    humGain.connect(masterGain);
+    chGains.hum = humGain;
+
+    [60, 120, 180].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      osc.type = idx === 0 ? 'sine' : 'triangle';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.value = [0.16, 0.06, 0.02][idx];
+      osc.connect(g);
+      g.connect(humGain);
+      osc.start();
+    });
+
+    // 4. Station Chime Bus
+    const chimeGain = ctx.createGain();
+    chimeGain.gain.value = state.channels.chime.on ? state.channels.chime.vol : 0;
+    chimeGain.connect(masterGain);
+    chGains.chime = chimeGain;
+
+    rebuildPad(state.mode);
+    scheduleRailClack();
+    scheduleChime();
+  }
+
+  function rebuildPad(mode) {
+    if (!ctx) return;
+    padNodes.forEach(n => { try { n.stop(); } catch (_) {} });
+    padNodes = [];
+    if (mode === 'off') return;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = mode === 'focus' ? 620 : 480;
+    lp.connect(padGain);
+
+    if (mode === 'relax') {
+      // 432Hz warm fifth drone (216Hz, 324Hz, 432Hz)
+      [216, 324, 432].forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = i === 0 ? 'triangle' : 'sine';
+        osc.frequency.value = f;
+        const g = ctx.createGain();
+        g.gain.value = [0.14, 0.08, 0.06][i];
+        osc.connect(g);
+        g.connect(lp);
+        osc.start();
+        padNodes.push(osc);
+      });
+    } else if (mode === 'focus') {
+      // 14Hz Binaural Beat (200Hz L / 214Hz R)
+      const panL = ctx.createStereoPanner();
+      panL.pan.value = -0.8;
+      const panR = ctx.createStereoPanner();
+      panR.pan.value = 0.8;
+      const oL = ctx.createOscillator();
+      const oR = ctx.createOscillator();
+      oL.frequency.value = 200;
+      oR.frequency.value = 214;
+      const gL = ctx.createGain(); gL.gain.value = 0.14;
+      const gR = ctx.createGain(); gR.gain.value = 0.14;
+      oL.connect(gL); gL.connect(panL); panL.connect(lp);
+      oR.connect(gR); gR.connect(panR); panR.connect(lp);
+      oL.start(); oR.start();
+      padNodes.push(oL, oR);
+    } else if (mode === 'heal') {
+      // 528Hz Solfeggio + 6Hz Theta stereo shimmer
+      const panL = ctx.createStereoPanner(); panL.pan.value = -0.6;
+      const panR = ctx.createStereoPanner(); panR.pan.value = 0.6;
+      const oL = ctx.createOscillator(); oL.frequency.value = 264;
+      const oR = ctx.createOscillator(); oR.frequency.value = 270;
+      const oTop = ctx.createOscillator(); oTop.frequency.value = 528;
+      const gL = ctx.createGain(); gL.gain.value = 0.12;
+      const gR = ctx.createGain(); gR.gain.value = 0.12;
+      const gT = ctx.createGain(); gT.gain.value = 0.05;
+      oL.connect(gL); gL.connect(panL); panL.connect(lp);
+      oR.connect(gR); gR.connect(panR); panR.connect(lp);
+      oTop.connect(gT); gT.connect(lp);
+      oL.start(); oR.start(); oTop.start();
+      padNodes.push(oL, oR, oTop);
+    }
+  }
+
+  function triggerRailClack() {
+    if (!ctx || !state.power || !state.channels.train.on) return;
+    const now = ctx.currentTime;
+
+    // Noise burst for metallic rail joint
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = trainBeatStep % 2 === 0 ? 220 : 185;
+    bp.Q.value = 2.5;
+
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.001, now);
+    env.gain.exponentialRampToValueAtTime(0.45, now + 0.008);
+    env.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+    src.connect(bp);
+    bp.connect(env);
+    env.connect(chGains.train);
+    src.start(now);
+    src.stop(now + 0.11);
+  }
+
+  function scheduleRailClack() {
+    if (railTimer) clearTimeout(railTimer);
+    // Cadence: ka-thunk ... ka-thunk (front & rear bogies)
+    const delays = [180, 560, 180, 920];
+    const delay = delays[trainBeatStep % delays.length];
+    trainBeatStep++;
+    railTimer = setTimeout(() => {
+      triggerRailClack();
+      scheduleRailClack();
+    }, delay);
+  }
+
+  function triggerStationChime(force = false) {
+    if (!ctx || !state.power) return;
+    if (!force && !state.channels.chime.on) return;
+    const now = ctx.currentTime;
+    const notes = [587.33, 739.99, 880.0, 1174.66]; // D5 - F#5 - A5 - D6
+    notes.forEach((freq, idx) => {
+      const t = now + idx * 0.22;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(0.14, t + 0.02);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+
+      osc.connect(env);
+      env.connect(chGains.chime);
+      osc.start(t);
+      osc.stop(t + 1.45);
+    });
+  }
+
+  function scheduleChime() {
+    if (chimeTimer) clearTimeout(chimeTimer);
+    const waitMs = 11000 + Math.random() * 12000;
+    chimeTimer = setTimeout(() => {
+      triggerStationChime(false);
+      scheduleChime();
+    }, waitMs);
+  }
+
+  function syncAudioGains() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    masterGain.gain.setTargetAtTime(state.power ? state.masterVol : 0, t, 0.08);
+    padGain.gain.setTargetAtTime(state.padVol, t, 0.08);
+    Object.keys(state.channels).forEach(k => {
+      const ch = state.channels[k];
+      if (chGains[k]) {
+        chGains[k].gain.setTargetAtTime(ch.on ? ch.vol : 0, t, 0.08);
+      }
+    });
+  }
+
+  // ===== UI Bindings =====
+  const powerBtn = document.getElementById('powerBtn');
+  const masterVol = document.getElementById('masterVol');
+  const padVol = document.getElementById('padVol');
+  const padVolTxt = document.getElementById('padVolTxt');
+  const hudLayers = document.getElementById('hudLayers');
+  const hudState = document.getElementById('hudState');
+  const hudClock = document.getElementById('hudClock');
+
+  function updateHUD() {
+    const activeList = [];
+    if (state.mode !== 'off') activeList.push(state.mode.toUpperCase());
+    Object.keys(state.channels).forEach(k => {
+      if (state.channels[k].on) activeList.push(k.toUpperCase());
+    });
+    hudLayers.textContent = 'ACTIVE: ' + (activeList.length ? activeList.join(' + ') : 'NONE');
+    hudState.textContent = state.power ? 'AUDIO ENGINE RUNNING' : 'STANDBY — PRESS POWER';
+  }
+
+  function togglePower(forceOn) {
+    initAudio();
+    if (ctx.state === 'suspended') ctx.resume();
+    state.power = typeof forceOn === 'boolean' ? forceOn : !state.power;
+    powerBtn.classList.toggle('is-on', state.power);
+    powerBtn.textContent = state.power ? '[ POWER: ON ]' : '[ POWER: OFF ]';
+    syncAudioGains();
+    updateHUD();
+  }
+
+  powerBtn.addEventListener('click', () => togglePower());
+
+  masterVol.addEventListener('input', (e) => {
+    state.masterVol = e.target.value / 100;
+    syncAudioGains();
+  });
+
+  padVol.addEventListener('input', (e) => {
+    state.padVol = e.target.value / 100;
+    padVolTxt.textContent = `${e.target.value}%`;
+    syncAudioGains();
+  });
+
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.mode = btn.dataset.mode;
+      if (!state.power) togglePower(true);
+      rebuildPad(state.mode);
+      updateHUD();
+    });
+  });
+
+  document.querySelectorAll('.sw-card').forEach(card => {
+    const ch = card.dataset.ch;
+    const pill = card.querySelector('.toggle-pill');
+    const slider = card.querySelector('.ch-vol');
+    const valTxt = card.querySelector('.vol-num');
+
+    pill.addEventListener('click', () => {
+      state.channels[ch].on = !state.channels[ch].on;
+      card.classList.toggle('active', state.channels[ch].on);
+      pill.textContent = state.channels[ch].on ? '[ ON ]' : '[ OFF ]';
+      if (!state.power && state.channels[ch].on) togglePower(true);
+      syncAudioGains();
+      updateHUD();
+    });
+
+    slider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      state.channels[ch].vol = v / 100;
+      valTxt.textContent = `${v}%`;
+      syncAudioGains();
+    });
+  });
+
+  document.getElementById('triggerChimeBtn').addEventListener('click', () => {
+    if (!state.power) togglePower(true);
+    if (!state.channels.chime.on) {
+      const chimeCard = document.querySelector('.sw-card[data-ch="chime"]');
+      chimeCard.querySelector('.toggle-pill').click();
+    }
+    triggerStationChime(true);
+  });
+
+  const presets = {
+    'last-train':    { mode: 'relax', train: true,  rain: true,  hum: false, chime: false },
+    'midnight-code': { mode: 'focus', train: false, rain: true,  hum: true,  chime: false },
+    'platform-2am':  { mode: 'heal',  train: false, rain: true,  hum: true,  chime: true  },
+    'dry-express':   { mode: 'off',   train: true,  rain: false, hum: false, chime: false }
+  };
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = presets[btn.dataset.preset];
+      if (!p) return;
+      state.mode = p.mode;
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === p.mode);
+      });
+      ['train', 'rain', 'hum', 'chime'].forEach(k => {
+        state.channels[k].on = p[k];
+        const card = document.querySelector(`.sw-card[data-ch="${k}"]`);
+        card.classList.toggle('active', p[k]);
+        card.querySelector('.toggle-pill').textContent = p[k] ? '[ ON ]' : '[ OFF ]';
+      });
+      if (!state.power) togglePower(true);
+      rebuildPad(state.mode);
+      syncAudioGains();
+      updateHUD();
+    });
+  });
+
+  updateHUD();
+
+  // ===== ASCII & Dot-Art Night Train Renderer =====
+  const canvas = document.getElementById('asciiCanvas');
+  const c2d = canvas.getContext('2d');
+  let offsetFar = 0;
+  let offsetMid = 0;
+  let offsetNear = 0;
+
+  // Deterministic building skyline
+  const buildings = Array.from({ length: 40 }, (_, i) => ({
+    w: 22 + ((i * 17) % 30),
+    h: 40 + ((i * 37) % 85),
+    litMask: (i * 13 + 7)
+  }));
+
+  const raindrops = Array.from({ length: 55 }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    len: 6 + Math.random() * 10,
+    speed: 0.012 + Math.random() * 0.015
+  }));
+
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    c2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function updateClock() {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    hudClock.textContent = `${hh}:${mm}:${ss}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  let freqData = new Uint8Array(32);
+
+  function renderFrame() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const speed = (state.power && state.channels.train.on) ? 1 : 0.08;
+
+    offsetFar = (offsetFar + 0.35 * speed) % 1200;
+    offsetMid = (offsetMid + 1.6 * speed) % 400;
+    offsetNear = (offsetNear + 5.5 * speed) % 240;
+
+    // Sky background
+    c2d.fillStyle = '#04060a';
+    c2d.fillRect(0, 0, w, h);
+
+    // Subtle stars (ASCII dots)
+    c2d.fillStyle = 'rgba(148, 163, 184, 0.45)';
+    c2d.font = '11px "IBM Plex Mono", monospace';
+    for (let i = 0; i < 24; i++) {
+      const sx = ((i * 97 + 13) % w);
+      const sy = 26 + ((i * 53) % (h * 0.4));
+      c2d.fillText(i % 5 === 0 ? '+' : '.', sx, sy);
+    }
+
+    // Distant skyline (dot-art windows)
+    const horizonY = h - 54;
+    let bx = - (offsetFar % 360);
+    for (let i = 0; i < buildings.length * 2; i++) {
+      const b = buildings[i % buildings.length];
+      if (bx > w) break;
+      if (bx + b.w > 0) {
+        c2d.fillStyle = '#0b101b';
+        c2d.fillRect(bx, horizonY - b.h, b.w - 2, b.h);
+        // Tiny lit windows
+        for (let wy = horizonY - b.h + 8; wy < horizonY - 8; wy += 9) {
+          for (let wx = bx + 4; wx < bx + b.w - 6; wx += 6) {
+            if (((wx + wy + b.litMask) % 7) === 0) {
+              c2d.fillStyle = ((wx + wy) % 3 === 0) ? 'rgba(245, 185, 66, 0.55)' : 'rgba(56, 189, 248, 0.35)';
+              c2d.fillRect(wx, wy, 2, 3);
+            }
+          }
+        }
+      }
+      bx += b.w;
+    }
+
+    // Catenary wires & passing utility poles (ASCII)
+    c2d.strokeStyle = 'rgba(100, 116, 139, 0.28)';
+    c2d.lineWidth = 1;
+    c2d.beginPath();
+    c2d.moveTo(0, 62);
+    c2d.lineTo(w, 62);
+    c2d.moveTo(0, 74);
+    c2d.lineTo(w, 74);
+    c2d.stroke();
+
+    c2d.fillStyle = '#1e293b';
+    for (let px = -offsetNear; px < w + 40; px += 240) {
+      c2d.fillRect(px, 42, 4, horizonY - 42);
+      c2d.fillRect(px - 8, 60, 20, 2);
+      // Crossing signal light if chime is on
+      if (state.channels.chime.on && state.power) {
+        const blink = Math.floor(performance.now() / 450) % 2 === 0;
+        c2d.fillStyle = blink ? '#f43f5e' : '#334155';
+        c2d.fillRect(px - 2, 92, 6, 6);
+        c2d.fillStyle = '#1e293b';
+      }
+    }
+
+    // Ground & Track sleepers
+    c2d.fillStyle = '#070a12';
+    c2d.fillRect(0, horizonY, w, h - horizonY);
+    c2d.fillStyle = '#1e293b';
+    for (let tx = -(offsetNear % 28); tx < w; tx += 28) {
+      c2d.fillRect(tx, horizonY + 8, 10, 3);
+    }
+
+    // Rain overlay if active
+    if (state.channels.rain.on && state.power) {
+      c2d.strokeStyle = 'rgba(125, 211, 252, 0.35)';
+      c2d.lineWidth = 1;
+      c2d.beginPath();
+      raindrops.forEach(r => {
+        r.y += r.speed;
+        r.x -= 0.004 * speed;
+        if (r.y > 1) { r.y = 0; r.x = Math.random(); }
+        if (r.x < 0) r.x = 1;
+        const rx = r.x * w;
+        const ry = r.y * h;
+        c2d.moveTo(rx, ry);
+        c2d.lineTo(rx - 3 * speed, ry + r.len);
+      });
+      c2d.stroke();
+    }
+
+    // Train window frame border (ASCII box feel)
+    c2d.strokeStyle = '#1f293d';
+    c2d.lineWidth = 6;
+    c2d.strokeRect(3, 3, w - 6, h - 6);
+
+    // Bottom ASCII Spectrum Bar
+    if (analyser && state.power) {
+      analyser.getByteFrequencyData(freqData);
+      const bars = 24;
+      const step = w / bars;
+      for (let i = 0; i < bars; i++) {
+        const val = freqData[i] / 255;
+        const bh = Math.max(2, val * 26);
+        c2d.fillStyle = state.mode !== 'off' ? 'rgba(56, 189, 248, 0.55)' : 'rgba(245, 185, 66, 0.5)';
+        c2d.fillRect(i * step + 4, h - 22 - bh, step - 8, bh);
+      }
+    }
+
+    requestAnimationFrame(renderFrame);
+  }
+
+  requestAnimationFrame(renderFrame);
+})();
+</script>
+</body>
+</html>

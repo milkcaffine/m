@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Marsko lab tool — Minsky Circle bit-shift integer algorithm simulation.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Minsky Circle // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-900: #0a0f1d;
+      --bg-800: #111827;
+      --bg-700: #1f293d;
+      --border: #1f2937;
+      --border-strong: #374151;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --dim: #64748b;
+      --cyan: #22d3ee;
+      --accent: #00ffcc;
+      --pink: #f472b6;
+      --amber: #fbbf24;
+      --emerald: #34d399;
+      --purple: #c084fc;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      background-color: var(--bg-900);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    ::selection { background: #06b6d4; color: #000; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-800); }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* Header */
+    .site-header {
+      border-bottom: 1px solid var(--border);
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 0.75rem 1rem;
+    }
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: var(--emerald);
+      box-shadow: 0 0 10px var(--emerald);
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .version-badge {
+      font-size: 0.7rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: 4px;
+      background: #083344;
+      color: #67e8f9;
+      border: 1px solid #155e75;
+    }
+    .subtitle {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Main Grid */
+    .workspace {
+      flex: 1;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (min-width: 1024px) {
+      .workspace {
+        padding: 1.5rem;
+        grid-template-columns: 8fr 4fr;
+      }
+    }
+
+    .col-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel {
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    /* Canvas Toolbar */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.625rem 1rem;
+      background: rgba(10, 15, 29, 0.6);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+    }
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--muted);
+    }
+    .status-val { font-weight: 700; color: var(--emerald); }
+    .status-val.paused { color: var(--amber); }
+    .fps-val { color: var(--cyan); }
+    .divider { color: #475569; }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      border: 1px solid #4b5563;
+      background: var(--bg-700);
+      color: var(--text);
+    }
+    .btn:hover { background: #374151; }
+    .btn-primary {
+      background: #06b6d4;
+      border-color: #06b6d4;
+      color: var(--bg-900);
+      font-weight: 700;
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.25);
+    }
+    .btn-primary:hover { background: #22d3ee; border-color: #22d3ee; }
+    .btn-primary.is-paused {
+      background: #10b981;
+      border-color: #10b981;
+    }
+    .btn-primary.is-paused:hover { background: #34d399; border-color: #34d399; }
+
+    /* Canvas Container */
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      max-height: 640px;
+      background: var(--bg-900);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    #minskyCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .crt-scanlines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      opacity: 0.4;
+    }
+    .hud-box {
+      position: absolute;
+      bottom: 0.75rem;
+      left: 0.75rem;
+      background: rgba(10, 15, 29, 0.82);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(55, 65, 81, 0.6);
+      padding: 0.5rem 0.65rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .hud-hint {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      font-size: 0.68rem;
+      color: var(--dim);
+      pointer-events: none;
+      background: rgba(10, 15, 29, 0.65);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    /* Presets */
+    .presets-bar {
+      background: rgba(17, 24, 39, 0.65);
+      border: 1px solid var(--border);
+      padding: 0.85rem 1rem;
+      border-radius: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .presets-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+    .presets-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .preset-btn {
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.375rem 0.75rem;
+      background: var(--bg-700);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .preset-cyan { color: #67e8f9; }
+    .preset-cyan:hover { background: #083344; border-color: #06b6d4; }
+    .preset-purple { color: #d8b4fe; }
+    .preset-purple:hover { background: #3b0764; border-color: #a855f7; }
+    .preset-pink { color: #f9a8d4; }
+    .preset-pink:hover { background: #500724; border-color: #ec4899; }
+    .preset-emerald { color: #6ee7b7; }
+    .preset-emerald:hover { background: #022c22; border-color: #10b981; }
+
+    /* Controls Panel */
+    .controls-panel {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .panel-heading {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--cyan);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-tag {
+      font-size: 0.7rem;
+      color: var(--dim);
+      text-transform: none;
+      font-weight: 400;
+    }
+
+    .code-box {
+      background: var(--bg-900);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      line-height: 1.55;
+      overflow-x: auto;
+      color: #cbd5e1;
+    }
+    .c-comment { color: var(--dim); }
+    .c-kw { color: var(--purple); }
+    .c-fn { color: #67e8f9; }
+    .c-num { color: var(--amber); font-weight: 700; }
+
+    .sliders-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .control-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+    }
+    .control-label { color: #cbd5e1; font-weight: 600; }
+    .range-marks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--dim);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-900);
+      border: 1px solid var(--border-strong);
+      border-radius: 9999px;
+      cursor: pointer;
+      accent-color: var(--cyan);
+    }
+    #scale-slider { accent-color: #ec4899; }
+    #steps-slider { accent-color: #fbbf24; }
+    #fade-slider { accent-color: #34d399; }
+
+    select {
+      font-family: inherit;
+      font-size: 0.75rem;
+      background: var(--bg-900);
+      border: 1px solid var(--border-strong);
+      color: #67e8f9;
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      outline: none;
+    }
+    select:focus { border-color: var(--cyan); }
+
+    .checks-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+    }
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      color: #cbd5e1;
+    }
+    .check-label input { accent-color: var(--cyan); }
+
+    .info-card {
+      background: rgba(17, 24, 39, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .info-title { color: var(--text); font-weight: 700; }
+
+    .site-footer {
+      border-top: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--dim);
+      background: rgba(17, 24, 39, 0.4);
+    }
+
+    .val-cyan { color: var(--cyan); font-weight: 700; }
+    .val-pink { color: var(--pink); font-weight: 700; }
+    .val-amber { color: var(--amber); font-weight: 700; }
+    .val-emerald { color: var(--emerald); font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <a href="index.html" class="home-link">← marsko.art</a>
+        <div class="pulse-dot"></div>
+        <h1 class="title">
+          <span>MINSKY_CIRCLE.exe</span>
+          <span class="version-badge">v1.0</span>
+        </h1>
+      </div>
+      <div class="subtitle">Bit-shift integer approximation engine (MIT PDP-1 style)</div>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="col-stack">
+      <div class="panel">
+        <div class="toolbar">
+          <div class="status-group">
+            <span>STATUS: <span id="run-status" class="status-val">RUNNING</span></span>
+            <span class="divider">|</span>
+            <span>FPS: <span id="fps-counter" class="fps-val">60</span></span>
+          </div>
+          <div class="btn-group">
+            <button id="btn-toggle" type="button" class="btn btn-primary">PAUSE</button>
+            <button id="btn-clear" type="button" class="btn">CLEAR TRACE</button>
+            <button id="btn-reset" type="button" class="btn">RESET POS</button>
+          </div>
+        </div>
+
+        <div class="canvas-wrap" id="canvas-container">
+          <canvas id="minskyCanvas"></canvas>
+          <div class="crt-scanlines"></div>
+          <div class="hud-hint">클릭하여 시작 좌표 지정</div>
+          <div class="hud-box">
+            <div>X_POS: <span id="hud-x" class="val-cyan">0</span></div>
+            <div>Y_POS: <span id="hud-y" class="val-pink">0</span></div>
+            <div>ITER/FRAME: <span id="hud-steps" class="val-amber">1</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="presets-bar">
+        <span class="presets-label">Presets:</span>
+        <div class="presets-list">
+          <button type="button" onclick="setPreset(4, 250, 1)" class="preset-btn preset-cyan">Standard Circle (Shift 4)</button>
+          <button type="button" onclick="setPreset(3, 300, 2)" class="preset-btn preset-purple">Tight Orbit (Shift 3)</button>
+          <button type="button" onclick="setPreset(5, 200, 1)" class="preset-btn preset-pink">Wide Orbit (Shift 5)</button>
+          <button type="button" onclick="setPreset(4, 400, 5)" class="preset-btn preset-emerald">Hyper Speed</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="col-stack">
+      <div class="panel controls-panel">
+        <h2 class="panel-heading">
+          <span>Algorithm Parameters</span>
+          <span class="panel-tag">C-Code Simulation</span>
+        </h2>
+
+        <div class="code-box">
+          <div class="c-comment">// Minsky Circle Function</div>
+          <span class="c-kw">void</span> <span class="c-fn">minsky</span>(<span class="c-kw">int</span> *x, <span class="c-kw">int</span> *y) {<br>
+          &nbsp;&nbsp;*x -= *y &gt;&gt; <span id="code-shift-val" class="c-num">4</span>; <span class="c-comment">// &epsilon; = 1/<span id="code-denom">16</span></span><br>
+          &nbsp;&nbsp;*y += *x &gt;&gt; <span id="code-shift-val2" class="c-num">4</span>;<br>
+          }
+        </div>
+
+        <div class="sliders-stack">
+          <div class="control-field">
+            <div class="control-row">
+              <label for="shift-slider" class="control-label">Bit Shift Amount (<span class="val-cyan">&gt;&gt; N</span>)</label>
+              <span id="shift-val" class="val-cyan">4</span>
+            </div>
+            <input id="shift-slider" type="range" min="1" max="8" value="4" step="1">
+            <div class="range-marks">
+              <span>1 (Div 2)</span>
+              <span>4 (Div 16)</span>
+              <span>8 (Div 256)</span>
+            </div>
+          </div>
+
+          <div class="control-field">
+            <div class="control-row">
+              <label for="scale-slider" class="control-label">Initial Radius / Scale</label>
+              <span id="scale-val" class="val-pink">250</span>
+            </div>
+            <input id="scale-slider" type="range" min="50" max="450" value="250" step="10">
+          </div>
+
+          <div class="control-field">
+            <div class="control-row">
+              <label for="steps-slider" class="control-label">Calculations per Frame</label>
+              <span id="steps-val" class="val-amber">1</span>
+            </div>
+            <input id="steps-slider" type="range" min="1" max="20" value="1" step="1">
+          </div>
+
+          <div class="control-field">
+            <div class="control-row">
+              <label for="fade-slider" class="control-label">Trail Persistence</label>
+              <span id="fade-val" class="val-emerald">0.15</span>
+            </div>
+            <input id="fade-slider" type="range" min="0.01" max="1" value="0.15" step="0.01">
+          </div>
+
+          <div class="control-field">
+            <label for="color-theme" class="control-label" style="font-size:0.75rem;">Trace Color Theme</label>
+            <select id="color-theme">
+              <option value="cyber">Cyber Cyan &amp; Pink</option>
+              <option value="matrix">Matrix Emerald</option>
+              <option value="sunset">Neon Sunset (Purple/Orange)</option>
+              <option value="rainbow">Spectrum Rainbow</option>
+            </select>
+          </div>
+
+          <div class="checks-group">
+            <label class="check-label">
+              <input type="checkbox" id="chk-axes" checked>
+              Show Coordinate Axes
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="chk-ideal" checked>
+              Show Ideal Mathematical Circle
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="chk-particles" checked>
+              Show Particle Head Indicator
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <span class="info-title">About Minsky Circle</span>
+        <p>
+          마빈 민스키(Marvin Minsky)가 고안한 이 알고리즘은 곱셈이나 삼각함수 없이 오직 정수 덧셈·뺄셈(<code>+=</code>, <code>-=</code>)과 비트 시프트(<code>&gt;&gt;</code>)만으로 원을 근사합니다. 정수 이산화 오차 때문에 시프트 값이나 반지름에 따라 궤도가 미세하게 타원형으로 찌그러지거나 양자화되는 모습을 관찰할 수 있습니다.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    Minsky Circle Algorithm Simulation &bull; MIT PDP-1 Integer Orbit
+  </footer>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('minskyCanvas');
+      const ctx = canvas.getContext('2d');
+      const container = document.getElementById('canvas-container');
+
+      const shiftSlider = document.getElementById('shift-slider');
+      const shiftValDisp = document.getElementById('shift-val');
+      const scaleSlider = document.getElementById('scale-slider');
+      const scaleValDisp = document.getElementById('scale-val');
+      const stepsSlider = document.getElementById('steps-slider');
+      const stepsValDisp = document.getElementById('steps-val');
+      const fadeSlider = document.getElementById('fade-slider');
+      const fadeValDisp = document.getElementById('fade-val');
+      const colorThemeSelect = document.getElementById('color-theme');
+
+      const chkAxes = document.getElementById('chk-axes');
+      const chkIdeal = document.getElementById('chk-ideal');
+      const chkParticles = document.getElementById('chk-particles');
+
+      const btnToggle = document.getElementById('btn-toggle');
+      const btnClear = document.getElementById('btn-clear');
+      const btnReset = document.getElementById('btn-reset');
+      const runStatus = document.getElementById('run-status');
+      const fpsCounter = document.getElementById('fps-counter');
+
+      const hudX = document.getElementById('hud-x');
+      const hudY = document.getElementById('hud-y');
+      const hudSteps = document.getElementById('hud-steps');
+      const codeShiftVal = document.getElementById('code-shift-val');
+      const codeShiftVal2 = document.getElementById('code-shift-val2');
+      const codeDenom = document.getElementById('code-denom');
+
+      let x = 0;
+      let y = 0;
+      let initialRadius = parseInt(scaleSlider.value, 10);
+      let shiftAmount = parseInt(shiftSlider.value, 10);
+      let stepsPerFrame = parseInt(stepsSlider.value, 10);
+      let fadeAlpha = parseFloat(fadeSlider.value);
+
+      let isRunning = true;
+      let frameCount = 0;
+      let fpsTimer = performance.now();
+
+      function clearCanvas() {
+        ctx.fillStyle = '#0a0f1d';
+        ctx.fillRect(0, 0, container.clientWidth, container.clientHeight);
+      }
+
+      function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        clearCanvas();
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      function resetPosition() {
+        initialRadius = parseInt(scaleSlider.value, 10);
+        x = 0;
+        y = initialRadius;
+        clearCanvas();
+      }
+
+      resetPosition();
+
+      // Click canvas to set custom starting coordinates
+      canvas.addEventListener('pointerdown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = Math.round(e.clientX - rect.left - rect.width / 2);
+        const clickY = Math.round(e.clientY - rect.top - rect.height / 2);
+        x = clickX;
+        y = clickY;
+        initialRadius = Math.round(Math.hypot(x, y));
+        clearCanvas();
+      });
+
+      shiftSlider.addEventListener('input', (e) => {
+        shiftAmount = parseInt(e.target.value, 10);
+        shiftValDisp.textContent = shiftAmount;
+        codeShiftVal.textContent = shiftAmount;
+        codeShiftVal2.textContent = shiftAmount;
+        codeDenom.textContent = Math.pow(2, shiftAmount);
+      });
+
+      scaleSlider.addEventListener('input', (e) => {
+        scaleValDisp.textContent = e.target.value;
+        initialRadius = parseInt(e.target.value, 10);
+      });
+      scaleSlider.addEventListener('change', resetPosition);
+
+      stepsSlider.addEventListener('input', (e) => {
+        stepsPerFrame = parseInt(e.target.value, 10);
+        stepsValDisp.textContent = stepsPerFrame;
+        hudSteps.textContent = stepsPerFrame;
+      });
+
+      fadeSlider.addEventListener('input', (e) => {
+        fadeAlpha = parseFloat(e.target.value);
+        fadeValDisp.textContent = fadeAlpha.toFixed(2);
+      });
+
+      btnToggle.addEventListener('click', () => {
+        isRunning = !isRunning;
+        if (isRunning) {
+          btnToggle.textContent = 'PAUSE';
+          btnToggle.classList.remove('is-paused');
+          runStatus.textContent = 'RUNNING';
+          runStatus.classList.remove('paused');
+        } else {
+          btnToggle.textContent = 'RESUME';
+          btnToggle.classList.add('is-paused');
+          runStatus.textContent = 'PAUSED';
+          runStatus.classList.add('paused');
+        }
+      });
+
+      btnClear.addEventListener('click', clearCanvas);
+      btnReset.addEventListener('click', resetPosition);
+
+      window.setPreset = function(shift, radius, steps) {
+        shiftSlider.value = shift;
+        shiftSlider.dispatchEvent(new Event('input'));
+
+        scaleSlider.value = radius;
+        scaleSlider.dispatchEvent(new Event('input'));
+
+        stepsSlider.value = steps;
+        stepsSlider.dispatchEvent(new Event('input'));
+
+        resetPosition();
+      };
+
+      function getTraceColor(currentTime) {
+        const theme = colorThemeSelect.value;
+        if (theme === 'matrix') return '#34d399';
+        if (theme === 'sunset') return '#ec4899';
+        if (theme === 'rainbow') return `hsl(${(currentTime / 20) % 360}, 100%, 60%)`;
+        return '#00ffcc';
+      }
+
+      function animate(currentTime) {
+        frameCount++;
+        if (currentTime - fpsTimer >= 1000) {
+          fpsCounter.textContent = Math.round((frameCount * 1000) / (currentTime - fpsTimer));
+          frameCount = 0;
+          fpsTimer = currentTime;
+        }
+
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        ctx.fillStyle = `rgba(10, 15, 29, ${fadeAlpha})`;
+        ctx.fillRect(0, 0, width, height);
+
+        if (chkAxes.checked) {
+          ctx.strokeStyle = '#1f293d';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, centerY);
+          ctx.lineTo(width, centerY);
+          ctx.moveTo(centerX, 0);
+          ctx.lineTo(centerX, height);
+          ctx.stroke();
+        }
+
+        if (chkIdeal.checked) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, initialRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        const traceColor = getTraceColor(currentTime);
+
+        if (isRunning) {
+          ctx.strokeStyle = traceColor;
+          ctx.fillStyle = traceColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(centerX + x, centerY + y);
+
+          for (let s = 0; s < stepsPerFrame; s++) {
+            x -= y >> shiftAmount;
+            y += x >> shiftAmount;
+            ctx.lineTo(centerX + x, centerY + y);
+          }
+          ctx.stroke();
+        }
+
+        hudX.textContent = x;
+        hudY.textContent = y;
+
+        const screenX = centerX + x;
+        const screenY = centerY + y;
+
+        if (chkParticles.checked) {
+          ctx.save();
+          ctx.shadowColor = traceColor;
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      requestAnimationFrame(animate);
+    });
+  </script>
+</body>
+</html>
