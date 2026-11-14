@@ -154,7 +154,7 @@
 <header>
   <div class="header-top">
     <a href="index.html" class="home-link">← marsko</a>
-    <button type="button" class="sound-btn" id="btnSound">♪ SPACE AUDIO: OFF</button>
+    <button type="button" class="sound-btn active" id="btnSound">♪ SPACE AUDIO: ON</button>
   </div>
   <h1 id="hudTitle">LUNAR EARTHRISE OBSERVATORY</h1>
   <div class="hud-meta" id="hudSub">SELENOGRAPHIC HORIZON · ORTHOGRAPHIC GLOBE</div>
@@ -314,7 +314,7 @@
   let audioMaster = null;
   let audioNodes = [];
   let pingTimer = null;
-  let soundOn = false;
+  let soundOn = true;
 
   const BODY_ROOT_HZ = {
     earth: 55.0,    // A1 - warm Earthrise
@@ -400,34 +400,37 @@
     audioNodes.push(windSrc);
   }
 
+  function playSpacePing() {
+    if (!audioCtx || !soundOn) return;
+    const now = audioCtx.currentTime;
+    const root = BODY_ROOT_HZ[currentBody] || 55;
+    const mults = [6, 8, 9, 12];
+    const freq = root * mults[Math.floor(Math.random() * mults.length)];
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    const env = audioCtx.createGain();
+    env.gain.setValueAtTime(0.0001, now);
+    env.gain.exponentialRampToValueAtTime(0.045, now + 0.06);
+    env.gain.exponentialRampToValueAtTime(0.0001, now + 3.4);
+    const pan = audioCtx.createStereoPanner();
+    pan.pan.value = (Math.random() - 0.5) * 1.2;
+    osc.connect(env);
+    env.connect(pan);
+    pan.connect(audioMaster);
+    osc.start(now);
+    osc.stop(now + 3.5);
+  }
+
   function scheduleSpacePing() {
     if (pingTimer) clearTimeout(pingTimer);
     pingTimer = setTimeout(() => {
-      if (audioCtx && soundOn) {
-        const now = audioCtx.currentTime;
-        const root = BODY_ROOT_HZ[currentBody] || 55;
-        const mults = [6, 8, 9, 12];
-        const freq = root * mults[Math.floor(Math.random() * mults.length)];
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-        const env = audioCtx.createGain();
-        env.gain.setValueAtTime(0.0001, now);
-        env.gain.exponentialRampToValueAtTime(0.045, now + 0.06);
-        env.gain.exponentialRampToValueAtTime(0.0001, now + 3.4);
-        const pan = audioCtx.createStereoPanner();
-        pan.pan.value = (Math.random() - 0.5) * 1.2;
-        osc.connect(env);
-        env.connect(pan);
-        pan.connect(audioMaster);
-        osc.start(now);
-        osc.stop(now + 3.5);
-      }
+      playSpacePing();
       scheduleSpacePing();
     }, 6500 + Math.random() * 8500);
   }
 
-  function toggleSpaceSound() {
+  function initSpaceAudio() {
     if (!audioCtx) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AudioCtx();
@@ -438,13 +441,32 @@
       scheduleSpacePing();
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function unlockSpaceAudio() {
+    if (!soundOn) return;
+    initSpaceAudio();
+    audioMaster.gain.setTargetAtTime(0.65, audioCtx.currentTime, 0.25);
+  }
+
+  function toggleSpaceSound() {
     soundOn = !soundOn;
-    audioMaster.gain.setTargetAtTime(soundOn ? 0.65 : 0, audioCtx.currentTime, 0.25);
+    if (soundOn) {
+      initSpaceAudio();
+      audioMaster.gain.setTargetAtTime(0.65, audioCtx.currentTime, 0.25);
+    } else if (audioCtx && audioMaster) {
+      audioMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 0.25);
+    }
     btnSound.classList.toggle('active', soundOn);
     btnSound.textContent = soundOn ? '♪ SPACE AUDIO: ON' : '♪ SPACE AUDIO: OFF';
   }
 
   btnSound.addEventListener('click', toggleSpaceSound);
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target && e.target.closest && e.target.closest('#btnSound')) return;
+    unlockSpaceAudio();
+  });
+  window.addEventListener('keydown', unlockSpaceAudio);
 
   // ===== Earthrise Data & Helpers =====
   const CONTINENTS = [
@@ -1007,11 +1029,13 @@
   let isDragging = false;
   let lastX = 0;
   let lastY = 0;
+  let downX = 0;
+  let downY = 0;
 
   canvas.addEventListener('pointerdown', (e) => {
     isDragging = true;
-    lastX = e.clientX;
-    lastY = e.clientY;
+    lastX = downX = e.clientX;
+    lastY = downY = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -1028,7 +1052,12 @@
       tiltRange.value = Math.round(viewTiltDeg);
     }
   });
-  canvas.addEventListener('pointerup', () => { isDragging = false; });
+  canvas.addEventListener('pointerup', (e) => {
+    if (isDragging && Math.hypot(e.clientX - downX, e.clientY - downY) < 6) {
+      playSpacePing();
+    }
+    isDragging = false;
+  });
   canvas.addEventListener('pointercancel', () => { isDragging = false; });
 
   // ===== UI Events =====
