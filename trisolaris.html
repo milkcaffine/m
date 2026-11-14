@@ -101,14 +101,6 @@
                     <p class="text-[11px] text-slate-400">만유인력 법칙(Velocity Verlet 적분) 기반 실시간 천체 물리 & 기후 시뮬레이션</p>
                 </div>
             </div>
-
-            <!-- 단일 HTML 파일 다운로드 버튼 -->
-            <button id="downloadHtmlBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition shadow-lg shadow-emerald-950/50">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                </svg>
-                단일 HTML 파일 저장 (.html)
-            </button>
         </div>
     </header>
 
@@ -317,7 +309,6 @@
             const centerTrackToggle = document.getElementById('centerTrackToggle');
             const infoTitle = document.getElementById('infoTitle');
             const infoDesc = document.getElementById('infoDesc');
-            const downloadHtmlBtn = document.getElementById('downloadHtmlBtn');
             const toastMsg = document.getElementById('toastMsg');
 
             // 시뮬레이션 상태 변수
@@ -998,21 +989,6 @@
                 if (maxTrailLen < 100) trailLabel.textContent = '짧게';
                 else if (maxTrailLen < 260) trailLabel.textContent = '보통';
                 else trailLabel.textContent = '길게';
-            });
-
-            // 단일 HTML 파일 다운로드 기능
-            downloadHtmlBtn.addEventListener('click', () => {
-                const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-                const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'triple_star_simulator.html';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showToast('✅ triple_star_simulator.html 파일이 저장되었습니다!');
             });
 
             // 초기화 실행
