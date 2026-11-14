@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#02040a">
+  <meta name="description" content="Marsko lab sim — Tuna-Pirate Chronicle. 참치 원양어선에서 시작해 해양·우주 쓰레기 수거선을 거쳐 우주 엘리베이터를 타고 우주 참치해적선이 되는 성장 시뮬레이션.">
+  <title>Tuna-Pirate Chronicle // 원양에서 궤도까지 // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #020308;
+      color: #cbd5e1;
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #simCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .sound-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(15, 23, 42, 0.65);
+      color: #94a3b8;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+    }
+    .sound-btn:hover { color: #fbbf24; border-color: rgba(251, 191, 36, 0.45); }
+    .sound-btn.active {
+      color: #34d399;
+      border-color: rgba(52, 211, 153, 0.55);
+      background: rgba(16, 185, 129, 0.14);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
+    }
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f8fafc;
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+    }
+
+    .telemetry-card {
+      background: rgba(8, 12, 22, 0.84);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .telemetry-card .amber { color: #fbbf24; }
+    .telemetry-card .emerald { color: #34d399; }
+    .telemetry-card .rose { color: #fb7185; }
+
+    /* 심야 골목 감성 무전/항해 로그 배너 */
+    .log-ticker {
+      position: absolute;
+      bottom: 98px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 10, 18, 0.82);
+      border: 1px solid rgba(251, 191, 36, 0.22);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: #e2e8f0;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: min(720px, 92vw);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    }
+    .log-ticker strong { color: #fbbf24; }
+
+    /* 막 전환 스토리 카드 */
+    .story-modal {
+      position: absolute;
+      top: 22%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 12, 18, 0.93);
+      border: 1px solid rgba(251, 191, 36, 0.48);
+      border-radius: 12px;
+      padding: 18px 22px;
+      text-align: center;
+      z-index: 20;
+      display: none;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 36px rgba(251, 191, 36, 0.18);
+      width: min(400px, 90vw);
+    }
+    .story-modal.open { display: block; animation: popIn 0.35s ease; }
+    @keyframes popIn {
+      from { opacity: 0; transform: translate(-50%, 8px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    .story-kicker {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #38bdf8;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+    .story-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fbbf24;
+      margin-bottom: 8px;
+    }
+    .story-desc {
+      font-size: 0.82rem;
+      line-height: 1.55;
+      color: #cbd5e1;
+      margin-bottom: 14px;
+    }
+    .story-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      padding: 7px 16px;
+      border-radius: 6px;
+      border: 1px solid #fbbf24;
+      background: rgba(251, 191, 36, 0.16);
+      color: #fde68a;
+      cursor: pointer;
+    }
+    .story-btn:hover { background: rgba(251, 191, 36, 0.28); }
+
+    .control-dock {
+      max-width: min(980px, 96%);
+      gap: 7px 10px;
+    }
+    .dock-btn.upgrade-ready {
+      border-color: #fbbf24;
+      color: #fde68a;
+      background: rgba(251, 191, 36, 0.15);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+    }
+
+    @media (max-width: 720px) {
+      .telemetry-card { display: none; }
+      header h1 { font-size: 0.85rem; }
+      .log-ticker { bottom: 112px; font-size: 0.66rem; }
+      .control-dock { bottom: 10px; padding: 8px 10px; gap: 6px; }
+      .dock-sep { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <a href="index.html" class="home-link">← marsko</a>
+    <button type="button" class="sound-btn active" id="btnAudio">♪ SEA/SPACE AUDIO: ON</button>
+  </div>
+  <h1>TUNA-PIRATE CHRONICLE</h1>
+  <div class="hud-meta" id="hudSub">ACT 1 · DEEP-SEA TUNA TRAWLER // CLICK TARGETS OR USE DOCK</div>
+</header>
+
+<div class="telemetry-card" id="telemetryCard"></div>
+<div class="log-ticker" id="logTicker"><strong>[LOG]</strong> 심야 원양어선 집어등 점등. 수면 아래 참치 떼를 클릭해 포획하세요.</div>
+
+<div class="story-modal" id="storyModal">
+  <div class="story-kicker" id="storyKicker">ACT TRANSITION</div>
+  <div class="story-title" id="storyTitle"></div>
+  <div class="story-desc" id="storyDesc"></div>
+  <button type="button" class="story-btn" id="storyClose">출항 계속하기</button>
+</div>
+
+<canvas id="simCanvas"></canvas>
+
+<div class="control-dock">
+  <button type="button" class="dock-btn active" id="btnAuto">자동 조업: ON</button>
+  <button type="button" class="dock-btn" id="btnCast">그물 투하 / 회수</button>
+  <div class="dock-sep"></div>
+  <button type="button" class="dock-btn" id="btnUpgNet">그물 강화 (50₡)</button>
+  <button type="button" class="dock-btn" id="btnUpgEngine">선단·추진기 (80₡)</button>
+  <div class="dock-sep"></div>
+  <button type="button" class="dock-btn" id="btnNextAct">해양 수거선 개조 (120₡)</button>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+  const hudSub = document.getElementById('hudSub');
+  const telemetryCard = document.getElementById('telemetryCard');
+  const logTicker = document.getElementById('logTicker');
+
+  const storyModal = document.getElementById('storyModal');
+  const storyKicker = document.getElementById('storyKicker');
+  const storyTitle = document.getElementById('storyTitle');
+  const storyDesc = document.getElementById('storyDesc');
+  const storyClose = document.getElementById('storyClose');
+
+  const btnAudio = document.getElementById('btnAudio');
+  const btnAuto = document.getElementById('btnAuto');
+  const btnCast = document.getElementById('btnCast');
+  const btnUpgNet = document.getElementById('btnUpgNet');
+  const btnUpgEngine = document.getElementById('btnUpgEngine');
+  const btnNextAct = document.getElementById('btnNextAct');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  // ===== Game State =====
+  // act: 1 = Tuna Trawler, 2 = Ocean & Space-Debris Scavenger, 3 = Orbital Scavenger (via Elevator), 4 = Space Tuna-Pirate
+  let act = 1;
+  let credits = 0;
+  let totalHauled = 0;
+  let tunaStock = 100; // drops to 0 in Act 1
+  let autoMode = true;
+  let netLevel = 1;
+  let engineLevel = 1;
+  let elevatorAnim = 0; // 0..1 transition animation when entering Act 3
+  let isAscending = false;
+  let simTime = 0;
+
+  const ACT_INFO = {
+    1: {
+      sub: 'ACT 1 · DEEP-SEA TUNA TRAWLER // 참치 조업 중',
+      ship: '제3참치호 (원양어선)',
+      nextLabel: '해양 쓰레기 수거선 개조',
+      nextCost: 120
+    },
+    2: {
+      sub: 'ACT 2 · OCEAN & FALLEN DEBRIS SCAVENGER // 해상 수거 및 엘리베이터 자금 마련',
+      ship: '참치클린-MK2 (해상 수거선)',
+      nextLabel: '우주 엘리베이터 탑승',
+      nextCost: 450
+    },
+    3: {
+      sub: 'ACT 3 · LEO ORBITAL SCAVENGER // 적도 엘리베이터 통과 · 궤도 쓰레기 수거',
+      ship: '궤도참치-03 (저궤도 수거선)',
+      nextLabel: '우주 참치해적선 무장',
+      nextCost: 1200
+    },
+    4: {
+      sub: 'ACT 4 · SPACE TUNA-PIRATE // 마스코 암시장 뒷거래 & 궤도 화물선 사냥',
+      ship: 'TUNA-PIRATE FLAGSHIP (마스코 전속)',
+      nextLabel: '해적 선단 확장',
+      nextCost: 2500
+    }
+  };
+
+  function setLog(tag, msg) {
+    logTicker.innerHTML = `<strong>[${tag}]</strong> ${msg}`;
+  }
+
+  function showStory(kicker, title, desc) {
+    storyKicker.textContent = kicker;
+    storyTitle.textContent = title;
+    storyDesc.textContent = desc;
+    storyModal.classList.add('open');
+  }
+  storyClose.addEventListener('click', () => storyModal.classList.remove('open'));
+
+  // ===== Web Audio (Sea Wave + Space Drone + Sonar/Harpoon SFX) =====
+  let audioCtx = null;
+  let audioMaster = null;
+  let ambientFilter = null;
+  let droneGain = null;
+  let soundOn = true;
+
+  function createNoise(c) {
+    const len = c.sampleRate * 4;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const ch = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      last = (last + 0.02 * w) / 1.02;
+      ch[i] = last * 2.1;
+    }
+    return buf;
+  }
+
+  function initAudio() {
+    if (!audioCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioCtx();
+      audioMaster = audioCtx.createGain();
+      audioMaster.gain.value = 0;
+      audioMaster.connect(audioCtx.destination);
+
+      // Sea waves / cosmic wind noise
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = createNoise(audioCtx);
+      noise.loop = true;
+      ambientFilter = audioCtx.createBiquadFilter();
+      ambientFilter.type = 'lowpass';
+      ambientFilter.frequency.value = 340;
+      const ng = audioCtx.createGain();
+      ng.gain.value = 0.22;
+      noise.connect(ambientFilter);
+      ambientFilter.connect(ng);
+      ng.connect(audioMaster);
+      noise.start();
+
+      // Deep hull / orbital drone
+      droneGain = audioCtx.createGain();
+      droneGain.gain.value = 0.14;
+      droneGain.connect(audioMaster);
+      [55, 82.41, 110].forEach((hz, idx) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = idx === 1 ? 'triangle' : 'sine';
+        osc.frequency.value = hz;
+        const g = audioCtx.createGain();
+        g.gain.value = [0.22, 0.09, 0.07][idx];
+        osc.connect(g);
+        g.connect(droneGain);
+        osc.start();
+      });
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function unlockAudio() {
+    if (!soundOn) return;
+    initAudio();
+    audioMaster.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.25);
+  }
+
+  function updateAudioStage() {
+    if (!audioCtx || !ambientFilter || !droneGain) return;
+    const now = audioCtx.currentTime;
+    ambientFilter.frequency.setTargetAtTime(act <= 2 ? 360 : 180, now, 0.4);
+    droneGain.gain.setTargetAtTime(act <= 2 ? 0.1 : 0.26, now, 0.4);
+  }
+
+  function playCatchSfx(isSpecial = false) {
+    if (!audioCtx || !soundOn) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    osc.type = act >= 3 ? 'triangle' : 'sine';
+    const base = isSpecial ? 740 : (act <= 2 ? 440 : 587);
+    osc.frequency.setValueAtTime(base, now);
+    osc.frequency.exponentialRampToValueAtTime(base * 1.45, now + 0.09);
+    const env = audioCtx.createGain();
+    env.gain.setValueAtTime(0.0001, now);
+    env.gain.exponentialRampToValueAtTime(0.06, now + 0.015);
+    env.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+    osc.connect(env);
+    env.connect(audioMaster);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  btnAudio.addEventListener('click', () => {
+    soundOn = !soundOn;
+    if (soundOn) {
+      initAudio();
+      audioMaster.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.25);
+    } else if (audioCtx && audioMaster) {
+      audioMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+    }
+    btnAudio.classList.toggle('active', soundOn);
+    btnAudio.textContent = soundOn ? '♪ SEA/SPACE AUDIO: ON' : '♪ SEA/SPACE AUDIO: OFF';
+  });
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target && e.target.closest && e.target.closest('#btnAudio')) return;
+    unlockAudio();
+  });
+
+  // ===== Entities (Tuna, Ocean Trash, Orbital Debris, Cargo Ships) & Visual FX =====
+  const items = [];
+  const beams = [];
+  const floats = [];
+  const bgStars = Array.from({ length: 180 }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    r: Math.random() * 1.3 + 0.3,
+    p: Math.random() * Math.PI * 2
+  }));
+
+  function spawnItem() {
+    const seaY = height * 0.56;
+    if (act === 1) {
+      if (tunaStock <= 0) return;
+      items.push({
+        kind: 'tuna',
+        x: Math.random() < 0.5 ? -30 : width + 30,
+        y: seaY + 28 + Math.random() * (height - seaY - 140),
+        vx: (Math.random() < 0.5 ? 1 : -1) * (45 + Math.random() * 55),
+        vy: (Math.random() - 0.5) * 12,
+        r: 12,
+        val: 14 * netLevel,
+        label: '참다랑어'
+      });
+    } else if (act === 2) {
+      const isRocket = Math.random() < 0.28;
+      items.push({
+        kind: isRocket ? 'fairing' : 'plastic',
+        x: Math.random() < 0.5 ? -30 : width + 30,
+        y: seaY + (isRocket ? 8 : 16 + Math.random() * 65),
+        vx: (Math.random() < 0.5 ? 1 : -1) * (35 + Math.random() * 40),
+        vy: 0,
+        r: isRocket ? 16 : 11,
+        val: (isRocket ? 52 : 22) * netLevel,
+        label: isRocket ? '로켓 페어링' : '해양 쓰레기'
+      });
+    } else if (act === 3) {
+      const isSat = Math.random() < 0.3;
+      items.push({
+        kind: isSat ? 'debris_gold' : 'debris',
+        x: Math.random() < 0.5 ? -30 : width + 30,
+        y: 80 + Math.random() * (height * 0.62),
+        vx: (Math.random() < 0.5 ? 1 : -1) * (55 + Math.random() * 65),
+        vy: (Math.random() - 0.5) * 18,
+        r: isSat ? 14 : 10,
+        val: (isSat ? 95 : 40) * netLevel,
+        label: isSat ? '폐위성 코어' : '궤도 파편'
+      });
+    } else {
+      // Act 4: Cargo ships & Marsko smuggling pods + debris
+      const roll = Math.random();
+      const kind = roll < 0.45 ? 'cargo' : (roll < 0.72 ? 'marsko_pod' : 'debris_gold');
+      items.push({
+        kind,
+        x: Math.random() < 0.5 ? -40 : width + 40,
+        y: 85 + Math.random() * (height * 0.6),
+        vx: (Math.random() < 0.5 ? 1 : -1) * (kind === 'cargo' ? 75 : 55),
+        vy: (Math.random() - 0.5) * 14,
+        r: kind === 'cargo' ? 19 : 13,
+        val: (kind === 'cargo' ? 210 : (kind === 'marsko_pod' ? 160 : 85)) * netLevel,
+        label: kind === 'cargo' ? '궤도 화물선' : (kind === 'marsko_pod' ? '마스코 밀수 포드' : '고철 파편')
+      });
+    }
+  }
+
+  function collectItem(item, shipX, shipY) {
+    credits += item.val;
+    totalHauled += 1;
+    beams.push({ x1: shipX, y1: shipY, x2: item.x, y2: item.y, life: 0.28, pirate: act === 4 });
+    floats.push({ x: item.x, y: item.y - 8, text: `+${item.val}₡`, life: 0.9 });
+    playCatchSfx(item.kind === 'fairing' || item.kind === 'cargo' || item.kind === 'marsko_pod');
+
+    if (act === 1) {
+      tunaStock = Math.max(0, tunaStock - 6.5);
+      if (tunaStock === 0) {
+        items.length = 0;
+        setLog('속보', '공해상 참치 자원이 완전히 고갈되었습니다! 이제 배를 개조해 쓰레기를 건져 올릴 때입니다.');
+        showStory(
+          'ACT 1 COMPLETE · 참치 멸종',
+          '더 이상 잡을 참치가 없습니다',
+          '만선 대신 텅 빈 바다만 남았습니다. 원양어선의 크레인과 어창을 개조해 해양 쓰레기와 바다로 떨어지는 로켓 파편을 수거하세요!'
+        );
+      }
+    } else if (act === 4 && item.kind === 'cargo') {
+      setLog('MARSKO', `화물선 나포 성공! 지구 밀수품 +${item.val}₡ 마스코 암시장으로 반입.`);
+    } else if (act === 4 && item.kind === 'marsko_pod') {
+      setLog('MARSKO', `"적도 엘리베이터에서 빼돌린 물건 회수 확인. 잘했어, 참치 선장." (+${item.val}₡)`);
+    }
+  }
+
+  function getShipPos() {
+    const seaY = height * 0.56;
+    const x = width * 0.5 + Math.sin(simTime * 0.55) * Math.min(120, width * 0.14);
+    if (isAscending) {
+      return { x: width * 0.5, y: seaY - elevatorAnim * (height * 0.35) };
+    }
+    if (act <= 2) {
+      return { x, y: seaY - 4 + Math.sin(simTime * 2.2) * 4 };
+    }
+    return { x, y: height * 0.44 + Math.cos(simTime * 0.9) * 18 };
+  }
+
+  function castNetOnce() {
+    if (items.length === 0) {
+      spawnItem();
+    }
+    const ship = getShipPos();
+    let bestIdx = -1;
+    let bestD = Infinity;
+    items.forEach((it, idx) => {
+      const d = Math.hypot(it.x - ship.x, it.y - ship.y);
+      if (d < bestD) { bestD = d; bestIdx = idx; }
+    });
+    if (bestIdx !== -1) {
+      const [picked] = items.splice(bestIdx, 1);
+      collectItem(picked, ship.x, ship.y);
+    }
+  }
+
+  // ===== Drawing =====
+  function drawBackground() {
+    const seaY = height * 0.56;
+    if (act <= 2 && !isAscending) {
+      // Night sky + ocean
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, seaY);
+      skyGrad.addColorStop(0, '#02040a');
+      skyGrad.addColorStop(1, '#0c1c36');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, width, seaY);
+
+      // Stars
+      bgStars.forEach(s => {
+        const tw = 0.5 + 0.5 * Math.sin(simTime * 2 + s.p);
+        ctx.fillStyle = `rgba(226, 232, 240, ${0.45 * tw})`;
+        ctx.beginPath();
+        ctx.arc(s.x * width, s.y * seaY * 0.92, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Distant Equatorial Space Elevator silhouette on horizon in Act 2
+      if (act === 2) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(147, 197, 253, 0.28)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(width * 0.82, seaY);
+        ctx.lineTo(width * 0.82, 0);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.55)';
+        ctx.fillRect(width * 0.82 - 4, seaY - 8, 8, 8);
+        ctx.restore();
+      }
+
+      // Ocean
+      const seaGrad = ctx.createLinearGradient(0, seaY, 0, height);
+      seaGrad.addColorStop(0, '#071b2e');
+      seaGrad.addColorStop(1, '#020712');
+      ctx.fillStyle = seaGrad;
+      ctx.fillRect(0, seaY, width, height - seaY);
+
+      // Rolling wave line
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let x = 0; x <= width; x += 18) {
+        const wy = seaY + Math.sin(x * 0.02 + simTime * 2) * 3.5;
+        if (x === 0) ctx.moveTo(x, wy);
+        else ctx.lineTo(x, wy);
+      }
+      ctx.stroke();
+    } else {
+      // Deep Space + Curved Earth Limb below
+      ctx.fillStyle = '#02040a';
+      ctx.fillRect(0, 0, width, height);
+
+      bgStars.forEach(s => {
+        const tw = 0.55 + 0.45 * Math.sin(simTime * 2.2 + s.p);
+        ctx.fillStyle = `rgba(226, 232, 240, ${0.7 * tw})`;
+        ctx.beginPath();
+        ctx.arc(s.x * width, s.y * height, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Curved Earth horizon
+      const earthR = Math.max(width, height) * 1.45;
+      const earthY = height + earthR - height * 0.24;
+      const grad = ctx.createRadialGradient(width * 0.5, earthY, earthR * 0.96, width * 0.5, earthY, earthR);
+      grad.addColorStop(0, '#040a18');
+      grad.addColorStop(0.95, '#0c274d');
+      grad.addColorStop(1, '#38bdf8');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(width * 0.5, earthY, earthR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Space Elevator cable visible behind orbit
+      ctx.save();
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.22)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(width * 0.5, height);
+      ctx.lineTo(width * 0.5, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawShip(ship) {
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+
+    if (act <= 2) {
+      // Fishing / Scavenger Trawler Silhouette + Lamp
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = act === 2 ? '#38bdf8' : '#fbbf24';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-34, 0);
+      ctx.lineTo(36, 0);
+      ctx.lineTo(24, 14);
+      ctx.lineTo(-26, 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Cabin & Crane
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(-16, -14, 22, 14);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(12, 0);
+      ctx.lineTo(26, -20);
+      ctx.stroke();
+
+      // Fishing lamp glow
+      const lamp = ctx.createRadialGradient(0, -16, 2, 0, 10, 75);
+      lamp.addColorStop(0, act === 1 ? 'rgba(253, 224, 71, 0.24)' : 'rgba(56, 189, 248, 0.24)');
+      lamp.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = lamp;
+      ctx.beginPath();
+      ctx.arc(0, 0, 75, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Orbital Scavenger / Space Tuna-Pirate Ship!
+      ctx.fillStyle = act === 4 ? '#1f1218' : '#0f172a';
+      ctx.strokeStyle = act === 4 ? '#fb7185' : '#38bdf8';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(32, 0);
+      ctx.lineTo(-18, -14);
+      ctx.lineTo(-26, 0);
+      ctx.lineTo(-18, 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Thruster glow
+      ctx.fillStyle = act === 4 ? '#fbbf24' : '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(-28, 0, 4 + Math.sin(simTime * 18) * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function drawItems() {
+    items.forEach(it => {
+      ctx.save();
+      ctx.translate(it.x, it.y);
+      if (it.kind === 'tuna') {
+        const dir = it.vx >= 0 ? 1 : -1;
+        ctx.scale(dir, 1);
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 10, 4.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-9, 0); ctx.lineTo(-15, -5); ctx.lineTo(-15, 5);
+        ctx.fill();
+      } else if (it.kind === 'plastic' || it.kind === 'debris') {
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(-5, -4, 10, 8);
+      } else if (it.kind === 'fairing' || it.kind === 'debris_gold') {
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (it.kind === 'cargo') {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.4;
+        ctx.fillRect(-14, -6, 28, 12);
+        ctx.strokeRect(-14, -6, 28, 12);
+      } else if (it.kind === 'marsko_pod') {
+        ctx.fillStyle = '#fb7185';
+        ctx.beginPath();
+        ctx.moveTo(0, -9); ctx.lineTo(9, 0); ctx.lineTo(0, 9); ctx.lineTo(-9, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    // Collection beams
+    beams.forEach(b => {
+      ctx.save();
+      ctx.strokeStyle = b.pirate
+        ? `rgba(251, 113, 133, ${b.life * 3})`
+        : `rgba(56, 189, 248, ${b.life * 3})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Floating +credits
+    floats.forEach(f => {
+      ctx.save();
+      ctx.font = '600 12px "IBM Plex Mono", monospace';
+      ctx.fillStyle = `rgba(253, 224, 71, ${f.life})`;
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.restore();
+    });
+  }
+
+  function updateUI() {
+    const info = ACT_INFO[act];
+    hudSub.textContent = info.sub;
+
+    const tunaLine = act === 1
+      ? `<div>바다 참치 자원: <strong class="${tunaStock < 25 ? 'rose' : 'emerald'}">${tunaStock.toFixed(0)}%</strong></div>`
+      : `<div>수거·약탈 누적: <strong class="emerald">${totalHauled} 건</strong></div>`;
+
+    telemetryCard.innerHTML = `
+      <div>함선: <strong class="amber">${info.ship}</strong></div>
+      <div>보유 자금: <strong>${credits.toLocaleString()}₡</strong></div>
+      ${tunaLine}
+      <div>그물 Lv.${netLevel} · 추진기 Lv.${engineLevel}</div>
+    `;
+
+    const netCost = 50 * netLevel;
+    const engCost = 80 * engineLevel;
+    btnUpgNet.textContent = `그물 강화 (${netCost}₡)`;
+    btnUpgEngine.textContent = `선단·추진기 (${engCost}₡)`;
+    btnNextAct.textContent = `${info.nextLabel} (${info.nextCost}₡)`;
+
+    const canAdvance = credits >= info.nextCost && (act !== 1 || tunaStock === 0);
+    btnNextAct.classList.toggle('upgrade-ready', canAdvance);
+  }
+
+  // ===== Main Loop =====
+  let lastTs = performance.now();
+  let spawnTimer = 0;
+  let autoTimer = 0;
+
+  function render(ts) {
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    simTime += dt;
+
+    if (isAscending) {
+      elevatorAnim = Math.min(1, elevatorAnim + dt * 0.45);
+      if (elevatorAnim >= 1) {
+        isAscending = false;
+        act = 3;
+        updateAudioStage();
+        setLog('ORBIT', '적도 우주 엘리베이터 정거장 분리 완료! 저궤도 쓰레기 수거를 시작합니다.');
+      }
+    }
+
+    spawnTimer += dt;
+    const spawnInterval = Math.max(0.45, 1.45 - engineLevel * 0.15);
+    if (!isAscending && spawnTimer >= spawnInterval && items.length < 10) {
+      spawnTimer = 0;
+      spawnItem();
+    }
+
+    if (autoMode && !isAscending) {
+      autoTimer += dt;
+      const autoInterval = Math.max(0.55, 1.8 - engineLevel * 0.2);
+      if (autoTimer >= autoInterval && items.length > 0) {
+        autoTimer = 0;
+        castNetOnce();
+      }
+    }
+
+    for (let i = items.length - 1; i >= 0; i--) {
+      const it = items[i];
+      it.x += it.vx * dt;
+      it.y += it.vy * dt;
+      if (it.x < -80 || it.x > width + 80) items.splice(i, 1);
+    }
+    for (let i = beams.length - 1; i >= 0; i--) {
+      beams[i].life -= dt;
+      if (beams[i].life <= 0) beams.splice(i, 1);
+    }
+    for (let i = floats.length - 1; i >= 0; i--) {
+      floats[i].y -= 26 * dt;
+      floats[i].life -= dt;
+      if (floats[i].life <= 0) floats.splice(i, 1);
+    }
+
+    drawBackground();
+    const ship = getShipPos();
+    drawItems();
+    drawShip(ship);
+    updateUI();
+
+    requestAnimationFrame(render);
+  }
+
+  // ===== Interaction =====
+  canvas.addEventListener('pointerdown', (e) => {
+    const ship = getShipPos();
+    for (let i = items.length - 1; i >= 0; i--) {
+      const it = items[i];
+      if (Math.hypot(it.x - e.clientX, it.y - e.clientY) < it.r + 24) {
+        items.splice(i, 1);
+        collectItem(it, ship.x, ship.y);
+        return;
+      }
+    }
+  });
+
+  btnAuto.addEventListener('click', () => {
+    autoMode = !autoMode;
+    btnAuto.classList.toggle('active', autoMode);
+    btnAuto.textContent = autoMode ? '자동 조업: ON' : '자동 조업: OFF';
+  });
+
+  btnCast.addEventListener('click', castNetOnce);
+
+  btnUpgNet.addEventListener('click', () => {
+    const cost = 50 * netLevel;
+    if (credits < cost) { setLog('안내', `그물 강화에는 ${cost}₡가 필요합니다.`); return; }
+    credits -= cost;
+    netLevel += 1;
+    playCatchSfx(true);
+    setLog('개조', `포획 그물/레이저 Lv.${netLevel}로 강화되었습니다!`);
+  });
+
+  btnUpgEngine.addEventListener('click', () => {
+    const cost = 80 * engineLevel;
+    if (credits < cost) { setLog('안내', `추진기 강화에는 ${cost}₡가 필요합니다.`); return; }
+    credits -= cost;
+    engineLevel += 1;
+    playCatchSfx(true);
+    setLog('개조', `자동 조업 속도가 Lv.${engineLevel}로 빨라졌습니다!`);
+  });
+
+  btnNextAct.addEventListener('click', () => {
+    const info = ACT_INFO[act];
+    if (act === 1 && tunaStock > 0) {
+      setLog('안내', '아직 바다에 참치가 남아 있습니다! 참치가 고갈될 때까지 조업하세요.');
+      return;
+    }
+    if (credits < info.nextCost) {
+      setLog('안내', `${info.nextLabel}에는 ${info.nextCost}₡가 필요합니다.`);
+      return;
+    }
+    credits -= info.nextCost;
+    items.length = 0;
+
+    if (act === 1) {
+      act = 2;
+      updateAudioStage();
+      setLog('ACT 2', '해양 쓰레기 및 낙하 로켓 페어링 수거를 시작합니다.');
+      showStory(
+        'ACT 2 · SEA SCAVENGER',
+        '바다 청소부로 전업',
+        '이제 바다에 떠다니는 쓰레기와 불타 떨어지는 로켓 페어링을 건져 올립니다. 450₡를 모아 수평선 너머 적도 우주 엘리베이터에 탑승하세요!'
+      );
+    } else if (act === 2) {
+      isAscending = true;
+      elevatorAnim = 0;
+      setLog('ELEVATOR', '적도 해상 앵커 도킹! 우주 엘리베이터를 타고 궤도로 상승 중...');
+      showStory(
+        'ACT 3 · ORBITAL ELEVATOR',
+        '바다에서 우주로 상승 중',
+        '원양어선을 통째로 클라이머에 싣고 35,786km 적도 케이블을 따라 궤도로 올라갑니다. 이제 진짜 우주 쓰레기를 모을 시간입니다.'
+      );
+    } else if (act === 3) {
+      act = 4;
+      updateAudioStage();
+      setLog('MARSKO', '"잘 왔어 참치 선장. 이제 지나가는 화물선과 밀수 포드를 낚아채 보자고."');
+      showStory(
+        'ACT 4 · SPACE TUNA-PIRATE',
+        '우주 참치해적선 취역',
+        '마스코(marsko)와 손을 잡았습니다! 수거용 그물을 해적 작살로 개조해 궤도 화물선을 사냥하고 지구 물건을 빼돌리세요.'
+      );
+    } else {
+      netLevel += 2;
+      engineLevel += 1;
+      info.nextCost = Math.round(info.nextCost * 1.8);
+      setLog('FLEET', '우주 참치해적 선단이 한 척 더 증강되었습니다!');
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  for (let i = 0; i < 4; i++) spawnItem();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
