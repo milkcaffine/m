@@ -596,12 +596,21 @@
     return { x, y: height * 0.44 + Math.cos(simTime * 0.9) * 18 };
   }
 
+  function getNetRange() {
+    return Math.min(width, height) * 0.23 + (netLevel - 1) * 28;
+  }
+
+  function getCatchAccuracy() {
+    return Math.min(0.98, 0.68 + (netLevel - 1) * 0.06);
+  }
+
   function castNetOnce(requireVisible = false) {
     if (items.length === 0 && !requireVisible) {
       spawnItem();
     }
     const ship = getShipPos();
     const margin = Math.min(140, width * 0.16);
+    const maxRange = getNetRange();
     let bestIdx = -1;
     let bestD = Infinity;
     items.forEach((it, idx) => {
@@ -609,11 +618,18 @@
         return;
       }
       const d = Math.hypot(it.x - ship.x, it.y - ship.y);
-      if (d < bestD) { bestD = d; bestIdx = idx; }
+      if (d <= maxRange && d < bestD) { bestD = d; bestIdx = idx; }
     });
     if (bestIdx !== -1) {
-      const [picked] = items.splice(bestIdx, 1);
-      collectItem(picked, ship.x, ship.y);
+      const target = items[bestIdx];
+      if (Math.random() <= getCatchAccuracy()) {
+        items.splice(bestIdx, 1);
+        collectItem(target, ship.x, ship.y);
+      } else {
+        beams.push({ x1: ship.x, y1: ship.y, x2: target.x + (Math.random() - 0.5) * 18, y2: target.y + (Math.random() - 0.5) * 18, life: 0.2, pirate: act === 4 });
+        floats.push({ x: target.x, y: target.y - 10, text: '놓쳤다!', life: 0.7 });
+        target.vx *= 1.15;
+      }
     }
   }
 
@@ -761,6 +777,18 @@
       ctx.fill();
     }
 
+    // Subtle net / harpoon reach ring
+    if (!isAscending) {
+      ctx.save();
+      ctx.setLineDash([4, 7]);
+      ctx.strokeStyle = act === 4 ? 'rgba(251, 113, 133, 0.16)' : 'rgba(56, 189, 248, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, getNetRange(), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
@@ -881,7 +909,7 @@
 
     if (autoMode && !isAscending) {
       autoTimer += dt;
-      const autoInterval = Math.max(0.4, (1.8 - engineLevel * 0.2) * DIFF_CONFIG[currentDiff].autoIntervalMult);
+      const autoInterval = Math.max(0.55, (2.6 - (engineLevel - 1) * 0.22) * DIFF_CONFIG[currentDiff].autoIntervalMult);
       if (autoTimer >= autoInterval && items.length > 0) {
         autoTimer = 0;
         castNetOnce(true);
