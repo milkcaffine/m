@@ -245,7 +245,11 @@
 <body>
 
 <header>
-  <a href="index.html" class="home-link">← marsko</a>
+  <div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">
+    <a href="index.html" class="home-link">← marsko</a>
+    <button type="button" class="home-link" id="btnModeNormal" style="cursor:pointer;">일반 (6칸)</button>
+    <button type="button" class="home-link" id="btnModeAbyss" style="cursor:pointer;color:#fbbf24;border-color:rgba(251,191,36,0.5);">심연 (9칸·이상현상)</button>
+  </div>
   <h1>ROJIURA 1.0m // 裏稲荷</h1>
   <div class="hud-meta">📍 도심 모처의 미관측 경계 · ⛩️ 여우불이 이끄는 심야 은신처</div>
 </header>
@@ -278,6 +282,7 @@
   <button type="button" class="nav-btn" id="btnLeft">← 좌측 골목</button>
   <button type="button" class="nav-btn" id="btnForward">↑ 직진</button>
   <button type="button" class="nav-btn" id="btnRight">우측 골목 →</button>
+  <button type="button" class="nav-btn" id="btnBack" style="border-color:rgba(244,63,94,0.4);color:#fda4af;">↓ 뒤돌아가기</button>
   <button type="button" class="nav-btn udon-btn" id="btnEnter">🚪 미닫이문 열고 들어가기</button>
   <button type="button" class="nav-btn udon-btn" id="btnUdon">🍜 키츠네 우동 주문</button>
   <button type="button" class="nav-btn udon-btn" id="btnCoffee">☕ 심야 드립 커피</button>
@@ -301,6 +306,9 @@
   const btnLeft = document.getElementById('btnLeft');
   const btnForward = document.getElementById('btnForward');
   const btnRight = document.getElementById('btnRight');
+  const btnBack = document.getElementById('btnBack');
+  const btnModeNormal = document.getElementById('btnModeNormal');
+  const btnModeAbyss = document.getElementById('btnModeAbyss');
   const btnEnter = document.getElementById('btnEnter');
   const btnUdon = document.getElementById('btnUdon');
   const btnCoffee = document.getElementById('btnCoffee');
@@ -455,17 +463,23 @@
   }
 
   // --- 상태 변수 ---
-  const TARGET_DEPTH = 6;
+  let abyssMode = true;
+  let TARGET_DEPTH = 9;
   let depth = 0;
   let steps = 0;
   let arrived = false;
   let insideCafe = false;
   let orderedItem = null; // null | 'udon' | 'coffee'
   let steamParticles = [];
+  let nodeEnteredAt = performance.now();
 
   let currentNode = {
     answer: 'forward',
+    clueDir: 'forward',
     clueType: 'fox',
+    isAnomaly: false,
+    anomalyKind: 'red_torii',
+    isMirage: false,
     pipesLeft: true
   };
 
@@ -514,12 +528,31 @@
   function generateNextNode() {
     const dirs = ['left', 'forward', 'right'];
     const clues = ['fox', 'puddle', 'wire'];
+    const anomalies = ['red_torii', 'upside_lantern', 'shadow_figure'];
+
+    const isAnomaly = abyssMode && depth >= 1 && Math.random() < 0.28;
+    const isMirage = !isAnomaly && abyssMode && depth >= 2 && Math.random() < 0.28;
+
+    let answer = dirs[Math.floor(Math.random() * dirs.length)];
+    let clueDir = answer;
+    if (isAnomaly) {
+      answer = 'back';
+      clueDir = dirs[Math.floor(Math.random() * dirs.length)];
+    } else if (isMirage) {
+      answer = Math.random() < 0.5 ? 'left' : 'right';
+      clueDir = answer === 'left' ? 'right' : 'left';
+    }
 
     currentNode = {
-      answer: dirs[Math.floor(Math.random() * dirs.length)],
+      answer,
+      clueDir,
       clueType: clues[Math.floor(Math.random() * clues.length)],
+      isAnomaly,
+      anomalyKind: anomalies[Math.floor(Math.random() * anomalies.length)],
+      isMirage,
       pipesLeft: Math.random() > 0.3
     };
+    nodeEnteredAt = performance.now();
 
     if (arrived && !insideCafe) {
       narrativeText.textContent = getArrivalNarrativeBySteps(steps);
@@ -542,9 +575,29 @@
       ]
     };
 
-    const list = clueTexts[currentNode.clueType];
-    narrativeText.textContent = list[Math.floor(Math.random() * list.length)];
-    narrativeHint.textContent = `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 단서가 가리키는 방향을 선택하세요`;
+    if (isAnomaly) {
+      const anomalyMsgs = {
+        red_torii: '🩸 [이상현상] 비정상적으로 거대하고 핏빛으로 물든 토리이가 골목 앞을 가로막고 서 있다. 앞으로 가면 안 될 것 같다!',
+        upside_lantern: '🏮 [이상현상] 처마 밑 등롱이 거꾸로 매달린 채 핏방울 같은 불티를 떨어뜨리고 있다. 기척이 불길하다...',
+        shadow_figure: '👤 [이상현상] 골목 안쪽 어둠 속에서 누군가 이쪽을 돌아보며 미동도 없이 서 있다. 되돌아서야 한다!'
+      };
+      narrativeText.textContent = anomalyMsgs[currentNode.anomalyKind];
+      narrativeHint.textContent = `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 이상현상 감지! [↓ 뒤돌아가기]로 회피하세요`;
+    } else if (isMirage) {
+      const mirageMsgs = {
+        fox: '🦊 [미혹] 여우 석상의 눈빛이 차갑게 흔들린다. 어쩐지 시선이 어긋나 반대편을 속삭이는 듯하다...',
+        puddle: '🌊 [미혹] 빗물 웅덩이의 물결이 안쪽이 아니라 바깥쪽으로 역류하며 번진다. 거짓된 빛일지도 모른다.',
+        wire: '⚡ [미혹] 전깃줄의 등불이 푸르스름하게 떨리며 거꾸로 비친다. 여우가 방향을 속이고 있는 것 같다!'
+      };
+      narrativeText.textContent = mirageMsgs[currentNode.clueType];
+      narrativeHint.textContent = `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 거짓 단서 주의! 보이는 쪽의 반대를 선택하세요`;
+    } else {
+      const list = clueTexts[currentNode.clueType];
+      narrativeText.textContent = list[Math.floor(Math.random() * list.length)];
+      narrativeHint.textContent = abyssMode
+        ? `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 안개가 짙어지기 전(2.5초) 단서를 살피세요`
+        : `⛩️ TORII SYNC: ${depth} / ${TARGET_DEPTH} · 단서가 가리키는 방향을 선택하세요`;
+    }
 
     if (isFoxSpiritPresent()) {
       if (steps === 33) {
@@ -589,14 +642,17 @@
           btnLeft.style.display = 'none';
           btnForward.style.display = 'none';
           btnRight.style.display = 'none';
+          btnBack.style.display = 'none';
           btnEnter.style.display = 'inline-block';
           linkStory.style.display = 'inline-block';
           btnReset.style.display = 'inline-block';
         }
       } else {
-        depth = Math.max(0, depth - 1);
+        depth = abyssMode ? 0 : Math.max(0, depth - 1);
         if (!isFoxSpiritPresent()) {
-          narrativeText.textContent = '짙은 안개 속에서 발소리가 맴돌더니 지도 밖 골목길 초입으로 되돌아와 버렸다... 단서를 다시 살펴보자.';
+          narrativeText.textContent = abyssMode
+            ? '비유클리드 안개에 삼켜졌다! 골목의 모든 거리가 뒤틀리며 처음 입구(0/' + TARGET_DEPTH + ')로 되돌아와 버렸다...'
+            : '짙은 안개 속에서 발소리가 맴돌더니 지도 밖 골목길 초입으로 되돌아와 버렸다... 단서를 다시 살펴보자.';
         }
       }
       hudDepth.textContent = `${depth} / ${TARGET_DEPTH}`;
@@ -937,9 +993,11 @@
       }
     }
 
-    // 3-B. [탐색 중: 3대 단서]
+    // 3-B. [탐색 중: 3대 단서 + 이상현상 + 2.5초 안개 제한]
     else {
-      const dirSign = currentNode.answer === 'left' ? -1 : (currentNode.answer === 'right' ? 1 : 0);
+      const dirSign = currentNode.clueDir === 'left' ? -1 : (currentNode.clueDir === 'right' ? 1 : 0);
+      const elapsedSec = (performance.now() - nodeEnteredAt) / 1000;
+      const fogAlpha = abyssMode ? Math.max(0.14, 1 - Math.max(0, elapsedSec - 2.5) * 0.75) : 1.0;
 
       const doorW = alleyHalfW * 0.22;
       const doorH = height * 0.22;
@@ -947,11 +1005,54 @@
       ctx.strokeRect(vanishX - alleyHalfW * 0.42, vanishY - doorH * 0.4, doorW, doorH);
       ctx.strokeRect(vanishX + alleyHalfW * 0.20, vanishY - doorH * 0.4, doorW, doorH);
 
-      if (currentNode.clueType === 'fox') {
+      ctx.save();
+      ctx.globalAlpha = fogAlpha;
+
+      if (currentNode.isAnomaly) {
+        const ax = vanishX;
+        const ay = vanishY + height * 0.04;
+        if (currentNode.anomalyKind === 'red_torii') {
+          ctx.strokeStyle = '#ef4444';
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 16;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(ax - 55, ay - 65); ctx.lineTo(ax + 55, ay - 65);
+          ctx.moveTo(ax - 44, ay - 48); ctx.lineTo(ax + 44, ay - 48);
+          ctx.moveTo(ax - 32, ay - 65); ctx.lineTo(ax - 32, ay + 48);
+          ctx.moveTo(ax + 32, ay - 65); ctx.lineTo(ax + 32, ay + 48);
+          ctx.stroke();
+        } else if (currentNode.anomalyKind === 'upside_lantern') {
+          ctx.strokeStyle = '#f43f5e';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(ax, ay + 55);
+          ctx.lineTo(ax, ay - 20);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(244, 63, 94, 0.85)';
+          ctx.beginPath();
+          ctx.ellipse(ax, ay - 28, 14, 22, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.7)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(ax, ay - 26, 13, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillRect(ax - 15, ay - 12, 30, 58);
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath();
+          ctx.arc(ax - 4, ay - 27, 2, 0, Math.PI * 2);
+          ctx.arc(ax + 4, ay - 27, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (currentNode.clueType === 'fox') {
         const fx = vanishX + dirSign * (alleyHalfW * 0.28);
         const fy = vanishY + height * 0.08;
 
-        ctx.strokeStyle = '#f43f5e';
+        ctx.strokeStyle = currentNode.isMirage ? '#38bdf8' : '#f43f5e';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         ctx.moveTo(fx - 18, fy - 26); ctx.lineTo(fx + 18, fy - 26);
@@ -960,8 +1061,8 @@
         ctx.moveTo(fx + 10, fy - 26); ctx.lineTo(fx + 10, fy + 6);
         ctx.stroke();
 
-        ctx.fillStyle = '#fbbf24';
-        ctx.shadowColor = '#fbbf24';
+        ctx.fillStyle = currentNode.isMirage ? '#67e8f9' : '#fbbf24';
+        ctx.shadowColor = ctx.fillStyle;
         ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.arc(fx - 3 + dirSign * 2, fy - 8, 2.2, 0, Math.PI * 2);
@@ -970,7 +1071,7 @@
         ctx.shadowBlur = 0;
 
         ctx.font = '700 12px "IBM Plex Mono", monospace';
-        ctx.fillStyle = '#fbbf24';
+        ctx.fillStyle = currentNode.isMirage ? '#67e8f9' : '#fbbf24';
         ctx.textAlign = 'center';
         const arrowChar = dirSign === -1 ? '◀' : (dirSign === 1 ? '▶' : '▲');
         ctx.fillText(arrowChar, fx, fy - 34);
@@ -979,8 +1080,8 @@
         const py = vanishY + height * 0.19;
 
         const pGrad = ctx.createRadialGradient(px, py, 2, px, py, 46);
-        pGrad.addColorStop(0, 'rgba(251, 191, 36, 0.75)');
-        pGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.25)');
+        pGrad.addColorStop(0, currentNode.isMirage ? 'rgba(103, 232, 249, 0.72)' : 'rgba(251, 191, 36, 0.75)');
+        pGrad.addColorStop(0.5, currentNode.isMirage ? 'rgba(56, 189, 248, 0.25)' : 'rgba(245, 158, 11, 0.25)');
         pGrad.addColorStop(1, 'transparent');
 
         ctx.fillStyle = pGrad;
@@ -989,7 +1090,9 @@
         ctx.fill();
 
         const rippleR = (timeTick * 18) % 36;
-        ctx.strokeStyle = `rgba(251, 191, 36, ${1 - rippleR / 36})`;
+        ctx.strokeStyle = currentNode.isMirage
+          ? `rgba(103, 232, 249, ${1 - rippleR / 36})`
+          : `rgba(251, 191, 36, ${1 - rippleR / 36})`;
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.ellipse(px, py, rippleR, rippleR * 0.32, 0, 0, Math.PI * 2);
@@ -999,7 +1102,7 @@
         const wy = vanishY - height * 0.14;
         const flicker = 0.65 + Math.sin(timeTick * 8) * 0.35;
 
-        ctx.strokeStyle = '#fbbf24';
+        ctx.strokeStyle = currentNode.isMirage ? '#67e8f9' : '#fbbf24';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(wx, vanishY - height * 0.24);
@@ -1007,8 +1110,8 @@
         ctx.stroke();
 
         const wGrad = ctx.createRadialGradient(wx, wy, 2, wx, wy, 36);
-        wGrad.addColorStop(0, `rgba(254, 240, 138, ${flicker})`);
-        wGrad.addColorStop(0.4, `rgba(251, 191, 36, ${flicker * 0.5})`);
+        wGrad.addColorStop(0, currentNode.isMirage ? `rgba(165, 243, 252, ${flicker})` : `rgba(254, 240, 138, ${flicker})`);
+        wGrad.addColorStop(0.4, currentNode.isMirage ? `rgba(56, 189, 248, ${flicker * 0.5})` : `rgba(251, 191, 36, ${flicker * 0.5})`);
         wGrad.addColorStop(1, 'transparent');
         ctx.fillStyle = wGrad;
         ctx.beginPath();
@@ -1020,6 +1123,7 @@
         ctx.arc(wx, wy, 3.5, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.restore();
 
       // 3-C. [33 / 66 / 99 / 100+ 걸음 이스터에그: 눈앞에 나타나는 하얀 길잡이 여우]
       if (isFoxSpiritPresent()) {
@@ -1161,6 +1265,20 @@
   btnLeft.addEventListener('click', () => makeMove('left'));
   btnForward.addEventListener('click', () => makeMove('forward'));
   btnRight.addEventListener('click', () => makeMove('right'));
+  btnBack.addEventListener('click', () => makeMove('back'));
+
+  function switchMode(isAbyss) {
+    abyssMode = isAbyss;
+    TARGET_DEPTH = abyssMode ? 9 : 6;
+    btnModeAbyss.style.color = abyssMode ? '#fbbf24' : '#64748b';
+    btnModeAbyss.style.borderColor = abyssMode ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.08)';
+    btnModeNormal.style.color = !abyssMode ? '#38bdf8' : '#64748b';
+    btnModeNormal.style.borderColor = !abyssMode ? 'rgba(56,189,248,0.5)' : 'rgba(255,255,255,0.08)';
+    btnBack.style.display = abyssMode ? 'inline-block' : 'none';
+    btnReset.click();
+  }
+  btnModeNormal.addEventListener('click', () => switchMode(false));
+  btnModeAbyss.addEventListener('click', () => switchMode(true));
 
   // 미닫이문 열고 실내 카운터 진입
   btnEnter.addEventListener('click', () => {
@@ -1210,6 +1328,7 @@
     btnLeft.style.display = 'inline-block';
     btnForward.style.display = 'inline-block';
     btnRight.style.display = 'inline-block';
+    btnBack.style.display = abyssMode ? 'inline-block' : 'none';
     btnEnter.style.display = 'none';
     btnUdon.style.display = 'none';
     btnCoffee.style.display = 'none';
@@ -1222,6 +1341,7 @@
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') makeMove('left');
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') makeMove('forward');
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') makeMove('right');
+    if ((e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') && abyssMode) makeMove('back');
   });
 
   window.addEventListener('resize', () => {
@@ -1231,6 +1351,7 @@
   });
 
   initRain();
+  hudDepth.textContent = `0 / ${TARGET_DEPTH}`;
   generateNextNode();
   requestAnimationFrame(render);
 </script>
