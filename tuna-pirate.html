@@ -596,14 +596,18 @@
     return { x, y: height * 0.44 + Math.cos(simTime * 0.9) * 18 };
   }
 
-  function castNetOnce() {
-    if (items.length === 0) {
+  function castNetOnce(requireVisible = false) {
+    if (items.length === 0 && !requireVisible) {
       spawnItem();
     }
     const ship = getShipPos();
+    const margin = Math.min(140, width * 0.16);
     let bestIdx = -1;
     let bestD = Infinity;
     items.forEach((it, idx) => {
+      if (requireVisible && (it.x < margin || it.x > width - margin || (it.age || 0) < 0.9)) {
+        return;
+      }
       const d = Math.hypot(it.x - ship.x, it.y - ship.y);
       if (d < bestD) { bestD = d; bestIdx = idx; }
     });
@@ -880,12 +884,13 @@
       const autoInterval = Math.max(0.4, (1.8 - engineLevel * 0.2) * DIFF_CONFIG[currentDiff].autoIntervalMult);
       if (autoTimer >= autoInterval && items.length > 0) {
         autoTimer = 0;
-        castNetOnce();
+        castNetOnce(true);
       }
     }
 
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
+      it.age = (it.age || 0) + dt;
       it.x += it.vx * dt;
       it.y += it.vy * dt;
       if (it.x < -80 || it.x > width + 80) items.splice(i, 1);
@@ -935,7 +940,7 @@
     syncAutoBtn();
   });
 
-  btnCast.addEventListener('click', castNetOnce);
+  btnCast.addEventListener('click', () => castNetOnce(false));
 
   btnUpgNet.addEventListener('click', () => {
     const cost = getNetCost();
