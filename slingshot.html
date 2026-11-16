@@ -182,7 +182,7 @@
 <header>
   <a href="index.html" class="home-link">← marsko</a>
   <h1>ORBITAL GRAVITY SLINGSHOT</h1>
-  <div class="hud-meta">N-BODY GRAVITY ASSIST · RK4 TRAJECTORY</div>
+  <div class="hud-meta" id="hudSystem">N-BODY GRAVITY ASSIST · RK4 TRAJECTORY</div>
 </header>
 
 <div class="telemetry-card">
@@ -219,6 +219,7 @@
   const ctx = canvas.getContext('2d');
 
   const hudLevel = document.getElementById('hudLevel');
+  const hudSystem = document.getElementById('hudSystem');
   const hudVel = document.getElementById('hudVel');
   const hudTries = document.getElementById('hudTries');
   const hudStatus = document.getElementById('hudStatus');
@@ -361,6 +362,37 @@
         { rx: 0.75, ry: 0.3, mass: 650, r: 26, color: '#fbbf24' },
         { rx: 0.75, ry: 0.7, mass: 650, r: 26, color: '#38bdf8' }
       ]
+    },
+    {
+      title: "LAGRANGE CORRIDOR // 쌍성계 중력 통로",
+      launcher: { rx: 0.12, ry: 0.5 },
+      target: { rx: 0.88, ry: 0.5, r: 22 },
+      planets: [
+        { rx: 0.45, ry: 0.28, mass: 1050, r: 36, color: '#38bdf8' },
+        { rx: 0.45, ry: 0.72, mass: 1050, r: 36, color: '#a855f7' },
+        { rx: 0.68, ry: 0.5, mass: 600, r: 24, color: '#fbbf24' }
+      ]
+    },
+    {
+      title: "BINARY PULSAR // 이중 펄서 역방향 선회",
+      launcher: { rx: 0.85, ry: 0.2 },
+      target: { rx: 0.85, ry: 0.8, r: 22 },
+      planets: [
+        { rx: 0.45, ry: 0.36, mass: 1350, r: 34, color: '#22d3ee' },
+        { rx: 0.45, ry: 0.64, mass: 1350, r: 34, color: '#f43f5e' },
+        { rx: 0.2, ry: 0.5, mass: 900, r: 28, color: '#e2e8f0', isBlackHole: true }
+      ]
+    },
+    {
+      title: "SAGITTARIUS A* // 은하 중심부 4체 슬링샷",
+      launcher: { rx: 0.1, ry: 0.85 },
+      target: { rx: 0.9, ry: 0.15, r: 20 },
+      planets: [
+        { rx: 0.5, ry: 0.5, mass: 2600, r: 46, color: '#e2e8f0', isBlackHole: true },
+        { rx: 0.28, ry: 0.42, mass: 750, r: 26, color: '#fbbf24' },
+        { rx: 0.72, ry: 0.58, mass: 750, r: 26, color: '#4ade80' },
+        { rx: 0.55, ry: 0.22, mass: 680, r: 24, color: '#38bdf8' }
+      ]
     }
   ];
 
@@ -394,6 +426,7 @@
     const lvl = LEVELS[currentLevelIdx];
 
     hudLevel.textContent = `${currentLevelIdx + 1} / ${LEVELS.length}`;
+    hudSystem.textContent = lvl.title;
     gameState = 'AIMING';
     statusBanner.style.display = 'none';
     hudStatus.textContent = 'READY TO SLING';
@@ -435,6 +468,40 @@
     return { ax, ay };
   }
 
+  // 4차 룽게-쿠타(RK4) 단일 스텝 적분 (예측선 및 실제 비행 공용)
+  function rk4Step(x, y, vx, vy, dt) {
+    const a1 = getAcceleration(x, y);
+    const k1_vx = a1.ax * dt;
+    const k1_vy = a1.ay * dt;
+    const k1_x = vx * dt;
+    const k1_y = vy * dt;
+
+    const a2 = getAcceleration(x + k1_x * 0.5, y + k1_y * 0.5);
+    const k2_vx = a2.ax * dt;
+    const k2_vy = a2.ay * dt;
+    const k2_x = (vx + k1_vx * 0.5) * dt;
+    const k2_y = (vy + k1_vy * 0.5) * dt;
+
+    const a3 = getAcceleration(x + k2_x * 0.5, y + k2_y * 0.5);
+    const k3_vx = a3.ax * dt;
+    const k3_vy = a3.ay * dt;
+    const k3_x = (vx + k2_vx * 0.5) * dt;
+    const k3_y = (vy + k2_vy * 0.5) * dt;
+
+    const a4 = getAcceleration(x + k3_x, y + k3_y);
+    const k4_vx = a4.ax * dt;
+    const k4_vy = a4.ay * dt;
+    const k4_x = (vx + k3_vx) * dt;
+    const k4_y = (vy + k3_vy) * dt;
+
+    return {
+      x: x + (k1_x + 2 * k2_x + 2 * k3_x + k4_x) / 6,
+      y: y + (k1_y + 2 * k2_y + 2 * k3_y + k4_y) / 6,
+      vx: vx + (k1_vx + 2 * k2_vx + 2 * k3_vx + k4_vx) / 6,
+      vy: vy + (k1_vy + 2 * k2_vy + 2 * k3_vy + k4_vy) / 6
+    };
+  }
+
   // 4차 룽게-쿠타(RK4) 정밀 적분 궤적 시뮬레이터 (예측 점선용)
   function simulateTrajectory(initX, initY, initVx, initVy, maxSteps = 450) {
     const traj = [];
@@ -447,36 +514,11 @@
     for (let step = 0; step < maxSteps; step++) {
       traj.push({ x, y });
 
-      // RK4 4단계 적분
-      const a1 = getAcceleration(x, y);
-
-      const k1_vx = a1.ax * dt;
-      const k1_vy = a1.ay * dt;
-      const k1_x = vx * dt;
-      const k1_y = vy * dt;
-
-      const a2 = getAcceleration(x + k1_x * 0.5, y + k1_y * 0.5);
-      const k2_vx = a2.ax * dt;
-      const k2_vy = a2.ay * dt;
-      const k2_x = (vx + k1_vx * 0.5) * dt;
-      const k2_y = (vy + k1_vy * 0.5) * dt;
-
-      const a3 = getAcceleration(x + k2_x * 0.5, y + k2_y * 0.5);
-      const k3_vx = a3.ax * dt;
-      const k3_vy = a3.ay * dt;
-      const k3_x = (vx + k2_vx * 0.5) * dt;
-      const k3_y = (vy + k2_vy * 0.5) * dt;
-
-      const a4 = getAcceleration(x + k3_x, y + k3_y);
-      const k4_vx = a4.ax * dt;
-      const k4_vy = a4.ay * dt;
-      const k4_x = (vx + k3_vx) * dt;
-      const k4_y = (vy + k3_vy) * dt;
-
-      x += (k1_x + 2 * k2_x + 2 * k3_x + k4_x) / 6;
-      y += (k1_y + 2 * k2_y + 2 * k3_y + k4_y) / 6;
-      vx += (k1_vx + 2 * k2_vx + 2 * k3_vx + k4_vx) / 6;
-      vy += (k1_vy + 2 * k2_vy + 2 * k3_vy + k4_vy) / 6;
+      const next = rk4Step(x, y, vx, vy, dt);
+      x = next.x;
+      y = next.y;
+      vx = next.vx;
+      vy = next.vy;
 
       // 목표 기지 도달 판정
       if (Math.hypot(x - targetPos.x, y - targetPos.y) < targetPos.r) {
@@ -521,14 +563,14 @@
   // --- 메인 물리 업데이트 ---
   function update() {
     if (gameState === 'FLYING' && probe) {
-      // 1프레임당 3회 서브스텝 계산으로 궤도 정밀도 극대화
-      const dt = 0.35;
+      // 예측선과 동일한 RK4 적분(dt=0.4) 3서브스텝으로 궤적 100% 일치
+      const dt = 0.4;
       for (let s = 0; s < 3; s++) {
-        const acc = getAcceleration(probe.x, probe.y);
-        probe.vx += acc.ax * dt;
-        probe.vy += acc.ay * dt;
-        probe.x += probe.vx * dt;
-        probe.y += probe.vy * dt;
+        const next = rk4Step(probe.x, probe.y, probe.vx, probe.vy, dt);
+        probe.x = next.x;
+        probe.y = next.y;
+        probe.vx = next.vx;
+        probe.vy = next.vy;
 
         probe.path.push({ x: probe.x, y: probe.y });
         if (probe.path.length > 500) probe.path.shift();

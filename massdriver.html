@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#020306">
-  <meta name="description" content="Marsko lab tool — massdriver. 달 기지 28km 전자기 코일건 기반 지구 대기권 감속 투하 & 화성 궤도 진입 탄도 시뮬레이터.">
+  <meta name="description" content="Marsko lab tool — massdriver. 달 표면 28km 전자기 코일건 로봇 터렛 시점 기반 지구 대기권 감속 투하 & LEO 데브리 회피 탄도 시뮬레이터.">
   <title>Lunar Mass Driver // marsko</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/marsko-hud.css">
@@ -32,6 +32,7 @@
       width: 100%;
       height: 100%;
       display: block;
+      cursor: crosshair;
       touch-action: none;
     }
 
@@ -40,7 +41,7 @@
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
       pointer-events: none;
-      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%);
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
       background-size: 100% 4px;
       z-index: 5;
     }
@@ -64,7 +65,7 @@
       pointer-events: auto;
       width: fit-content;
       padding: 2px 6px;
-      background: rgba(15, 23, 42, 0.6);
+      background: rgba(15, 23, 42, 0.65);
       border-radius: 4px;
       border: 1px solid rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(4px);
@@ -84,46 +85,23 @@
       color: #94a3b8;
     }
 
-    /* 우측 탄도 텔레메트리 HUD */
-    .telemetry-card {
-      position: absolute;
-      top: 14px;
-      right: 16px;
-      background: rgba(8, 12, 22, 0.82);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.68rem;
-      color: #94a3b8;
-      backdrop-filter: blur(6px);
-      pointer-events: none;
-      line-height: 1.65;
-      text-align: right;
-      z-index: 10;
-      min-width: 195px;
-    }
-    .telemetry-card strong { color: #38bdf8; }
-    .telemetry-card .warn { color: #fbbf24; }
-    .telemetry-card .danger { color: #f43f5e; text-shadow: 0 0 8px rgba(244, 63, 94, 0.6); }
-    .telemetry-card .ok { color: #34d399; }
-
-    /* 좌측 상단 레일건 코일 가속 인셋 모니터 */
+    /* 좌측 상단 레일건 코일 & AI COLA 인셋 모니터 */
     .rail-inset {
       position: absolute;
       top: 78px;
       left: 16px;
-      width: 210px;
-      background: rgba(8, 12, 22, 0.82);
+      width: 235px;
+      background: rgba(8, 12, 22, 0.84);
       border: 1px solid rgba(56, 189, 248, 0.22);
       border-radius: 8px;
-      padding: 8px 10px;
+      padding: 9px 11px;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.62rem;
       color: #94a3b8;
       backdrop-filter: blur(6px);
       pointer-events: none;
       z-index: 10;
+      line-height: 1.55;
     }
     .inset-title {
       color: #f8fafc;
@@ -135,8 +113,8 @@
     .coil-bar {
       display: flex;
       gap: 3px;
-      height: 10px;
-      margin-bottom: 4px;
+      height: 8px;
+      margin-bottom: 5px;
     }
     .coil-seg {
       flex: 1;
@@ -148,15 +126,82 @@
       background: #38bdf8;
       box-shadow: 0 0 8px #38bdf8;
     }
+    .cola-badge {
+      margin-top: 5px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 우측 텔레메트리 + 탄도 프로파일 PIP 카드 */
+    .right-hud {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+      pointer-events: none;
+      align-items: flex-end;
+    }
+    .telemetry-card {
+      background: rgba(8, 12, 22, 0.84);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.66rem;
+      color: #94a3b8;
+      backdrop-filter: blur(6px);
+      line-height: 1.6;
+      text-align: right;
+      min-width: 215px;
+    }
+    .telemetry-card strong { color: #38bdf8; }
+    .warn { color: #fbbf24 !important; }
+    .danger { color: #f43f5e !important; text-shadow: 0 0 8px rgba(244, 63, 94, 0.5); }
+    .ok { color: #34d399 !important; }
+
+    /* 측면 탄도 PIP 미니맵 */
+    .pip-box {
+      width: 215px;
+      background: rgba(6, 10, 18, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
+      padding: 6px;
+      backdrop-filter: blur(6px);
+    }
+    .pip-header {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.58rem;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      padding: 0 2px;
+    }
+    #pipCanvas {
+      width: 201px;
+      height: 132px;
+      display: block;
+      border-radius: 4px;
+      background: #02040a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
 
     /* 중앙 결과 배너 */
     .status-banner {
       position: absolute;
-      top: 42%;
+      top: 40%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(6, 10, 18, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(6, 10, 18, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 12px;
       padding: 18px 28px;
       text-align: center;
@@ -164,9 +209,10 @@
       z-index: 20;
       display: none;
       backdrop-filter: blur(10px);
+      max-width: 90vw;
     }
     .status-title {
-      font-size: 1.35rem;
+      font-size: 1.3rem;
       font-weight: 700;
       letter-spacing: 2px;
       margin-bottom: 6px;
@@ -177,10 +223,23 @@
       line-height: 1.5;
     }
 
+    .tip-hint {
+      position: absolute;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: #64748b;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
     /* 하단 플로팅 컨트롤 독 */
     .control-dock {
       position: absolute;
-      bottom: 16px;
+      bottom: 14px;
       left: 50%;
       transform: translateX(-50%);
       background: rgba(8, 12, 22, 0.9);
@@ -208,13 +267,8 @@
       transition: all 0.15s ease;
     }
     .dock-btn:hover { background: #334155; color: #38bdf8; }
-    .dock-btn.active {
-      background: rgba(56, 189, 248, 0.18);
-      border-color: #38bdf8;
-      color: #38bdf8;
-    }
     .dock-btn.fire-btn {
-      background: rgba(244, 63, 94, 0.2);
+      background: rgba(244, 63, 94, 0.22);
       border-color: #f43f5e;
       color: #fda4af;
       font-weight: 700;
@@ -236,38 +290,41 @@
     .slider-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       color: #94a3b8;
       white-space: nowrap;
     }
     .slider-group input[type="range"] {
-      width: 62px;
+      width: 64px;
       height: 4px;
       accent-color: #38bdf8;
       background: #334155;
       cursor: pointer;
     }
 
-    @media (max-width: 680px) {
-      .telemetry-card {
-        font-size: 0.6rem;
-        padding: 6px 8px;
-        min-width: 150px;
-        max-width: 48vw;
-      }
+    @media (max-width: 720px) {
       .rail-inset {
-        top: 68px;
-        width: 170px;
+        top: 66px;
+        width: 175px;
         padding: 6px 8px;
+        font-size: 0.56rem;
+      }
+      .telemetry-card {
         font-size: 0.58rem;
+        padding: 6px 8px;
+        min-width: 155px;
       }
-      .control-dock {
-        bottom: 10px;
-        padding: 6px 10px;
-        gap: 6px;
+      .pip-box {
+        width: 155px;
+        padding: 4px;
       }
+      #pipCanvas {
+        width: 145px;
+        height: 96px;
+      }
+      .tip-hint { display: none; }
     }
   </style>
 </head>
@@ -276,12 +333,12 @@
 <header>
   <a href="index.html" class="home-link">← marsko</a>
   <h1>LUNAR MASS DRIVER</h1>
-  <div class="hud-meta">ELECTROMAGNETIC RAILGUN · ORBITAL BALLISTICS</div>
+  <div class="hud-meta" id="hudStageTitle">STAGE 01 // EARTH CLEAN WINDOW</div>
 </header>
 
 <div class="rail-inset">
   <div class="inset-title">
-    <span>LINEAR COIL TRACK (28km)</span>
+    <span>28km COIL TRACK · AI UNIT</span>
     <span id="coilState">CHARGED</span>
   </div>
   <div class="coil-bar" id="coilBar">
@@ -289,55 +346,81 @@
     <div class="coil-seg"></div><div class="coil-seg"></div><div class="coil-seg"></div><div class="coil-seg"></div>
     <div class="coil-seg"></div><div class="coil-seg"></div><div class="coil-seg"></div><div class="coil-seg"></div>
   </div>
-  <div>CAPACITOR: <strong id="hudCap" style="color:#38bdf8;">2.52 km/s</strong> (84 GJ)</div>
+  <div>MUZZLE Δv: <strong id="hudCap" style="color:#38bdf8;">2.60 km/s</strong> (<span id="hudEnergy">87 GJ</span>)</div>
+  <div class="cola-badge">
+    <span>COLA</span>
+    <strong id="hudCola" class="ok">CLEAR</strong>
+  </div>
 </div>
 
-<div class="telemetry-card">
-  <div>MISSION: <strong id="hudMission">EARTH AEROBRAKE</strong></div>
-  <div>PAYLOAD VEL: <strong id="hudVel">0.00</strong> km/s</div>
-  <div>ALTITUDE: <strong id="hudAlt">--</strong> km</div>
-  <div>HEAT SHIELD: <strong id="hudHeat" class="ok">100%</strong></div>
-  <div>SUCCESSES: <strong id="hudScore">0</strong></div>
+<div class="right-hud">
+  <div class="telemetry-card">
+    <div>STAGE: <strong id="hudStage">1 / 5</strong> · SCORE: <strong id="hudScore">0</strong></div>
+    <div>CORRIDOR: <strong id="hudCorridor" class="ok">OPTIMAL</strong></div>
+    <div>PAYLOAD VEL: <strong id="hudVel">0.00</strong> km/s</div>
+    <div>HEAT SHIELD: <strong id="hudHeat" class="ok">100%</strong></div>
+  </div>
+  <div class="pip-box">
+    <div class="pip-header">
+      <span>BALLISTIC PROFILE</span>
+      <span id="pipTargetLabel">EARTH AEROBRAKE</span>
+    </div>
+    <canvas id="pipCanvas" width="201" height="132"></canvas>
+  </div>
 </div>
 
 <div class="status-banner" id="statusBanner">
-  <div class="status-title" id="statusTitle">PAYLOAD DELIVERED</div>
-  <div class="status-sub" id="statusSub">해상 회수 지점에 정밀 착수했습니다.</div>
+  <div class="status-title" id="statusTitle">CARGO SPLASHDOWN!</div>
+  <div class="status-sub" id="statusSub">태평양 회수 구역에 정밀 착수했습니다.</div>
+</div>
+
+<div class="tip-hint">
+  화면을 드래그해 하늘의 목표를 조준하고 [SPACE]로 사출하세요 · [R] 재시도
 </div>
 
 <canvas id="simCanvas"></canvas>
 <div class="crt-overlay"></div>
 
 <div class="control-dock">
-  <button type="button" class="dock-btn active" id="btnModeEarth">지구 물자 투하</button>
-  <button type="button" class="dock-btn" id="btnModeMars">화성행 비행체 발사</button>
+  <button type="button" class="dock-btn" id="btnPrev">◀ 이전</button>
+  <button type="button" class="dock-btn" id="btnNext">다음 ▶</button>
 
   <div class="dock-sep"></div>
 
   <div class="slider-group">
-    <span>사출 출력(Δv)</span>
-    <input type="range" id="powerRange" min="160" max="360" value="252">
+    <span>출력(Δv)</span>
+    <input type="range" id="powerRange" min="180" max="360" value="260">
   </div>
   <div class="slider-group">
-    <span>발사 방위각</span>
-    <input type="range" id="angleRange" min="-70" max="70" value="-24">
+    <span>방위각</span>
+    <input type="range" id="azimRange" min="-45" max="45" value="-6">
+  </div>
+  <div class="slider-group">
+    <span>앙각</span>
+    <input type="range" id="elevRange" min="-35" max="35" value="4">
   </div>
 
   <div class="dock-sep"></div>
 
-  <button type="button" class="dock-btn fire-btn" id="btnFire">⚡ 레일건 발사 [SPACE]</button>
+  <button type="button" class="dock-btn fire-btn" id="btnFire">⚡ 레일건 사출 [SPACE]</button>
 </div>
 
 <script>
   const canvas = document.getElementById('simCanvas');
   const ctx = canvas.getContext('2d');
+  const pipCanvas = document.getElementById('pipCanvas');
+  const pipCtx = pipCanvas.getContext('2d');
 
-  const hudMission = document.getElementById('hudMission');
-  const hudVel = document.getElementById('hudVel');
-  const hudAlt = document.getElementById('hudAlt');
-  const hudHeat = document.getElementById('hudHeat');
+  const hudStageTitle = document.getElementById('hudStageTitle');
+  const hudStage = document.getElementById('hudStage');
   const hudScore = document.getElementById('hudScore');
+  const hudCorridor = document.getElementById('hudCorridor');
+  const hudVel = document.getElementById('hudVel');
+  const hudHeat = document.getElementById('hudHeat');
   const hudCap = document.getElementById('hudCap');
+  const hudEnergy = document.getElementById('hudEnergy');
+  const hudCola = document.getElementById('hudCola');
+  const pipTargetLabel = document.getElementById('pipTargetLabel');
   const coilState = document.getElementById('coilState');
   const coilSegs = document.querySelectorAll('.coil-seg');
 
@@ -345,16 +428,17 @@
   const statusTitle = document.getElementById('statusTitle');
   const statusSub = document.getElementById('statusSub');
 
-  const btnModeEarth = document.getElementById('btnModeEarth');
-  const btnModeMars = document.getElementById('btnModeMars');
+  const btnPrev = document.getElementById('btnPrev');
+  const btnNext = document.getElementById('btnNext');
   const btnFire = document.getElementById('btnFire');
   const powerRange = document.getElementById('powerRange');
-  const angleRange = document.getElementById('angleRange');
+  const azimRange = document.getElementById('azimRange');
+  const elevRange = document.getElementById('elevRange');
 
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
 
-  // --- Web Audio API 전자기 레일건 사운드 엔진 ---
+  // --- Web Audio API 전자기 레일건 사운드 ---
   let audioCtx = null;
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -365,33 +449,45 @@
     initAudio();
     const now = audioCtx.currentTime;
 
-    // 1. 코일 시퀀셜 차지업 피치 스윕
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(90, now);
-    osc.frequency.exponentialRampToValueAtTime(1400, now + 0.32);
-
-    gain.gain.setValueAtTime(0.28, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-
+    osc.frequency.setValueAtTime(95, now);
+    osc.frequency.exponentialRampToValueAtTime(1450, now + 0.3);
+    gain.gain.setValueAtTime(0.24, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(now);
-    osc.stop(now + 0.46);
+    osc.stop(now + 0.44);
 
-    // 2. 사출 마그네틱 펄스 쿵 소리
     const sub = audioCtx.createOscillator();
     const subGain = audioCtx.createGain();
     sub.type = 'sine';
-    sub.frequency.setValueAtTime(160, now + 0.25);
-    sub.frequency.exponentialRampToValueAtTime(28, now + 0.7);
-    subGain.gain.setValueAtTime(0.4, now + 0.25);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+    sub.frequency.setValueAtTime(165, now + 0.22);
+    sub.frequency.exponentialRampToValueAtTime(28, now + 0.68);
+    subGain.gain.setValueAtTime(0.36, now + 0.22);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
     sub.connect(subGain);
     subGain.connect(audioCtx.destination);
-    sub.start(now + 0.25);
-    sub.stop(now + 0.76);
+    sub.start(now + 0.22);
+    sub.stop(now + 0.74);
+  }
+
+  function playImpactBeep(freq = 220, duration = 0.2) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(65, now + duration);
+    gain.gain.setValueAtTime(0.22, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
   }
 
   function playStatusBeep(success) {
@@ -410,136 +506,247 @@
     osc.stop(now + 0.36);
   }
 
+  // --- 스테이지 정의 (5단계) ---
+  const STAGES = [
+    {
+      title: "STAGE 01 // EARTH CLEAN WINDOW",
+      mode: "earth",
+      dropArcSpan: 1.25,
+      earthRotSpeed: 0.005,
+      debrisCount: 0,
+      debrisSpeed: 0,
+      defaultPower: 255,
+      defaultAzim: -7,
+      defaultElev: 2
+    },
+    {
+      title: "STAGE 02 // LEO CONSTELLATION",
+      mode: "earth",
+      dropArcSpan: 1.05,
+      earthRotSpeed: 0.006,
+      debrisCount: 6,
+      debrisSpeed: 0.016,
+      defaultPower: 262,
+      defaultAzim: -8,
+      defaultElev: 4
+    },
+    {
+      title: "STAGE 03 // KESSLER DEBRIS BELT",
+      mode: "earth",
+      dropArcSpan: 0.85,
+      earthRotSpeed: 0.0075,
+      debrisCount: 11,
+      debrisSpeed: 0.022,
+      defaultPower: 268,
+      defaultAzim: -6,
+      defaultElev: -3
+    },
+    {
+      title: "STAGE 04 // TYPHOON DROP CORRIDOR",
+      mode: "earth",
+      dropArcSpan: 0.65,
+      earthRotSpeed: 0.011,
+      debrisCount: 15,
+      debrisSpeed: 0.026,
+      defaultPower: 274,
+      defaultAzim: 8,
+      defaultElev: 5
+    },
+    {
+      title: "STAGE 05 // MARS TRANSFER WINDOW",
+      mode: "mars",
+      dropArcSpan: 0,
+      earthRotSpeed: 0.004,
+      debrisCount: 8,
+      debrisSpeed: 0.015,
+      defaultPower: 295,
+      defaultAzim: 10,
+      defaultElev: -4
+    }
+  ];
+
   // --- 시뮬레이션 상태 ---
-  let mode = 'earth'; // 'earth' (지구 물자 투하) | 'mars' (화성행 비행체 발사)
+  let stageIdx = 0;
   let score = 0;
   let stars = [];
-
-  // 천체 및 궤도 변수
-  let moonAngle = -Math.PI * 0.25; // 달의 초기 공전 각도
-  let marsAngle = Math.PI * 0.45;  // 화성의 초기 공전 각도
-  let earthRot = 0;                // 지구의 자전 각도 (목표 회수 구역 회전)
-
-  // 발사체(Payload) 상태
+  let craters = [];
+  let debrisList = [];
+  let earthRot = 0.6;
+  let marsOrbitAngle = -0.35;
   let payload = null;
   let particles = [];
+  let isAimDragging = false;
+  let lastPointer = { x: 0, y: 0 };
 
-  function initStars() {
+  // PIP 내부 좌표계 (201 x 132)
+  const PIP_W = 201;
+  const PIP_H = 132;
+
+  function initEnvironment() {
     stars = [];
-    for (let i = 0; i < 140; i++) {
+    for (let i = 0; i < 150; i++) {
       stars.push({
         x: Math.random() * width,
-        y: Math.random() * height,
-        r: Math.random() * 1.2 + 0.3,
-        a: Math.random() * 0.6 + 0.15
+        y: Math.random() * height * 0.78,
+        r: Math.random() * 1.3 + 0.3,
+        a: Math.random() * 0.65 + 0.15
+      });
+    }
+    craters = [];
+    for (let i = 0; i < 14; i++) {
+      craters.push({
+        rx: Math.random(),
+        ry: 0.78 + Math.random() * 0.2,
+        w: 18 + Math.random() * 48,
+        h: 4 + Math.random() * 10
       });
     }
   }
 
-  // 코일 점등 애니메이션
+  function loadStage(idx) {
+    stageIdx = (idx + STAGES.length) % STAGES.length;
+    const st = STAGES[stageIdx];
+    payload = null;
+    particles = [];
+    statusBanner.style.display = 'none';
+
+    hudStageTitle.textContent = st.title;
+    hudStage.textContent = `${stageIdx + 1} / ${STAGES.length}`;
+    pipTargetLabel.textContent = st.mode === 'earth' ? 'EARTH AEROBRAKE' : 'MARS SOI INJECTION';
+
+    powerRange.value = st.defaultPower;
+    azimRange.value = st.defaultAzim;
+    elevRange.value = st.defaultElev;
+    updateCapHUD();
+
+    // LEO 데브리/위성 링 초기화
+    debrisList = [];
+    for (let i = 0; i < st.debrisCount; i++) {
+      const band = i % 2 === 0 ? 1 : -1;
+      debrisList.push({
+        angle: (Math.PI * 2 * i) / st.debrisCount + Math.random() * 0.3,
+        radiusOffset: band === 1 ? 30 : 38,
+        speed: st.debrisSpeed * band * (0.85 + Math.random() * 0.3),
+        type: i % 3 === 0 ? 'SAT' : 'DEBRIS'
+      });
+    }
+  }
+
   function triggerCoilSequence() {
     coilState.textContent = 'FIRING!';
     coilState.style.color = '#f43f5e';
     coilSegs.forEach((seg, idx) => {
       setTimeout(() => {
         seg.classList.add('lit');
-        setTimeout(() => seg.classList.remove('lit'), 120);
-      }, idx * 22);
+        setTimeout(() => seg.classList.remove('lit'), 110);
+      }, idx * 20);
     });
     setTimeout(() => {
       coilState.textContent = 'CHARGED';
       coilState.style.color = '#94a3b8';
-    }, 500);
+    }, 480);
   }
 
-  // 중심 좌표 및 천체 반경 계산 헬퍼
-  function getSystemGeometry() {
-    const cx = width * 0.5;
-    const cy = height * 0.48;
-    const scale = Math.min(width, height);
+  // PIP 2D 탄도 좌표계 계산 (발사대: 좌측, 목표 행성: 우측)
+  function getBallisticGeo() {
+    const st = STAGES[stageIdx];
+    const lx = 20;
+    const ly = PIP_H * 0.52;
 
-    if (mode === 'earth') {
-      const earthR = scale * 0.085;
-      const atmoR = earthR * 1.38;
-      const moonOrbitR = scale * 0.36;
-      const moonR = scale * 0.024;
-      const mx = cx + Math.cos(moonAngle) * moonOrbitR;
-      const my = cy + Math.sin(moonAngle) * moonOrbitR;
-      return { cx, cy, earthR, atmoR, moonOrbitR, moonR, mx, my };
+    if (st.mode === 'earth') {
+      const tx = PIP_W * 0.74;
+      const ty = PIP_H * 0.52;
+      const bodyR = 16;
+      const atmoR = 24;
+      return { mode: 'earth', lx, ly, tx, ty, bodyR, atmoR, GM: 135 };
     } else {
-      const moonOrbitR = scale * 0.16;
-      const marsOrbitR = scale * 0.39;
-      const mx = cx + Math.cos(moonAngle) * moonOrbitR;
-      const my = cy + Math.sin(moonAngle) * moonOrbitR;
-      const marsX = cx + Math.cos(marsAngle) * marsOrbitR;
-      const marsY = cy + Math.sin(marsAngle) * marsOrbitR;
-      const marsR = scale * 0.032;
-      const marsSOI = marsR * 2.4;
-      return { cx, cy, moonOrbitR, marsOrbitR, mx, my, marsX, marsY, marsR, marsSOI };
+      const tx = PIP_W * 0.78;
+      const ty = PIP_H * 0.52 + Math.sin(marsOrbitAngle) * 26;
+      const bodyR = 9;
+      const soiR = 20;
+      return { mode: 'mars', lx, ly, tx, ty, bodyR, soiR, GM: 55 };
     }
   }
 
-  // 초기 발사 속도 벡터 계산
-  function getLaunchState() {
-    const geo = getSystemGeometry();
-    const power = parseFloat(powerRange.value) / 100;
-    const angleOffset = (parseFloat(angleRange.value) * Math.PI) / 180;
+  function getLaunchVector() {
+    const power = parseFloat(powerRange.value) / 100; // 1.80 ~ 3.60
+    const azimDeg = parseFloat(azimRange.value);
+    const elevDeg = parseFloat(elevRange.value);
 
-    let baseDir;
-    if (mode === 'earth') {
-      baseDir = Math.atan2(geo.cy - geo.my, geo.cx - geo.mx) + angleOffset;
-    } else {
-      baseDir = moonAngle + Math.PI * 0.4 + angleOffset;
-    }
-
-    const speedScale = mode === 'earth' ? 1.85 : 2.35;
-    const vx = Math.cos(baseDir) * power * speedScale;
-    const vy = Math.sin(baseDir) * power * speedScale;
+    // PIP 측면 단면도에서는 방위각+앙각의 복합 편차가 목표 진입 각도를 결정
+    const aimAngleRad = ((azimDeg * 0.65 - elevDeg * 0.45) * Math.PI) / 180;
+    const speed = power * 0.88;
 
     return {
-      x: geo.mx + Math.cos(baseDir) * 14,
-      y: geo.my + Math.sin(baseDir) * 14,
-      vx,
-      vy,
-      baseDir
+      vx: Math.cos(aimAngleRad) * speed,
+      vy: Math.sin(aimAngleRad) * speed,
+      azimDeg,
+      elevDeg,
+      power
     };
   }
 
-  // 예측 탄도 궤적 시뮬레이션
-  function computePreviewPath() {
-    const geo = getSystemGeometry();
-    const init = getLaunchState();
-    let x = init.x;
-    let y = init.y;
-    let vx = init.vx;
-    let vy = init.vy;
+  // 예측 탄도 및 COLA 충돌 분석
+  function simulateBallisticPreview() {
+    const geo = getBallisticGeo();
+    const lv = getLaunchVector();
+    let x = geo.lx;
+    let y = geo.ly;
+    let vx = lv.vx;
+    let vy = lv.vy;
 
     const pts = [{ x, y }];
-    const GM = mode === 'earth' ? 980 : 720;
+    let conjunction = false;
+    let hitBody = false;
+    let aerobraked = false;
+    let entrySpeed = 0;
 
-    for (let step = 0; step < 190; step++) {
-      const dx = geo.cx - x;
-      const dy = geo.cy - y;
+    for (let step = 0; step < 150; step++) {
+      const dx = geo.tx - x;
+      const dy = geo.ty - y;
       const distSq = dx * dx + dy * dy;
       const dist = Math.sqrt(distSq);
 
-      if (mode === 'earth' && dist < geo.earthR * 0.9) break;
-      if (dist > Math.max(width, height)) break;
-
-      const f = GM / Math.max(400, distSq);
+      const f = geo.GM / Math.max(180, distSq);
       vx += (dx / dist) * f;
       vy += (dy / dist) * f;
 
-      if (mode === 'earth' && dist < geo.atmoR) {
-        vx *= 0.985;
-        vy *= 0.985;
+      if (geo.mode === 'earth' && dist < geo.atmoR) {
+        aerobraked = true;
+        vx *= 0.965;
+        vy *= 0.965;
       }
 
       x += vx;
       y += vy;
-      if (step % 3 === 0) pts.push({ x, y });
+
+      // 예측 스텝 시점의 데브리 위치와 근접 여부(COLA) 계산
+      if (debrisList.length > 0 && geo.mode === 'earth') {
+        for (let d of debrisList) {
+          const futureAngle = d.angle + d.speed * step;
+          const debX = geo.tx + Math.cos(futureAngle) * d.radiusOffset;
+          const debY = geo.ty + Math.sin(futureAngle) * d.radiusOffset;
+          if (Math.hypot(x - debX, y - debY) < 6.5) {
+            conjunction = true;
+          }
+        }
+      }
+
+      if (step % 2 === 0) pts.push({ x, y });
+
+      if (dist <= geo.bodyR) {
+        hitBody = true;
+        entrySpeed = Math.hypot(vx, vy);
+        break;
+      }
+      if (geo.mode === 'mars' && dist <= geo.soiR * 0.72) {
+        hitBody = true;
+        break;
+      }
+      if (x < -10 || x > PIP_W + 15 || y < -15 || y > PIP_H + 15) break;
     }
-    return pts;
+
+    return { pts, conjunction, hitBody, aerobraked, entrySpeed };
   }
 
   function firePayload() {
@@ -547,26 +754,32 @@
     playRailgunFireSound();
     triggerCoilSequence();
 
-    const init = getLaunchState();
+    const geo = getBallisticGeo();
+    const lv = getLaunchVector();
+
     payload = {
-      x: init.x,
-      y: init.y,
-      vx: init.vx,
-      vy: init.vy,
+      x: geo.lx,
+      y: geo.ly,
+      vx: lv.vx,
+      vy: lv.vy,
       heat: 100,
       aerobraked: false,
+      active: true,
       trail: [],
-      active: true
+      debrisHitCooldown: 0,
+      progress: 0
     };
 
-    for (let i = 0; i < 20; i++) {
-      const sp = Math.random() * 4 + 1;
-      const ang = init.baseDir + (Math.random() - 0.5) * 0.5;
+    // 달 표면 발사구 불꽃 파티클
+    const muzzle = getMuzzleScreenPos();
+    for (let i = 0; i < 24; i++) {
+      const ang = -Math.PI * 0.5 + (Math.random() - 0.5) * 0.8;
+      const spd = Math.random() * 4.5 + 1.5;
       particles.push({
-        x: init.x,
-        y: init.y,
-        vx: Math.cos(ang) * sp,
-        vy: Math.sin(ang) * sp,
+        x: muzzle.x,
+        y: muzzle.y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
         color: '#38bdf8',
         life: 1.0
       });
@@ -586,69 +799,107 @@
     statusBanner.style.display = 'block';
   }
 
-  function createBurst(x, y, color) {
-    for (let i = 0; i < 35; i++) {
-      const sp = Math.random() * 5 + 1;
-      const ang = Math.random() * Math.PI * 2;
-      particles.push({
-        x, y,
-        vx: Math.cos(ang) * sp,
-        vy: Math.sin(ang) * sp,
-        color,
-        life: 1.0
-      });
-    }
+  // 각도 정규화 (-PI ~ PI)
+  function angleDiff(a, b) {
+    let d = (a - b) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return d;
   }
 
-  // --- 물리 업데이트 루프 ---
   function update() {
-    moonAngle += 0.0022;
-    marsAngle += 0.0014;
-    earthRot = (earthRot + 0.008) % (Math.PI * 2);
+    const st = STAGES[stageIdx];
+    earthRot = (earthRot + st.earthRotSpeed) % (Math.PI * 2);
+    marsOrbitAngle += 0.012;
 
-    const geo = getSystemGeometry();
+    for (let d of debrisList) {
+      d.angle = (d.angle + d.speed) % (Math.PI * 2);
+    }
 
+    const geo = getBallisticGeo();
+
+    // 실시간 AI COLA & 진입 회랑 판독
+    const preview = simulateBallisticPreview();
+    if (preview.conjunction) {
+      hudCola.textContent = 'CONJUNCTION WARN';
+      hudCola.className = 'danger';
+    } else {
+      hudCola.textContent = 'CLEAR';
+      hudCola.className = 'ok';
+    }
+
+    if (geo.mode === 'earth') {
+      if (!preview.hitBody && !preview.aerobraked) {
+        hudCorridor.textContent = 'SKIP OUT';
+        hudCorridor.className = 'warn';
+      } else if (preview.entrySpeed > 2.45) {
+        hudCorridor.textContent = 'TOO STEEP';
+        hudCorridor.className = 'danger';
+      } else {
+        hudCorridor.textContent = 'OPTIMAL';
+        hudCorridor.className = 'ok';
+      }
+    } else {
+      hudCorridor.textContent = preview.hitBody ? 'SOI LOCKED' : 'OFF TARGET';
+      hudCorridor.className = preview.hitBody ? 'ok' : 'warn';
+    }
+
+    // 발사체 물리 업데이트
     if (payload && payload.active) {
       payload.trail.push({ x: payload.x, y: payload.y });
-      if (payload.trail.length > 110) payload.trail.shift();
+      if (payload.trail.length > 90) payload.trail.shift();
 
-      const dx = geo.cx - payload.x;
-      const dy = geo.cy - payload.y;
+      if (payload.debrisHitCooldown > 0) payload.debrisHitCooldown--;
+
+      const dx = geo.tx - payload.x;
+      const dy = geo.ty - payload.y;
       const distSq = dx * dx + dy * dy;
       const dist = Math.sqrt(distSq);
 
-      const GM = mode === 'earth' ? 980 : 720;
-      const f = GM / Math.max(400, distSq);
-
+      const f = geo.GM / Math.max(180, distSq);
       payload.vx += (dx / dist) * f;
       payload.vy += (dy / dist) * f;
 
       const speed = Math.hypot(payload.vx, payload.vy);
 
-      if (mode === 'earth') {
-        if (dist < geo.atmoR && dist > geo.earthR) {
-          payload.aerobraked = true;
-          payload.vx *= 0.982;
-          payload.vy *= 0.982;
+      // 데브리 / 위성 충돌 체크
+      if (geo.mode === 'earth' && payload.debrisHitCooldown === 0) {
+        for (let d of debrisList) {
+          const debX = geo.tx + Math.cos(d.angle) * d.radiusOffset;
+          const debY = geo.ty + Math.sin(d.angle) * d.radiusOffset;
+          if (Math.hypot(payload.x - debX, payload.y - debY) < 5.2) {
+            payload.heat -= 38;
+            payload.debrisHitCooldown = 14;
+            // 궤도 미세 교란
+            payload.vy += (Math.random() - 0.5) * 0.45;
+            playImpactBeep(240, 0.22);
 
-          if (speed > 4.6) {
-            payload.heat -= (speed - 4.3) * 1.9;
+            if (payload.heat <= 0) {
+              showResult(
+                'DEBRIS COLLISION!',
+                'LEO 우주쓰레기/위성과 정면 충돌하여 화물 컨테이너가 파손되었습니다. COLA 경보를 피해서 발사하세요.',
+                '#f43f5e',
+                false
+              );
+              return;
+            }
+            break;
           }
+        }
+      }
 
-          particles.push({
-            x: payload.x,
-            y: payload.y,
-            vx: -payload.vx * 0.3 + (Math.random() - 0.5),
-            vy: -payload.vy * 0.3 + (Math.random() - 0.5),
-            color: '#f43f5e',
-            life: 0.7
-          });
-
+      if (geo.mode === 'earth') {
+        if (dist < geo.atmoR && dist > geo.bodyR) {
+          payload.aerobraked = true;
+          payload.vx *= 0.965;
+          payload.vy *= 0.965;
+          if (speed > 2.3) {
+            payload.heat -= (speed - 2.1) * 3.1;
+          }
           if (payload.heat <= 0) {
-            createBurst(payload.x, payload.y, '#f43f5e');
             showResult(
               'HEAT SHIELD BURNED UP',
-              '대기권 진입 속도가 너무 빨라 컨테이너가 소각되었습니다. 사출 출력을 낮추거나 진입각을 완만하게 조절하세요.',
+              '대기권 진입 속도가 너무 빨라 컨테이너가 전소되었습니다. 출력(Δv)을 줄이거나 대기권을 얕게 스치세요.',
               '#f43f5e',
               false
             );
@@ -656,41 +907,41 @@
           }
         }
 
-        if (dist <= geo.earthR) {
-          if (speed > 3.9) {
-            createBurst(payload.x, payload.y, '#fbbf24');
+        if (dist <= geo.bodyR) {
+          const impactAngle = Math.atan2(payload.y - geo.ty, payload.x - geo.tx);
+          const dropCenter = earthRot + st.dropArcSpan * 0.5;
+          const inDropZone = Math.abs(angleDiff(impactAngle, dropCenter)) <= st.dropArcSpan * 0.55;
+
+          if (speed > 2.45) {
             showResult(
               'KINETIC IMPACT CRASH',
-              '충분히 감속되지 않은 상태로 지표면에 충돌했습니다. 대기권 상층부를 더 길게 스치도록 조준하세요.',
+              '대기권 감속이 부족해 지표면에 고속 충돌했습니다. 진입 각도를 완만하게 조준하세요.',
+              '#fbbf24',
+              false
+            );
+          } else if (!inDropZone) {
+            showResult(
+              'MISSED DROP ZONE',
+              '감속에는 성공했으나 태평양 회수 구역(초록색 호) 바깥에 낙하했습니다. 지구 자전 타이밍을 맞추세요!',
               '#fbbf24',
               false
             );
           } else {
-            createBurst(payload.x, payload.y, '#34d399');
             showResult(
-              'CARGO SPLASHDOWN SUCCESS!',
-              `대기권 감속 후 태평양 회수 수역에 안전하게 착수했습니다! (진입 속도: ${(speed * 2.1).toFixed(2)} km/s)`,
+              'CARGO SPLASHDOWN!',
+              `태평양 회수 구역에 정밀 착수했습니다! (잔여 열차폐: ${Math.round(payload.heat)}%)`,
               '#34d399',
               true
             );
           }
           return;
         }
-      } else if (mode === 'mars') {
-        const mDx = geo.marsX - payload.x;
-        const mDy = geo.marsY - payload.y;
-        const mDist = Math.hypot(mDx, mDy);
-
-        if (mDist < geo.marsSOI * 1.4) {
-          payload.vx += (mDx / mDist) * 0.12;
-          payload.vy += (mDy / mDist) * 0.12;
-        }
-
-        if (mDist <= geo.marsSOI * 0.75) {
-          createBurst(payload.x, payload.y, '#34d399');
+      } else {
+        // 화성 모드
+        if (dist <= geo.soiR * 0.72) {
           showResult(
             'MARS ORBIT INJECTION!',
-            '화성 중력권(SOI)에 성공적으로 진입하여 화물선이 화성 궤도에 안착했습니다!',
+            '화성 중력권(SOI) 진입에 성공해 화물선이 궤도에 안착했습니다!',
             '#34d399',
             true
           );
@@ -700,8 +951,9 @@
 
       payload.x += payload.vx;
       payload.y += payload.vy;
+      payload.progress = Math.min(1, Math.max(0, (payload.x - geo.lx) / Math.max(1, geo.tx - geo.lx)));
 
-      if (payload.x < -100 || payload.x > width + 100 || payload.y < -100 || payload.y > height + 100) {
+      if (payload.x < -20 || payload.x > PIP_W + 25 || payload.y < -25 || payload.y > PIP_H + 25) {
         showResult(
           'LOST IN DEEP SPACE',
           '화물이 목표 중력권을 벗어나 심우주로 표류했습니다.',
@@ -710,239 +962,438 @@
         );
       }
 
-      hudVel.textContent = (speed * 2.1).toFixed(2);
-      const altKm = mode === 'earth' ? Math.max(0, Math.round((dist - geo.earthR) * 45)) : Math.round(dist * 120);
-      hudAlt.textContent = altKm.toLocaleString();
+      hudVel.textContent = (speed * 2.8).toFixed(2);
       hudHeat.textContent = `${Math.max(0, Math.round(payload.heat))}%`;
       hudHeat.className = payload.heat < 40 ? 'danger' : (payload.heat < 75 ? 'warn' : 'ok');
+    } else {
+      hudVel.textContent = '0.00';
+      hudHeat.textContent = '100%';
+      hudHeat.className = 'ok';
     }
 
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.x += p.vx;
       p.y += p.vy;
-      p.life -= 0.025;
+      p.life -= 0.03;
       if (p.life <= 0) particles.splice(i, 1);
     }
   }
 
-  // --- 화면 렌더링 루프 ---
-  function draw() {
+  // 달 표면 레일건 포구 스크린 좌표
+  function getMuzzleScreenPos() {
+    const az = parseFloat(azimRange.value);
+    const el = parseFloat(elevRange.value);
+    const baseX = width * 0.5;
+    const baseY = height * 0.98;
+    const tipX = width * 0.5 + az * 3.4;
+    const tipY = height * 0.67 - el * 1.8;
+    return { x: tipX, y: tipY, baseX, baseY };
+  }
+
+  // --- 메인 달 표면 1인칭 시점 렌더링 ---
+  function drawMainView() {
     ctx.fillStyle = '#020306';
     ctx.fillRect(0, 0, width, height);
 
+    // 1. 별빛 배경
     ctx.fillStyle = '#f8fafc';
-    stars.forEach(s => {
+    for (let s of stars) {
       ctx.globalAlpha = s.a;
       ctx.fillRect(s.x, s.y, s.r, s.r);
-    });
+    }
     ctx.globalAlpha = 1.0;
 
-    const geo = getSystemGeometry();
+    const st = STAGES[stageIdx];
+    const horizonY = height * 0.78;
 
-    const previewPts = computePreviewPath();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
-    ctx.lineWidth = 1.3;
-    ctx.setLineDash([4, 5]);
-    ctx.beginPath();
-    previewPts.forEach((pt, idx) => {
-      if (idx === 0) ctx.moveTo(pt.x, pt.y);
-      else ctx.lineTo(pt.x, pt.y);
-    });
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // 2. 하늘의 목표 천체 (지구 or 화성)
+    const targetScreenX = width * 0.5;
+    const targetScreenY = height * 0.31;
 
-    if (mode === 'earth') {
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, geo.moonOrbitR, 0, Math.PI * 2);
-      ctx.stroke();
+    if (st.mode === 'earth') {
+      const earthScreenR = Math.min(width, height) * 0.095;
 
-      const atmoGrad = ctx.createRadialGradient(geo.cx, geo.cy, geo.earthR, geo.cx, geo.cy, geo.atmoR);
+      // 대기권 글로우
+      const atmoGrad = ctx.createRadialGradient(
+        targetScreenX, targetScreenY, earthScreenR * 0.85,
+        targetScreenX, targetScreenY, earthScreenR * 1.45
+      );
       atmoGrad.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
-      atmoGrad.addColorStop(0.6, 'rgba(56, 189, 248, 0.12)');
       atmoGrad.addColorStop(1, 'transparent');
       ctx.fillStyle = atmoGrad;
       ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, geo.atmoR, 0, Math.PI * 2);
+      ctx.arc(targetScreenX, targetScreenY, earthScreenR * 1.45, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-      ctx.setLineDash([2, 4]);
-      ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, geo.atmoR, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.fillStyle = '#07192e';
+      // 지구 본체
+      ctx.fillStyle = '#071a33';
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, geo.earthR, 0, Math.PI * 2);
+      ctx.arc(targetScreenX, targetScreenY, earthScreenR, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
-      ctx.strokeStyle = '#34d399';
-      ctx.lineWidth = 3.5;
+      // 지구 자전 DROP ZONE 비콘 표시
+      const dropCenter = earthRot + st.dropArcSpan * 0.5;
+      const dropVisible = Math.cos(dropCenter);
+      if (dropVisible > -0.2) {
+        const dzX = targetScreenX + Math.sin(dropCenter) * earthScreenR * 0.72;
+        const dzY = targetScreenY + Math.cos(dropCenter * 0.5) * earthScreenR * 0.15;
+        ctx.strokeStyle = '#34d399';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(dzX, dzY, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = '600 9px "IBM Plex Mono", monospace';
+        ctx.fillStyle = '#34d399';
+        ctx.fillText('DROP ZONE', dzX - 26, dzY - 12);
+      }
+
+      // LEO 데브리 / 위성 띠 원근 투영
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.14)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, geo.earthR + 2, earthRot, earthRot + 1.1);
+      ctx.ellipse(targetScreenX, targetScreenY, earthScreenR * 2.1, earthScreenR * 0.65, -0.18, 0, Math.PI * 2);
       ctx.stroke();
 
-      ctx.font = '600 10px "IBM Plex Mono", monospace';
-      ctx.fillStyle = '#34d399';
-      ctx.fillText('DROP ZONE', geo.cx - 28, geo.cy + geo.earthR + 18);
+      for (let d of debrisList) {
+        const rx = Math.cos(d.angle) * earthScreenR * (d.radiusOffset / 18);
+        const ry = Math.sin(d.angle) * earthScreenR * 0.62;
+        const cosT = Math.cos(-0.18);
+        const sinT = Math.sin(-0.18);
+        const sx = targetScreenX + rx * cosT - ry * sinT;
+        const sy = targetScreenY + rx * sinT + ry * cosT;
+
+        ctx.fillStyle = d.type === 'SAT' ? '#fbbf24' : '#f43f5e';
+        ctx.fillRect(sx - 2, sy - 2, 4, 4);
+      }
     } else {
-      ctx.fillStyle = '#fbbf24';
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
-      ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, geo.moonOrbitR, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.strokeStyle = 'rgba(244, 63, 94, 0.22)';
-      ctx.beginPath();
-      ctx.arc(geo.cx, geo.cy, geo.marsOrbitR, 0, Math.PI * 2);
-      ctx.stroke();
+      const marsScreenX = targetScreenX + Math.sin(marsOrbitAngle) * 110;
+      const marsScreenY = targetScreenY - 20;
+      const marsR = Math.min(width, height) * 0.05;
 
       ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)';
-      ctx.setLineDash([3, 3]);
+      ctx.setLineDash([4, 4]);
       ctx.beginPath();
-      ctx.arc(geo.marsX, geo.marsY, geo.marsSOI, 0, Math.PI * 2);
+      ctx.arc(marsScreenX, marsScreenY, marsR * 2.2, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = '#2e0910';
+      ctx.fillStyle = '#3b0c15';
       ctx.strokeStyle = '#f43f5e';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
-      ctx.arc(geo.marsX, geo.marsY, geo.marsR, 0, Math.PI * 2);
+      ctx.arc(marsScreenX, marsScreenY, marsR, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
       ctx.font = '600 10px "IBM Plex Mono", monospace';
       ctx.fillStyle = '#f43f5e';
-      ctx.fillText('MARS SOI', geo.marsX - 24, geo.marsY - geo.marsSOI - 6);
+      ctx.fillText('MARS SOI', marsScreenX - 24, marsScreenY - marsR - 10);
     }
 
-    const mR = mode === 'earth' ? geo.moonR : 11;
-    ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#cbd5e1';
-    ctx.lineWidth = 1.6;
+    // 3. 달 표면 지평선 & 크레이터
+    const groundGrad = ctx.createLinearGradient(0, horizonY, 0, height);
+    groundGrad.addColorStop(0, '#111827');
+    groundGrad.addColorStop(1, '#03050a');
+    ctx.fillStyle = groundGrad;
     ctx.beginPath();
-    ctx.arc(geo.mx, geo.my, mR, 0, Math.PI * 2);
+    ctx.moveTo(0, horizonY + 14);
+    ctx.quadraticCurveTo(width * 0.5, horizonY - 22, width, horizonY + 14);
+    ctx.lineTo(width, height);
+    ctx.lineTo(0, height);
+    ctx.closePath();
     ctx.fill();
-    ctx.stroke();
 
-    const launch = getLaunchState();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.8;
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(geo.mx, geo.my);
-    ctx.lineTo(geo.mx + Math.cos(launch.baseDir) * (mR + 14), geo.my + Math.sin(launch.baseDir) * (mR + 14));
+    ctx.moveTo(0, horizonY + 14);
+    ctx.quadraticCurveTo(width * 0.5, horizonY - 22, width, horizonY + 14);
     ctx.stroke();
 
-    ctx.font = '600 10px "IBM Plex Mono", monospace';
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText('LUNAR BASE', geo.mx - 30, geo.my + mR + 14);
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+    for (let c of craters) {
+      ctx.beginPath();
+      ctx.ellipse(c.rx * width, c.ry * height, c.w, c.h, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
+    // 4. 28km 원근 전자기 레일건 트랙
+    const muzzle = getMuzzleScreenPos();
+    const baseSpread = 78;
+    const tipSpread = 8;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.beginPath();
+    ctx.moveTo(muzzle.baseX - baseSpread, muzzle.baseY);
+    ctx.lineTo(muzzle.tipX - tipSpread, muzzle.tipY);
+    ctx.lineTo(muzzle.tipX + tipSpread, muzzle.tipY);
+    ctx.lineTo(muzzle.baseX + baseSpread, muzzle.baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 레일 좌우 빔
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(muzzle.baseX - baseSpread, muzzle.baseY);
+    ctx.lineTo(muzzle.tipX - tipSpread, muzzle.tipY);
+    ctx.moveTo(muzzle.baseX + baseSpread, muzzle.baseY);
+    ctx.lineTo(muzzle.tipX + tipSpread, muzzle.tipY);
+    ctx.stroke();
+
+    // 레일 코일 링 12개 원근 배치
+    for (let i = 1; i <= 12; i++) {
+      const t = i / 12;
+      const easeT = Math.pow(t, 0.78);
+      const rx = muzzle.baseX + (muzzle.tipX - muzzle.baseX) * easeT;
+      const ry = muzzle.baseY + (muzzle.tipY - muzzle.baseY) * easeT;
+      const halfW = baseSpread + (tipSpread - baseSpread) * easeT;
+      const isLit = coilSegs[i - 1] && coilSegs[i - 1].classList.contains('lit');
+
+      ctx.strokeStyle = isLit ? '#f43f5e' : 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = isLit ? 3 : 1.2;
+      ctx.beginPath();
+      ctx.moveTo(rx - halfW, ry);
+      ctx.lineTo(rx + halfW, ry);
+      ctx.stroke();
+    }
+
+    // 5. 조준 레티클 (하늘 목표 조준경)
+    const aimX = width * 0.5 + parseFloat(azimRange.value) * 5.2;
+    const aimY = height * 0.31 - parseFloat(elevRange.value) * 4.2;
+
+    ctx.strokeStyle = hudCola.className === 'danger' ? '#f43f5e' : '#38bdf8';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(aimX, aimY, 16, 0, Math.PI * 2);
+    ctx.moveTo(aimX - 24, aimY);
+    ctx.lineTo(aimX - 8, aimY);
+    ctx.moveTo(aimX + 8, aimY);
+    ctx.lineTo(aimX + 24, aimY);
+    ctx.moveTo(aimX, aimY - 24);
+    ctx.lineTo(aimX, aimY - 8);
+    ctx.moveTo(aimX, aimY + 8);
+    ctx.lineTo(aimX, aimY + 24);
+    ctx.stroke();
+
+    ctx.font = '600 9px "IBM Plex Mono", monospace';
+    ctx.fillStyle = hudCola.className === 'danger' ? '#f43f5e' : '#38bdf8';
+    ctx.fillText(
+      `AZ ${azimRange.value}° / EL ${elevRange.value}°`,
+      aimX + 20,
+      aimY - 10
+    );
+
+    // 6. 비행 중인 화물체 원근 투영
+    if (payload && payload.active) {
+      const p = payload.progress;
+      const px = muzzle.tipX + (aimX - muzzle.tipX) * p;
+      const py = muzzle.tipY + (aimY - muzzle.tipY) * p;
+      const sz = Math.max(1.8, 5.5 * (1 - p * 0.72));
+
+      ctx.strokeStyle = payload.aerobraked ? '#f43f5e' : 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(muzzle.tipX, muzzle.tipY);
+      ctx.lineTo(px, py);
+      ctx.stroke();
+
+      ctx.fillStyle = payload.aerobraked ? '#fbbf24' : '#ffffff';
+      ctx.shadowColor = payload.aerobraked ? '#f43f5e' : '#38bdf8';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(px, py, sz, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // 7. 파티클
+    for (let pt of particles) {
+      ctx.fillStyle = pt.color;
+      ctx.globalAlpha = pt.life;
+      ctx.fillRect(pt.x, pt.y, 2.5, 2.5);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  // --- 측면 탄도 프로파일 PIP 렌더링 ---
+  function drawPIP() {
+    pipCtx.fillStyle = '#02040a';
+    pipCtx.fillRect(0, 0, PIP_W, PIP_H);
+
+    const st = STAGES[stageIdx];
+    const geo = getBallisticGeo();
+    const preview = simulateBallisticPreview();
+
+    // 예측 궤적 점선
+    pipCtx.strokeStyle = preview.conjunction ? 'rgba(244, 63, 94, 0.75)' : 'rgba(56, 189, 248, 0.55)';
+    pipCtx.lineWidth = 1.2;
+    pipCtx.setLineDash([3, 3]);
+    pipCtx.beginPath();
+    preview.pts.forEach((pt, i) => {
+      if (i === 0) pipCtx.moveTo(pt.x, pt.y);
+      else pipCtx.lineTo(pt.x, pt.y);
+    });
+    pipCtx.stroke();
+    pipCtx.setLineDash([]);
+
+    // 발사대(달)
+    pipCtx.fillStyle = '#cbd5e1';
+    pipCtx.beginPath();
+    pipCtx.arc(geo.lx, geo.ly, 4, 0, Math.PI * 2);
+    pipCtx.fill();
+
+    if (geo.mode === 'earth') {
+      // 대기권
+      pipCtx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      pipCtx.lineWidth = 1;
+      pipCtx.beginPath();
+      pipCtx.arc(geo.tx, geo.ty, geo.atmoR, 0, Math.PI * 2);
+      pipCtx.stroke();
+
+      // 지구 본체
+      pipCtx.fillStyle = '#07192e';
+      pipCtx.strokeStyle = '#38bdf8';
+      pipCtx.lineWidth = 1.4;
+      pipCtx.beginPath();
+      pipCtx.arc(geo.tx, geo.ty, geo.bodyR, 0, Math.PI * 2);
+      pipCtx.fill();
+      pipCtx.stroke();
+
+      // 회전 DROP ZONE
+      pipCtx.strokeStyle = '#34d399';
+      pipCtx.lineWidth = 2.8;
+      pipCtx.beginPath();
+      pipCtx.arc(geo.tx, geo.ty, geo.bodyR + 1.5, earthRot, earthRot + st.dropArcSpan);
+      pipCtx.stroke();
+
+      // LEO 데브리
+      for (let d of debrisList) {
+        const dx = geo.tx + Math.cos(d.angle) * d.radiusOffset;
+        const dy = geo.ty + Math.sin(d.angle) * d.radiusOffset;
+        pipCtx.fillStyle = d.type === 'SAT' ? '#fbbf24' : '#f43f5e';
+        pipCtx.fillRect(dx - 1.5, dy - 1.5, 3, 3);
+      }
+    } else {
+      // 화성 SOI
+      pipCtx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+      pipCtx.setLineDash([2, 2]);
+      pipCtx.beginPath();
+      pipCtx.arc(geo.tx, geo.ty, geo.soiR, 0, Math.PI * 2);
+      pipCtx.stroke();
+      pipCtx.setLineDash([]);
+
+      pipCtx.fillStyle = '#2e0910';
+      pipCtx.strokeStyle = '#f43f5e';
+      pipCtx.lineWidth = 1.4;
+      pipCtx.beginPath();
+      pipCtx.arc(geo.tx, geo.ty, geo.bodyR, 0, Math.PI * 2);
+      pipCtx.fill();
+      pipCtx.stroke();
+    }
+
+    // 실제 비행 화물체
     if (payload) {
       if (payload.trail.length > 1) {
-        ctx.strokeStyle = payload.heat < 60 ? '#f43f5e' : '#38bdf8';
-        ctx.lineWidth = 2.0;
-        ctx.beginPath();
+        pipCtx.strokeStyle = payload.heat < 60 ? '#f43f5e' : '#38bdf8';
+        pipCtx.lineWidth = 1.4;
+        pipCtx.beginPath();
         payload.trail.forEach((pt, idx) => {
-          if (idx === 0) ctx.moveTo(pt.x, pt.y);
-          else ctx.lineTo(pt.x, pt.y);
+          if (idx === 0) pipCtx.moveTo(pt.x, pt.y);
+          else pipCtx.lineTo(pt.x, pt.y);
         });
-        ctx.stroke();
+        pipCtx.stroke();
       }
-
       if (payload.active) {
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(payload.x, payload.y, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        pipCtx.fillStyle = '#ffffff';
+        pipCtx.beginPath();
+        pipCtx.arc(payload.x, payload.y, 2.5, 0, Math.PI * 2);
+        pipCtx.fill();
       }
     }
-
-    particles.forEach(p => {
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = p.life;
-      ctx.fillRect(p.x, p.y, 2.5, 2.5);
-    });
-    ctx.globalAlpha = 1.0;
   }
 
   function loop() {
     update();
-    draw();
+    drawMainView();
+    drawPIP();
     requestAnimationFrame(loop);
   }
-
-  btnModeEarth.addEventListener('click', () => {
-    mode = 'earth';
-    payload = null;
-    statusBanner.style.display = 'none';
-    btnModeEarth.classList.add('active');
-    btnModeMars.classList.remove('active');
-    hudMission.textContent = 'EARTH AEROBRAKE';
-    powerRange.value = 252;
-    angleRange.value = -24;
-    updateCapHUD();
-  });
-
-  btnModeMars.addEventListener('click', () => {
-    mode = 'mars';
-    payload = null;
-    statusBanner.style.display = 'none';
-    btnModeMars.classList.add('active');
-    btnModeEarth.classList.remove('active');
-    hudMission.textContent = 'MARS INJECTION';
-    powerRange.value = 285;
-    angleRange.value = 12;
-    updateCapHUD();
-  });
 
   function updateCapHUD() {
     const v = (parseFloat(powerRange.value) / 100).toFixed(2);
     const gj = Math.round(v * 33.5);
-    hudCap.textContent = `${v} km/s (${gj} GJ)`;
+    hudCap.textContent = `${v} km/s`;
+    hudEnergy.textContent = `${gj} GJ`;
   }
+
+  // 드래그로 하늘 조준
+  function getPointerPos(e) {
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx, y: cy };
+  }
+
+  function startAim(e) {
+    if (statusBanner.style.display === 'block') {
+      statusBanner.style.display = 'none';
+      return;
+    }
+    isAimDragging = true;
+    lastPointer = getPointerPos(e);
+  }
+
+  function moveAim(e) {
+    if (!isAimDragging) return;
+    const pos = getPointerPos(e);
+    const dx = pos.x - lastPointer.x;
+    const dy = pos.y - lastPointer.y;
+    lastPointer = pos;
+
+    const nextAzim = Math.max(-45, Math.min(45, parseFloat(azimRange.value) + dx * 0.22));
+    const nextElev = Math.max(-35, Math.min(35, parseFloat(elevRange.value) - dy * 0.22));
+    azimRange.value = Math.round(nextAzim);
+    elevRange.value = Math.round(nextElev);
+  }
+
+  function endAim() {
+    isAimDragging = false;
+  }
+
+  canvas.addEventListener('mousedown', startAim);
+  window.addEventListener('mousemove', moveAim);
+  window.addEventListener('mouseup', endAim);
+
+  canvas.addEventListener('touchstart', startAim, { passive: true });
+  canvas.addEventListener('touchmove', moveAim, { passive: true });
+  canvas.addEventListener('touchend', endAim);
 
   powerRange.addEventListener('input', updateCapHUD);
   btnFire.addEventListener('click', firePayload);
+  btnPrev.addEventListener('click', () => loadStage(stageIdx - 1));
+  btnNext.addEventListener('click', () => loadStage(stageIdx + 1));
 
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
       e.preventDefault();
       firePayload();
-    }
-  });
-
-  canvas.addEventListener('click', () => {
-    if (statusBanner.style.display === 'block') {
-      statusBanner.style.display = 'none';
+    } else if (e.code === 'KeyR') {
+      loadStage(stageIdx);
     }
   });
 
   window.addEventListener('resize', () => {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
-    initStars();
+    initEnvironment();
   });
 
-  initStars();
-  updateCapHUD();
+  initEnvironment();
+  loadStage(0);
   requestAnimationFrame(loop);
 </script>
 
