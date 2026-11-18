@@ -80,34 +80,43 @@
       master.gain.value = 0;
       master.connect(ctxA.destination);
 
-      var len = ctxA.sampleRate * 3;
+      // 가벼운 비: 갈색 노이즈 위주 + 가끔 떨어지는 작은 물방울 톡톡 소리 (폭풍 같은 저역·쉿 소리 제거)
+      var len = ctxA.sampleRate * 4;
       var buf = ctxA.createBuffer(1, len, ctxA.sampleRate);
       var ch = buf.getChannelData(0);
       var last = 0;
       for (var i = 0; i < len; i++) {
         var white = Math.random() * 2 - 1;
-        last = (last + 0.04 * white) / 1.04;
-        ch[i] = white * 0.38 + last * 1.25;
+        last = (last + 0.02 * white) / 1.02;
+        ch[i] = white * 0.06 + last * 3.2;
+      }
+      var dripN = Math.floor((len / ctxA.sampleRate) * 14);
+      for (var dn = 0; dn < dripN; dn++) {
+        var start = Math.floor(Math.random() * len);
+        var freq = 1400 + Math.random() * 1600;
+        var amp = 0.05 + Math.random() * 0.05;
+        for (var k = 0; k < 360 && start + k < len; k++) {
+          ch[start + k] += amp * Math.sin((2 * Math.PI * freq * k) / ctxA.sampleRate) * Math.exp(-k / 70);
+        }
       }
 
       var src = ctxA.createBufferSource();
       src.buffer = buf;
       src.loop = true;
 
-      var bp = ctxA.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = 1500;
-      bp.Q.value = 0.5;
+      var hp = ctxA.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 350;
 
       var lp = ctxA.createBiquadFilter();
       lp.type = 'lowpass';
-      lp.frequency.value = 3200;
+      lp.frequency.value = 2400;
 
       var rainGain = ctxA.createGain();
       rainGain.gain.value = 0.08;
 
-      src.connect(bp);
-      bp.connect(lp);
+      src.connect(hp);
+      hp.connect(lp);
       lp.connect(rainGain);
       rainGain.connect(master);
       src.start();
