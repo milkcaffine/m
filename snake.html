@@ -305,17 +305,35 @@
         min-width: 120px;
       }
       .stage-wrap {
-        padding: 64px 8px 120px;
+        padding: 58px 8px 94px;
       }
       .help { display: none; }
-      .dpad-container { display: grid; }
+      .dpad-container {
+        display: flex;
+        bottom: 48px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        gap: 6px;
+        width: 92%;
+        max-width: 340px;
+        justify-content: center;
+      }
+      .dpad-btn {
+        flex: 1;
+        height: 34px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+      }
       .control-dock {
-        padding: 6px 8px;
-        gap: 4px 8px;
+        bottom: 6px;
+        padding: 4px 8px;
+        gap: 4px 6px;
+        border-radius: 8px;
       }
       .dock-btn {
-        padding: 5px 8px;
-        font-size: 0.7rem;
+        padding: 4px 7px;
+        font-size: 0.66rem;
       }
     }
   </style>

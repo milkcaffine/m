@@ -121,6 +121,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
 }
 .dock-params,
 .dock-more {
@@ -138,12 +139,23 @@
 
 @media (max-width: 640px) {
   .telemetry-card { display: none; }
-  .slider-group input[type="range"] { width: 56px; }
+  .slider-group input[type="range"] { width: 52px; }
+  .dock-sep { display: none; }
   .control-dock {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    bottom: 8px;
+    width: 96%;
     max-width: 96%;
-    padding: 10px 12px;
+    padding: 6px 8px;
+    gap: 5px 6px;
+    border-radius: 10px;
+  }
+  .dock-btn {
+    padding: 5px 8px;
+    font-size: 0.68rem;
   }
 }
 

@@ -131,13 +131,26 @@
       to { opacity: 1; transform: translate(-50%, 0); }
     }
 
-    /* 하단 내러티브 독백 캡션 */
-    .narrative-box {
+    /* 하단 내러티브 + 이동 컨트롤 통합 래퍼 (겹침 방지) */
+    .bottom-hud {
       position: absolute;
-      bottom: 82px;
+      bottom: 14px;
       left: 50%;
       transform: translateX(-50%);
-      width: 92%;
+      width: 94%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* 하단 내러티브 독백 캡션 */
+    .narrative-box {
+      position: relative;
+      width: 100%;
       max-width: 480px;
       background: rgba(6, 9, 16, 0.88);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -148,7 +161,6 @@
       color: #e2e8f0;
       line-height: 1.55;
       backdrop-filter: blur(8px);
-      z-index: 10;
       pointer-events: none;
     }
     .narrative-sub {
@@ -160,27 +172,31 @@
 
     /* 하단 이동 컨트롤 독 */
     .control-dock {
-      position: absolute;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
+      position: relative;
+      bottom: auto;
+      left: auto;
+      transform: none;
       background: rgba(8, 12, 22, 0.92);
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 14px;
       padding: 8px 14px;
       display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      gap: 8px;
       backdrop-filter: blur(10px);
-      z-index: 10;
+      pointer-events: auto;
+      max-width: 100%;
     }
     .nav-btn {
       background: #1e293b;
       border: 1px solid #334155;
       color: #f8fafc;
       border-radius: 8px;
-      padding: 8px 15px;
-      font-size: 0.76rem;
+      padding: 8px 14px;
+      font-size: 0.75rem;
       font-family: 'IBM Plex Mono', monospace;
       font-weight: 600;
       cursor: pointer;
@@ -217,27 +233,73 @@
       color: #cbd5e1;
       display: none;
     }
-    .control-dock {
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 94vw;
-    }
 
     @media (max-width: 680px) {
+      header {
+        top: 10px;
+        left: 10px;
+        gap: 2px;
+      }
+      header h1 {
+        font-size: 0.8rem;
+      }
+      .hud-meta {
+        display: none;
+      }
+      .home-link {
+        font-size: 0.66rem;
+        padding: 2px 5px;
+      }
       .telemetry-card {
-        font-size: 0.6rem;
-        padding: 6px 8px;
-        min-width: 140px;
-        max-width: 48vw;
+        display: block;
+        top: 10px;
+        right: 10px;
+        font-size: 0.58rem;
+        padding: 4px 8px;
+        line-height: 1.4;
+      }
+      .telemetry-card .hide-mobile {
+        display: none;
+      }
+      .cafe-card {
+        top: 13%;
+        padding: 11px 14px;
+        width: 92%;
+      }
+      .cafe-title {
+        font-size: 0.92rem;
+        margin-bottom: 4px;
+      }
+      .cafe-tags {
+        font-size: 0.72rem;
+        line-height: 1.55;
+      }
+      .bottom-hud {
+        bottom: 6px;
+        width: 96%;
+        gap: 5px;
       }
       .narrative-box {
-        bottom: 74px;
-        padding: 10px 14px;
-        font-size: 0.74rem;
+        padding: 7px 10px;
+        font-size: 0.71rem;
+        line-height: 1.42;
+      }
+      .narrative-sub {
+        font-size: 0.6rem;
+        margin-top: 3px;
+      }
+      .control-dock {
+        width: 100%;
+        padding: 5px 6px;
+        gap: 4px;
+        border-radius: 10px;
       }
       .nav-btn {
-        padding: 6px 10px;
-        font-size: 0.72rem;
+        flex: 1 1 auto;
+        text-align: center;
+        padding: 6px 6px;
+        font-size: 0.66rem;
+        border-radius: 6px;
       }
     }
   </style>
@@ -245,18 +307,18 @@
 <body>
 
 <header>
-  <div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">
+  <div style="display:flex;align-items:center;gap:5px;pointer-events:auto;flex-wrap:wrap;">
     <a href="index.html" class="home-link">← marsko</a>
     <button type="button" class="home-link" id="btnModeNormal" style="cursor:pointer;">일반 (6칸)</button>
-    <button type="button" class="home-link" id="btnModeAbyss" style="cursor:pointer;color:#fbbf24;border-color:rgba(251,191,36,0.5);">심연 (9칸·이상현상)</button>
+    <button type="button" class="home-link" id="btnModeAbyss" style="cursor:pointer;color:#fbbf24;border-color:rgba(251,191,36,0.5);">심연 (9칸)</button>
   </div>
   <h1>ROJIURA 1.0m // 裏稲荷</h1>
   <div class="hud-meta">📍 도심 모처의 미관측 경계 · ⛩️ 여우불이 이끄는 심야 은신처</div>
 </header>
 
 <div class="telemetry-card">
-  <div>AREA: <strong id="hudArea">UNMAPPED VOID (0.98m)</strong></div>
-  <div>ALLEY WIDTH: <strong>0.98 m</strong></div>
+  <div class="hide-mobile">AREA: <strong id="hudArea">UNMAPPED VOID (0.98m)</strong></div>
+  <div class="hide-mobile">ALLEY WIDTH: <strong>0.98 m</strong></div>
   <div>TORII SYNC: <strong id="hudDepth" class="amber">0 / 6</strong></div>
   <div>STEPS: <strong id="hudSteps">0</strong></div>
 </div>
@@ -273,21 +335,23 @@
 
 <canvas id="alleyCanvas"></canvas>
 
-<div class="narrative-box" id="narrativeBox">
-  <div id="narrativeText">빌딩 숲 사이에 숨겨진 폭 1미터의 지도 없는 골목. 빗물 웅덩이나 여우 석상, 호박색 불빛이 이끄는 방향을 따라가야 『우라이나리』에 닿을 수 있다.</div>
-  <div class="narrative-sub" id="narrativeHint">⛩️ 지도 밖의 빗속 골목 // 단서가 가리키는 길을 선택하세요 [← / ↑ / →]</div>
-</div>
+<div class="bottom-hud">
+  <div class="narrative-box" id="narrativeBox">
+    <div id="narrativeText">빌딩 숲 사이에 숨겨진 폭 1미터의 지도 없는 골목. 빗물 웅덩이나 여우 석상, 호박색 불빛이 이끄는 방향을 따라가야 『우라이나리』에 닿을 수 있다.</div>
+    <div class="narrative-sub" id="narrativeHint">⛩️ 지도 밖의 빗속 골목 // 단서가 가리키는 길을 선택하세요 [← / ↑ / →]</div>
+  </div>
 
-<div class="control-dock">
-  <button type="button" class="nav-btn" id="btnLeft">← 좌측 골목</button>
-  <button type="button" class="nav-btn" id="btnForward">↑ 직진</button>
-  <button type="button" class="nav-btn" id="btnRight">우측 골목 →</button>
-  <button type="button" class="nav-btn" id="btnBack" style="border-color:rgba(244,63,94,0.4);color:#fda4af;">↓ 뒤돌아가기</button>
-  <button type="button" class="nav-btn udon-btn" id="btnEnter">🚪 미닫이문 열고 들어가기</button>
-  <button type="button" class="nav-btn udon-btn" id="btnUdon">🍜 키츠네 우동 주문</button>
-  <button type="button" class="nav-btn udon-btn" id="btnCoffee">☕ 심야 드립 커피</button>
-  <a href="cards.html#urainari" class="nav-btn story-link" id="linkStory">📖 새 점장의 단편 읽기</a>
-  <button type="button" class="nav-btn sub-btn" id="btnReset">🌧️ 다시 골목으로</button>
+  <div class="control-dock">
+    <button type="button" class="nav-btn" id="btnLeft">← 좌측 골목</button>
+    <button type="button" class="nav-btn" id="btnForward">↑ 직진</button>
+    <button type="button" class="nav-btn" id="btnRight">우측 골목 →</button>
+    <button type="button" class="nav-btn" id="btnBack" style="border-color:rgba(244,63,94,0.4);color:#fda4af;">↓ 뒤돌아가기</button>
+    <button type="button" class="nav-btn udon-btn" id="btnEnter">🚪 미닫이문 열고 들어가기</button>
+    <button type="button" class="nav-btn udon-btn" id="btnUdon">🍜 키츠네 우동 주문</button>
+    <button type="button" class="nav-btn udon-btn" id="btnCoffee">☕ 심야 드립 커피</button>
+    <a href="cards.html#urainari" class="nav-btn story-link" id="linkStory">📖 새 점장의 단편 읽기</a>
+    <button type="button" class="nav-btn sub-btn" id="btnReset">🌧️ 다시 골목으로</button>
+  </div>
 </div>
 
 <script>

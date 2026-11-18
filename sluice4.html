@@ -327,16 +327,32 @@
 
     @media (max-width: 900px) {
       .app-layout { flex-direction: column; }
-      .view-switcher { display: flex; }
+      header { top: 10px; left: 10px; gap: 2px; }
+      header h1 { font-size: 0.78rem; }
+      .hud-meta { display: none; }
+      .home-link { font-size: 0.66rem; padding: 2px 5px; }
+      .view-switcher { display: flex; top: 10px; right: 10px; }
+      .view-btn { padding: 3px 7px; font-size: 0.65rem; }
       .telemetry-card { display: none; }
+      .hud-error-banner { top: 44px; left: 10px; font-size: 0.58rem; padding: 2px 7px; }
       .canvas-pane { flex: none; height: 44vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
-      .story-pane { flex: 1; padding: 24px 18px 80px 18px; }
+      .story-pane { flex: 1; padding: 20px 18px 80px 18px; }
       .app-layout.view-canvas-only .canvas-pane { height: 100%; }
       .app-layout.view-canvas-only .story-pane { display: none; }
       .app-layout.view-story-only .canvas-pane { display: none; }
       .app-layout.view-story-only .story-pane { height: 100%; padding-top: 60px; }
-      .control-dock { bottom: 12px; padding: 6px 10px; gap: 6px; }
-      .gate-btn { padding: 5px 8px; font-size: 0.68rem; }
+      .control-dock {
+        flex-direction: row;
+        flex-wrap: wrap;
+        bottom: 6px;
+        width: 96%;
+        max-width: 96%;
+        padding: 4px 6px;
+        gap: 4px;
+        border-radius: 8px;
+      }
+      .dock-sep { display: none; }
+      .gate-btn, .audio-btn { padding: 4px 7px; font-size: 0.64rem; border-radius: 5px; }
     }
 
     /* 소설 말미 원본 사진 아카이브 박스 */
