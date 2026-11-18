@@ -814,6 +814,7 @@
   });
 
   // 초기화 및 시작
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
   initStars();
   generateTerrain();
   resetShip();

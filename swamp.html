@@ -1029,6 +1029,7 @@
 
       requestAnimationFrame(loop);
     }
+    document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
     requestAnimationFrame(loop);
 
     // 초기 시작 시 맛보기 파편 몇 개 바닥에 깔아두기

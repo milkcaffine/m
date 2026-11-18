@@ -921,6 +921,7 @@
     drawRain();
 
     // 초기 렌더링
+    document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
     renderCard(false);
   </script>
 </body>

@@ -1,4 +1,10 @@
 /* Shared lab HUD chrome for Marsko demos */
+*,
+*::before,
+*::after {
+  touch-action: manipulation;
+}
+
 .home-link {
   color: #64748b;
   font-size: 0.75rem;

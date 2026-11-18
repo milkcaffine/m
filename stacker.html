@@ -857,6 +857,7 @@
   });
 
   window.addEventListener('resize', () => { layoutCanvas(); draw(); });
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
   layoutCanvas();
   emptyBoard();
   drawSide();

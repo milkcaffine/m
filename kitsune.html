@@ -936,6 +936,7 @@
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
   });
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
   requestAnimationFrame(render);
 })();

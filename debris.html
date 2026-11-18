@@ -1357,6 +1357,7 @@
 
   initEnvironment();
   initDebris();
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
   requestAnimationFrame(loop);
 </script>
 

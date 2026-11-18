@@ -1111,6 +1111,7 @@
     height = canvas.height = canvas.parentElement.clientHeight || 700;
   }
   window.addEventListener('resize', resizeCanvas);
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
   resizeCanvas();
   requestAnimationFrame(render);

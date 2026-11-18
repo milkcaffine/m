@@ -1046,6 +1046,7 @@
   });
 
   setDifficulty('normal');
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
   requestAnimationFrame(render);
 })();
 </script>

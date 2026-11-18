@@ -1236,6 +1236,7 @@
     });
 
     // 초기화
+    document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
     resize();
     animate();
   </script>
