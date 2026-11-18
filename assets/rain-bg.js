@@ -104,7 +104,7 @@
       lp.frequency.value = 3200;
 
       var rainGain = ctxA.createGain();
-      rainGain.gain.value = 0.22;
+      rainGain.gain.value = 0.08;
 
       src.connect(bp);
       bp.connect(lp);
