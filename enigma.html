@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Marsko lab tool — Wehrmacht Enigma I / M3 Cipher Machine & Turing Bombe Cryptanalysis Simulator.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#030509">
+  <title>Enigma I & Turing Bombe Simulator // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #030509;
+      --panel-bg: rgba(10, 15, 26, 0.92);
+      --panel-border: rgba(255, 255, 255, 0.09);
+      --accent-cyan: #38bdf8;
+      --accent-amber: #f59e0b;
+      --accent-amber-glow: rgba(245, 158, 11, 0.45);
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --text-bright: #f8fafc;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-ui: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text-dim);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.05), transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(245, 158, 11, 0.03), transparent 50%);
+    }
+
+    /* 상단 헤더 HUD */
+    header {
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--panel-border);
+      background: rgba(6, 10, 18, 0.92);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .home-link {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      padding: 3px 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s ease;
+    }
+    .home-link:hover { color: var(--accent-cyan); border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge-mil {
+      font-size: 0.62rem;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-ghost {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--panel-border);
+      color: var(--text-dim);
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+    .btn-ghost:hover {
+      color: var(--text-bright);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .btn-ghost.active {
+      color: var(--accent-amber);
+      border-color: var(--accent-amber);
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    /* 메인 컨테이너 */
+    .container {
+      flex: 1;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* 모드 탭 내비게이션 */
+    .tab-nav {
+      display: flex;
+      gap: 6px;
+      background: rgba(10, 15, 26, 0.9);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 6px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      flex: 1;
+      min-width: 180px;
+      padding: 8px 14px;
+      background: #0d1424;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      color: var(--text-bright);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .tab-btn.active {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.5);
+      color: var(--accent-amber);
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.15);
+      font-weight: 600;
+    }
+    .tab-btn.active.turing {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.15);
+    }
+
+    /* 탭 콘텐츠 */
+    .tab-pane {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .tab-pane.active {
+      display: flex;
+    }
+
+    /* 카드 패널 공통 */
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .panel-header {
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.7);
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+    }
+    .panel-title {
+      font-weight: 600;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-body {
+      padding: 14px;
+    }
+
+    /* =======================================
+       TAB 1: ENIGMA SIMULATOR
+       ======================================= */
+    
+    /* 로터 베이 (Rotor Chassis) */
+    .rotor-bay {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      background: #070b13;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .rotor-module {
+      background: #0b1220;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+    .rotor-tag {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .rotor-tag strong { color: var(--accent-amber); }
+
+    /* 로터 드럼 비주얼 & 조작계 */
+    .rotor-drum-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 6px 0;
+    }
+    .step-btn {
+      width: 28px;
+      height: 28px;
+      background: #141f33;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-bright);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      transition: all 0.15s ease;
+    }
+    .step-btn:hover {
+      background: #1e2e4a;
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+    }
+    .drum-window {
+      width: 60px;
+      height: 72px;
+      background: linear-gradient(180deg, #05080f 0%, #172033 50%, #05080f 100%);
+      border: 2px solid #2a3a5a;
+      border-radius: 6px;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+    }
+    .drum-curr {
+      font-family: var(--font-mono);
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #ffedd5;
+      text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+      line-height: 1;
+      z-index: 2;
+    }
+    .drum-prev, .drum-next {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #475569;
+      line-height: 1;
+      position: absolute;
+      opacity: 0.6;
+    }
+    .drum-prev { top: 4px; }
+    .drum-next { bottom: 4px; }
+
+    .rotor-selectors {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+    }
+    .sel-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .sel-group label {
+      color: var(--text-muted);
+      font-size: 0.65rem;
+    }
+    .custom-select {
+      background: #060a12;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-bright);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+    .custom-select:focus { border-color: var(--accent-amber); }
+
+    /* 신호 경로 (Signal Trace Bar) */
+    .signal-trace {
+      background: #05080f;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .trace-title {
+      color: var(--accent-cyan);
+      font-weight: 600;
+      font-size: 0.68rem;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .trace-nodes {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+    .trace-node {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      background: #0b1324;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .trace-node.active-key {
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+    }
+    .trace-node.active-lamp {
+      border-color: var(--accent-amber);
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-amber);
+      box-shadow: 0 0 10px var(--accent-amber-glow);
+    }
+    .node-label { font-size: 0.55rem; color: var(--text-muted); }
+    .node-val { font-weight: 700; font-size: 0.8rem; }
+    .trace-arrow { color: #334155; font-size: 0.75rem; }
+
+    /* 램프보드 (Glühlampenfeld) */
+    .lampboard-panel {
+      background: radial-gradient(circle at center, #111827 0%, #080c14 100%);
+      border: 2px solid #1f2937;
+      border-radius: 12px;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.9);
+      user-select: none;
+    }
+    .lamp-row {
+      display: flex;
+      gap: 12px;
+    }
+    .lamp {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #0a0e17;
+      border: 2px solid #243044;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #475569;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.8), 0 2px 5px rgba(0,0,0,0.5);
+      transition: all 0.08s ease;
+      position: relative;
+    }
+    .lamp.lit {
+      background: radial-gradient(circle, #fffbeb 10%, #fbbf24 60%, #b45309 100%);
+      color: #451a03;
+      border-color: #fde68a;
+      box-shadow: 
+        0 0 20px #fbbf24,
+        0 0 35px rgba(245, 158, 11, 0.7),
+        inset 0 0 8px rgba(255, 255, 255, 0.8);
+      transform: scale(1.04);
+      text-shadow: 0 0 2px #ffffff;
+    }
+
+    /* 키보드 타자기 (Tastatur) */
+    .keyboard-panel {
+      background: #090e18;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 10px;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+    .key-row {
+      display: flex;
+      gap: 10px;
+    }
+    .key-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #162032, #0d1422);
+      border: 2px solid #2e3d55;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.06s ease;
+    }
+    .key-btn:hover {
+      border-color: var(--accent-cyan);
+      color: #38bdf8;
+    }
+    .key-btn:active, .key-btn.pressed {
+      transform: translateY(3px);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(0, 0, 0, 0.9);
+      border-color: var(--accent-cyan);
+      background: #0f172a;
+      color: var(--accent-cyan);
+    }
+
+    /* 플러그보드 (Steckerbrett) */
+    .stecker-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .stecker-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+    .stecker-sockets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+      gap: 6px;
+      background: #070b13;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .socket-btn {
+      height: 38px;
+      border-radius: 4px;
+      background: #111a2c;
+      border: 1px solid #24334f;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    .socket-btn:hover {
+      border-color: var(--accent-amber);
+      color: var(--text-bright);
+    }
+    .socket-btn.selected {
+      border-color: var(--accent-amber);
+      background: rgba(245, 158, 11, 0.25);
+      color: var(--accent-amber);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+    }
+    .socket-btn.plugged {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+    }
+    .socket-pair-tag {
+      font-size: 0.55rem;
+      color: #94a3b8;
+      line-height: 1;
+      margin-top: 1px;
+    }
+    .cables-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .cable-chip {
+      background: #101c30;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cable-del {
+      cursor: pointer;
+      color: #64748b;
+      font-weight: bold;
+    }
+    .cable-del:hover { color: var(--accent-rose); }
+
+    /* 전문 입출력 박스 (Dual IO) */
+    .io-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 768px) {
+      .io-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .io-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .io-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .io-textarea {
+      width: 100%;
+      height: 110px;
+      background: #060910;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      color: var(--text-bright);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      padding: 10px;
+      resize: vertical;
+      outline: none;
+      line-height: 1.5;
+      letter-spacing: 1px;
+    }
+    .io-textarea:focus { border-color: var(--accent-amber); }
+
+    /* 프리셋 바 */
+    .preset-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      background: #090e18;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+    }
+
+    /* =======================================
+       TAB 2: TURING BOMBE
+       ======================================= */
+    .turing-hero {
+      background: linear-gradient(135deg, rgba(8, 14, 26, 0.95), rgba(16, 28, 48, 0.95));
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .turing-hero h2 {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .turing-hero p {
+      font-size: 0.82rem;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+    .turing-rule-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fca5a5;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* 크립 정렬 분석기 (Crib Analyzer) */
+    .crib-analyzer {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #070b13;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .crib-strip-viewer {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      overflow-x: auto;
+      padding: 14px 10px;
+      background: #05080e;
+      border-radius: 6px;
+      border: 1px solid #1a2538;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      letter-spacing: 4px;
+      user-select: none;
+    }
+    .strip-row {
+      display: flex;
+      align-items: center;
+    }
+    .strip-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      letter-spacing: 0;
+      width: 70px;
+      flex-shrink: 0;
+    }
+    .char-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 28px;
+      border-radius: 3px;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .char-cell.clash {
+      background: rgba(244, 63, 94, 0.25);
+      border: 1px solid var(--accent-rose);
+      color: #ff88a3;
+      box-shadow: 0 0 6px rgba(244, 63, 94, 0.4);
+    }
+    .char-cell.valid {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--accent-emerald);
+      color: #6ee7b7;
+    }
+    .char-cell.inactive { color: #475569; }
+
+    /* 봄베 드럼 랙 시뮬레이터 (Drum Rack Canvas) */
+    .bombe-rack-container {
+      background: #04060b;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+    #bombeCanvas {
+      width: 100%;
+      max-width: 720px;
+      height: 220px;
+      background: #070b13;
+      border-radius: 6px;
+      border: 1px solid #1f2b3e;
+      display: block;
+    }
+    .bombe-telemetry {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      padding: 8px 12px;
+      background: #0a101d;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .stop-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: var(--accent-rose);
+      letter-spacing: 1px;
+    }
+    .stop-indicator.halted {
+      color: var(--accent-emerald);
+      text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    }
+
+    /* =======================================
+       TAB 3: WIRING & ARCHITECTURE
+       ======================================= */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    @media (min-width: 768px) {
+      .arch-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .arch-card {
+      background: #070b13;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+    .arch-card h3 {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-bright);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .wiring-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      margin-top: 8px;
+    }
+    .wiring-table th, .wiring-table td {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 6px;
+      text-align: left;
+    }
+    .wiring-table th { background: #0c1424; color: var(--accent-amber); }
+    .wiring-table tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+
+    /* 푸터 */
+    footer {
+      padding: 16px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: auto;
+    }
+
+    @media (max-width: 600px) {
+      .lamp { width: 34px; height: 34px; font-size: 0.95rem; }
+      .key-btn { width: 34px; height: 34px; font-size: 0.88rem; }
+      .lamp-row, .key-row { gap: 6px; }
+      .drum-window { width: 50px; height: 60px; }
+      .drum-curr { font-size: 1.4rem; }
+      .tab-btn { min-width: 120px; font-size: 0.68rem; padding: 6px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 헤더 HUD -->
+  <header>
+    <div class="header-left">
+      <a href="/" class="home-link">← marsko</a>
+      <h1>
+        ENIGMA I / TURING BOMBE
+        <span class="badge-mil">M3 WEHRMACHT</span>
+      </h1>
+    </div>
+    <div class="header-controls">
+      <button class="btn-ghost" id="soundToggleBtn" title="타자기 & 릴레이 사운드 켜기/끄기">
+        <span id="soundIcon">🔊</span> SOUND ON
+      </button>
+      <button class="btn-ghost" id="resetMachineBtn" title="로터 및 텍스트 전체 리셋">
+        ↺ RESET
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 -->
+  <div class="container">
+
+    <!-- 상단 모드 탭 -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="tab-enigma">
+        <span>⚙️</span> [1] ENIGMA I M3 SIMULATOR
+      </button>
+      <button class="tab-btn turing" data-tab="tab-bombe">
+        <span>⚡</span> [2] ALAN TURING BOMBE (HUT 8)
+      </button>
+      <button class="tab-btn" data-tab="tab-arch">
+        <span>📐</span> [3] WIRING & ARCHITECTURE
+      </button>
+    </div>
+
+    <!-- ==========================================
+         TAB 1: ENIGMA I SIMULATOR
+         ========================================== -->
+    <div class="tab-pane active" id="tab-enigma">
+      
+      <!-- 프리셋 선택 바 -->
+      <div class="preset-bar">
+        <span style="color:var(--accent-amber); font-weight:600;">HISTORICAL PRESETS:</span>
+        <button class="btn-ghost" onclick="applyPreset('barbarossa')">📜 1941 Barbarossa Directive</button>
+        <button class="btn-ghost" onclick="applyPreset('uboat')">🌊 1942 U-559 Weather Msg</button>
+        <button class="btn-ghost" onclick="applyPreset('rommel')">🏜️ 1942 Afrika Korps</button>
+        <button class="btn-ghost" onclick="applyPreset('blank')">🧹 Default State (AAA)</button>
+      </div>
+
+      <!-- 로터 베이 (Rotor Bay) -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span style="color:var(--accent-amber);">WALZENLAGE</span> // 3-ROTOR CHASSIS & REFLECTOR
+          </div>
+          <div style="color:var(--text-muted); font-size:0.68rem;">DOUBLE-STEPPING MEC ENGAGED</div>
+        </div>
+        <div class="panel-body">
+          <div class="rotor-bay">
+            
+            <!-- 반사체 (UKW) -->
+            <div class="rotor-module">
+              <div class="rotor-tag">
+                <span>REFLECTOR</span>
+                <strong>UKW</strong>
+              </div>
+              <div class="rotor-drum-box">
+                <div class="drum-window" style="background:#0a0d14; border-color:#334155;">
+                  <span class="drum-curr" id="dispReflector" style="color:#38bdf8;">B</span>
+                </div>
+              </div>
+              <div class="sel-group">
+                <label>MODEL TYPE</label>
+                <select class="custom-select" id="selReflector" onchange="onRotorConfigChange()">
+                  <option value="UKW-B" selected>UKW-B (Standard Wehrmacht)</option>
+                  <option value="UKW-C">UKW-C (Alternative)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 왼쪽 로터 (Slow / I) -->
+            <div class="rotor-module" id="modRotorL">
+              <div class="rotor-tag">
+                <span>LEFT (SLOW)</span>
+                <strong id="tagRotorL">ROTOR I</strong>
+              </div>
+              <div class="rotor-drum-box">
+                <button class="step-btn" onclick="stepManual(0, -1)">▲</button>
+                <div class="drum-window" onclick="stepManual(0, 1)">
+                  <span class="drum-prev" id="prevL">Z</span>
+                  <span class="drum-curr" id="currL">A</span>
+                  <span class="drum-next" id="nextL">B</span>
+                </div>
+                <button class="step-btn" onclick="stepManual(0, 1)">▼</button>
+              </div>
+              <div class="rotor-selectors">
+                <div class="sel-group">
+                  <label>ROTOR</label>
+                  <select class="custom-select" id="selRotorL" onchange="onRotorConfigChange()">
+                    <option value="I" selected>Rotor I</option>
+                    <option value="II">Rotor II</option>
+                    <option value="III">Rotor III</option>
+                    <option value="IV">Rotor IV</option>
+                    <option value="V">Rotor V</option>
+                  </select>
+                </div>
+                <div class="sel-group">
+                  <label>RING (RINGSTELLUNG)</label>
+                  <select class="custom-select" id="ringL" onchange="onRotorConfigChange()"></select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 중간 로터 (Middle / II) -->
+            <div class="rotor-module" id="modRotorM">
+              <div class="rotor-tag">
+                <span>MIDDLE (MEDIUM)</span>
+                <strong id="tagRotorM">ROTOR II</strong>
+              </div>
+              <div class="rotor-drum-box">
+                <button class="step-btn" onclick="stepManual(1, -1)">▲</button>
+                <div class="drum-window" onclick="stepManual(1, 1)">
+                  <span class="drum-prev" id="prevM">Z</span>
+                  <span class="drum-curr" id="currM">A</span>
+                  <span class="drum-next" id="nextM">B</span>
+                </div>
+                <button class="step-btn" onclick="stepManual(1, 1)">▼</button>
+              </div>
+              <div class="rotor-selectors">
+                <div class="sel-group">
+                  <label>ROTOR</label>
+                  <select class="custom-select" id="selRotorM" onchange="onRotorConfigChange()">
+                    <option value="I">Rotor I</option>
+                    <option value="II" selected>Rotor II</option>
+                    <option value="III">Rotor III</option>
+                    <option value="IV">Rotor IV</option>
+                    <option value="V">Rotor V</option>
+                  </select>
+                </div>
+                <div class="sel-group">
+                  <label>RING (RINGSTELLUNG)</label>
+                  <select class="custom-select" id="ringM" onchange="onRotorConfigChange()"></select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 오른쪽 로터 (Fast / III) -->
+            <div class="rotor-module" id="modRotorR">
+              <div class="rotor-tag">
+                <span>RIGHT (FAST)</span>
+                <strong id="tagRotorR">ROTOR III</strong>
+              </div>
+              <div class="rotor-drum-box">
+                <button class="step-btn" onclick="stepManual(2, -1)">▲</button>
+                <div class="drum-window" onclick="stepManual(2, 1)">
+                  <span class="drum-prev" id="prevR">Z</span>
+                  <span class="drum-curr" id="currR">A</span>
+                  <span class="drum-next" id="nextR">B</span>
+                </div>
+                <button class="step-btn" onclick="stepManual(2, 1)">▼</button>
+              </div>
+              <div class="rotor-selectors">
+                <div class="sel-group">
+                  <label>ROTOR</label>
+                  <select class="custom-select" id="selRotorR" onchange="onRotorConfigChange()">
+                    <option value="I">Rotor I</option>
+                    <option value="II">Rotor II</option>
+                    <option value="III" selected>Rotor III</option>
+                    <option value="IV">Rotor IV</option>
+                    <option value="V">Rotor V</option>
+                  </select>
+                </div>
+                <div class="sel-group">
+                  <label>RING (RINGSTELLUNG)</label>
+                  <select class="custom-select" id="ringR" onchange="onRotorConfigChange()"></select>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- 실시간 신호 전파 경로 (Signal Trace) -->
+      <div class="signal-trace" id="signalTraceBar">
+        <div class="trace-title"><span>⚡</span> SIGNAL PATH:</div>
+        <div class="trace-nodes" id="traceNodes">
+          <div class="trace-node"><span class="node-label">KEY</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">STECKER</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">ROTOR 3</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">ROTOR 2</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">ROTOR 1</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node" style="border-color:#38bdf8;"><span class="node-label">UKW-B</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">ROTOR 1⁻¹</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">ROTOR 2⁻¹</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">ROTOR 3⁻¹</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node"><span class="node-label">STECKER</span><span class="node-val">—</span></div>
+          <span class="trace-arrow">→</span>
+          <div class="trace-node active-lamp"><span class="node-label">LAMP</span><span class="node-val">—</span></div>
+        </div>
+      </div>
+
+      <!-- 램프보드 (Glühlampenfeld) -->
+      <div class="lampboard-panel">
+        <div style="font-family:var(--font-mono); font-size:0.68rem; color:#64748b; margin-bottom:4px; letter-spacing:2px;">
+          GLÜHLAMPENFELD (OUTPUT LAMPBOARD)
+        </div>
+        <div class="lamp-row" id="lampRow1"></div>
+        <div class="lamp-row" id="lampRow2"></div>
+        <div class="lamp-row" id="lampRow3"></div>
+      </div>
+
+      <!-- 타자기 키보드 (Tastatur) -->
+      <div class="keyboard-panel">
+        <div style="font-family:var(--font-mono); font-size:0.68rem; color:#64748b; margin-bottom:4px; letter-spacing:2px;">
+          TASTATUR (INPUT KEYBOARD — 물리 키보드 타건 가능)
+        </div>
+        <div class="key-row" id="keyRow1"></div>
+        <div class="key-row" id="keyRow2"></div>
+        <div class="key-row" id="keyRow3"></div>
+      </div>
+
+      <!-- 플러그보드 (Steckerbrett) -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span style="color:var(--accent-cyan);">STECKERBRETT</span> // PLUGBOARD (MAX 10 PAIRS)
+          </div>
+          <div class="stecker-status">
+            <span>연결: <strong id="plugCount">0</strong> / 10 쌍</span>
+            <button class="btn-ghost" onclick="clearPlugs()">초기화</button>
+            <button class="btn-ghost" onclick="randomPlugs()">무작위 10쌍 연결</button>
+          </div>
+        </div>
+        <div class="panel-body stecker-panel">
+          <div style="font-size:0.75rem; color:var(--text-muted);">
+            💡 연결할 알파벳 2개를 차례대로 클릭하면 전선으로 교환(Swap) 결선됩니다.
+          </div>
+          <div class="stecker-sockets-grid" id="steckerGrid"></div>
+          <div class="cables-list" id="cablesList"></div>
+        </div>
+      </div>
+
+      <!-- 전문 일괄 암복호화 콘솔 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>TELETYPE TRANSCRIPTION // 군용 전문 통신문</span>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-ghost" onclick="format5Groups()">5자 그룹 정렬</button>
+            <button class="btn-ghost" onclick="clearTexts()">비우기</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="io-grid">
+            <div class="io-box">
+              <div class="io-label">
+                <span>PLAINTEXT / CIPHERTEXT INPUT</span>
+                <span id="inCharCount">0 chars</span>
+              </div>
+              <textarea class="io-textarea" id="textInput" placeholder="타이핑하거나 텍스트를 붙여넣으면 실시간으로 이니그마를 통과하여 암호화/복호화됩니다..."></textarea>
+            </div>
+            <div class="io-box">
+              <div class="io-label">
+                <span style="color:var(--accent-amber);">PROCESSED ENIGMA OUTPUT</span>
+                <button class="btn-ghost" style="padding:2px 6px;" onclick="copyOutput()">복사</button>
+              </div>
+              <textarea class="io-textarea" id="textOutput" readonly placeholder="암호화/복호화된 군용 전문 결과가 표시됩니다..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==========================================
+         TAB 2: ALAN TURING BOMBE (HUT 8)
+         ========================================== -->
+    <div class="tab-pane" id="tab-bombe">
+      
+      <!-- 역사적 원리 브리핑 -->
+      <div class="turing-hero">
+        <h2>
+          <span>⚡</span> BLETCHLEY PARK HUT 8 // TURING-WELCHMAN BOMBE
+        </h2>
+        <p>
+          1940년 영국 암호해독 본부 Bletchley Park에서 <strong>앨런 튜링(Alan Turing)</strong>과 <strong>고든 웰치먼(Gordon Welchman)</strong>은 독일군 이니그마의 치명적인 결함과 수학적 대칭성을 이용해 전자기계식 해독기 <em>'봄베(Bombe)'</em>를 설계했습니다.
+        </p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;">
+          <div class="turing-rule-pill">
+            <span>⛔ TURING'S KEY THEOREM:</span> 어떤 글자도 자기 자신으로 암호화되지 않는다 [ E(x) ≠ x ]
+          </div>
+          <div class="turing-rule-pill" style="background:rgba(56,189,248,0.12); border-color:rgba(56,189,248,0.3); color:#7dd3fc;">
+            <span>🔍 CRIB STRATEGY:</span> 매일 아침 전송되는 기상예보(Wetterbericht) 등 상용문 매칭
+          </div>
+        </div>
+      </div>
+
+      <!-- 인터랙티브 크립 정렬 분석기 (Crib Analyzer) -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span style="color:var(--accent-cyan);">[STEP 1] CRIB ALIGNMENT INSPECTOR</span> // 충돌(Clash) 검출기
+          </div>
+          <span style="color:var(--text-muted); font-size:0.68rem;">E(x) ≠ x 법칙으로 불가능한 위치 즉시 제거</span>
+        </div>
+        <div class="panel-body crib-analyzer">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="sel-group">
+              <label>수신된 가청 암호문 (INTERCEPTED CIPHERTEXT)</label>
+              <input type="text" class="custom-select" id="bombeCipherIn" value="EDPUD NRGYS ZRCXN UQFDV BNVAT XWPCS QM" style="font-size:0.85rem; letter-spacing:2px;" oninput="updateCribInspector()">
+            </div>
+            <div class="sel-group">
+              <label>예상 평문 단어 (KNOWN CRIB / PROBABLE WORD)</label>
+              <input type="text" class="custom-select" id="bombeCribIn" value="WETTERVORHERSAGE" style="font-size:0.85rem; letter-spacing:2px; color:var(--accent-cyan);" oninput="updateCribInspector()">
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
+            <div style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-dim);">
+              오프셋 슬라이더: <strong id="cribOffsetVal" style="color:var(--accent-amber);">0</strong>
+            </div>
+            <div id="cribValidityTag"></div>
+          </div>
+          <input type="range" id="cribOffsetSlider" min="0" max="15" value="0" style="width:100%; accent-color:var(--accent-cyan);" oninput="onCribSliderMove()">
+
+          <!-- 시각적 글자 대조 스트립 -->
+          <div class="crib-strip-viewer">
+            <div class="strip-row">
+              <div class="strip-label">CIPHER:</div>
+              <div id="stripCipherChars" style="display:flex; gap:2px;"></div>
+            </div>
+            <div class="strip-row">
+              <div class="strip-label" style="color:var(--accent-cyan);">CRIB:</div>
+              <div id="stripCribChars" style="display:flex; gap:2px;"></div>
+            </div>
+          </div>
+
+          <div id="cribValidCandidatesBox" style="font-family:var(--font-mono); font-size:0.72rem; color:var(--text-dim);">
+            유효 시작 위치 후보: <span id="validOffsetsList" style="color:var(--accent-emerald); font-weight:600;"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 가상 봄베 드럼 랙 시뮬레이터 (Bombe Drum Rack) -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span style="color:var(--accent-amber);">[STEP 2] TURING BOMBE 36-DRUM SEARCH ENGINE</span>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-ghost" id="startBombeBtn" onclick="toggleBombeRun()">▶ START CRACKING SEARCH</button>
+          </div>
+        </div>
+        <div class="panel-body bombe-rack-container">
+          <canvas id="bombeCanvas" width="720" height="220"></canvas>
+          <div class="bombe-telemetry">
+            <div>CURRENT TESTED ROTORS: <strong id="bombeTestedRotors" style="color:var(--accent-cyan);">I - II - III</strong></div>
+            <div>POSITION: <strong id="bombeCurrPos" style="color:var(--accent-amber); font-size:1rem;">A A A</strong></div>
+            <div>STATUS: <span class="stop-indicator" id="bombeStatusTag">READY TO RUN</span></div>
+          </div>
+          <div id="bombeResultCard" style="display:none; width:100%; max-width:720px; background:#0e1726; border:1px solid #10b981; border-radius:6px; padding:12px; font-family:var(--font-mono); font-size:0.75rem;">
+            <div style="color:var(--accent-emerald); font-weight:700; margin-bottom:6px;">🎯 [STOP DETECTED] VALID ENIGMA KEY FOUND!</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+              <div>Rotor Setup: <strong style="color:#f8fafc;">I - II - III</strong></div>
+              <div>Ground Position: <strong id="resPos" style="color:var(--accent-amber);">L X D</strong></div>
+              <div>Crib Match: <strong style="color:var(--accent-cyan);">WETTERVORHERSAGE</strong></div>
+            </div>
+            <div style="margin-top:10px;">
+              <button class="btn-ghost" style="border-color:#10b981; color:#6ee7b7;" onclick="applyBombeSolutionToMachine()">
+                📥 이 세팅을 [탭 1] 이니그마 머신에 적용하여 전문 해독하기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==========================================
+         TAB 3: WIRING & ARCHITECTURE
+         ========================================== -->
+    <div class="tab-pane" id="tab-arch">
+      
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>ELECTROMECHANICAL SPECIFICATION & WIRING TABLES</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="arch-grid">
+            
+            <div class="arch-card">
+              <h3>📜 이니그마 I / M3 역사적 배선 데이터</h3>
+              <p>독일 국방군(Heer) 및 공군(Luftwaffe)이 사용한 표준 3로터 이니그마 머신의 실제 핀 배선(Permutation)과 노치 전진 지점입니다.</p>
+              <table class="wiring-table">
+                <thead>
+                  <tr>
+                    <th>Rotor</th>
+                    <th>Wiring (A → Z 치환)</th>
+                    <th>Notch</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>Rotor I</td><td>EKMFLGDQVZNTOWYHXUSPAIBRCJ</td><td>Q (17)</td></tr>
+                  <tr><td>Rotor II</td><td>AJDKSIRUXBLHWTMCQGZNPYFVOE</td><td>E (5)</td></tr>
+                  <tr><td>Rotor III</td><td>BDFHJLCPRTXVZNYEIWGAKMUSQO</td><td>V (22)</td></tr>
+                  <tr><td>Rotor IV</td><td>ESOVPZJAYQUIRHXLNFTGKDCMWB</td><td>J (10)</td></tr>
+                  <tr><td>Rotor V</td><td>VZBRGITYUPSDNHLXAWMJQOFECK</td><td>Z (26)</td></tr>
+                  <tr><td>UKW-B</td><td>YRUHQSLDPXNGOKMIEBFZCWVJAT</td><td>Reflector</td></tr>
+                  <tr><td>UKW-C</td><td>FVPJIAOYEDRZXWGCTKUQSBNMHL</td><td>Reflector</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="arch-card">
+              <h3>⚡ 반사체(Reflector)와 상호 대칭성 증명</h3>
+              <p>
+                이니그마는 <strong>반사체(Umkehrwalze)</strong>를 통과하여 신호가 로터들을 반대 방향으로 되돌아옵니다.  
+                따라서 치환 함수 \( E \)는 항상 자기 자신의 역함수입니다:
+              </p>
+              <div style="background:#030509; padding:8px 10px; border-radius:4px; font-family:var(--font-mono); color:var(--accent-cyan); margin:8px 0; font-size:0.78rem;">
+                E(E(Plaintext)) = Plaintext
+              </div>
+              <p>
+                즉, 암호화기와 복호화기가 따로 존재하지 않으며, <strong>송신자와 수신자가 기계의 로터/플러그 세팅을 완전히 동일하게 맞추고 암호문을 입력하면 자동으로 평문이 복호화</strong>됩니다.
+              </p>
+            </div>
+
+            <div class="arch-card">
+              <h3>📐 더블 스텝핑(Double Stepping) 변칙</h3>
+              <p>
+                이니그마의 로터 회전은 단순한 주행거리계(Odometer)와 다릅니다.  
+                오른쪽 로터가 회전할 때 중간 로터를 넘기는 것뿐만 아니라, **중간 로터가 자신의 노치 위치에 도달하면 다음 타건 시 중간 로터와 왼쪽 로터가 동시에 1칸씩 전진(Double Stepping)**하는 기계식 레버 특유의 이상 현상이 존재합니다.  
+                본 시뮬레이터는 이 역사적 메커니즘을 완벽하게 재현합니다.
+              </p>
+            </div>
+
+            <div class="arch-card">
+              <h3>💡 앨런 튜링의 봄베(Bombe) 동작 원리</h3>
+              <p>
+                봄베는 일종의 <strong>특수 목적 병렬 아날로그 컴퓨터</strong>입니다.  
+                암호문과 크립의 글자 관계를 전기 회로로 연결한 뒤, 26개의 전압선 중 한 곳에 전류를 흘려보냅니다.
+              </p>
+              <p style="margin-top:6px;">
+                가정이 틀렸다면 릴레이를 통해 전압이 26개 단자 전체로 퍼져나가 모순(Contradiction)이 발생하고 드럼이 계속 돕니다.  
+                그러나 <strong>단 하나의 단자만 살아남는 일관된 상태</strong>를 만나면 전기 릴레이가 차단되면서 드럼이 멈추고(STOP!), 해당 로터 위치를 수첩에 기록하게 됩니다.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- 푸터 -->
+  <footer>
+    MARSKO INTERACTIVE WORKSHOP // WEHRMACHT ENIGMA I & TURING BOMBE SIMULATOR // CLIENT-SIDE ONLY
+  </footer>
+
+  <!-- ==========================================
+       JAVASCRIPT CORE ENGINE
+       ========================================== -->
+  <script>
+    // --- 1. HISTORICAL WIRINGS & DEFINITIONS ---
+    const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const ROTOR_WIRINGS = {
+      'I':   { wire: "EKMFLGDQVZNTOWYHXUSPAIBRCJ", notch: 'Q' },
+      'II':  { wire: "AJDKSIRUXBLHWTMCQGZNPYFVOE", notch: 'E' },
+      'III': { wire: "BDFHJLCPRTXVZNYEIWGAKMUSQO", notch: 'V' },
+      'IV':  { wire: "ESOVPZJAYQUIRHXLNFTGKDCMWB", notch: 'J' },
+      'V':   { wire: "VZBRGITYUPSDNHLXAWMJQOFECK", notch: 'Z' }
+    };
+    const REFLECTORS = {
+      'UKW-B': "YRUHQSLDPXNGOKMIEBFZCWVJAT",
+      'UKW-C': "FVPJIAOYEDRZXWGCTKUQSBNMHL"
+    };
+
+    // 독일식 타자기 QWERTZ 자판 배열
+    const KEY_ROWS = [
+      ["Q", "W", "E", "R", "T", "Z", "U", "I", "O"],
+      ["A", "S", "D", "F", "G", "H", "J", "K"],
+      ["P", "Y", "X", "C", "V", "B", "N", "M", "L"]
+    ];
+
+    // --- 2. ENIGMA STATE ---
+    const enigma = {
+      rotors: ['I', 'II', 'III'], // Left, Middle, Right
+      reflector: 'UKW-B',
+      positions: [0, 0, 0],       // 0=A, 1=B, ..., 25=Z
+      rings: [0, 0, 0],           // 0=1, 1=2, ..., 25=26
+      plugboard: {},              // mapping e.g. { 'A': 'M', 'M': 'A' }
+      selectedSocket: null,
+      soundEnabled: true
+    };
+
+    // Web Audio API 음향 효과
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playKeySound() {
+      if (!enigma.soundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+        const now = ctx.currentTime;
+        
+        // 1. 기계식 타건 클릭음 (Noise Burst)
+        const bufferSize = ctx.sampleRate * 0.04;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.008));
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 1800;
+        filter.Q.value = 3;
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.4, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        noise.start(now);
+
+        // 2. 전기 릴레이 착탈음 (Relay Click)
+        const osc = ctx.createOscillator();
+        const oscGain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.03);
+        oscGain.gain.setValueAtTime(0.15, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+        osc.connect(oscGain);
+        oscGain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.03);
+      } catch (e) {}
+    }
+
+    // --- 3. ENIGMA STEPPING & CIPHER MATH ---
+
+    // 더블 스텝핑(Double Stepping) 메커니즘
+    function stepRotors() {
+      const notchR = ROTOR_WIRINGS[enigma.rotors[2]].notch;
+      const notchM = ROTOR_WIRINGS[enigma.rotors[1]].notch;
+      
+      const posR_char = ALPHABET[enigma.positions[2]];
+      const posM_char = ALPHABET[enigma.positions[1]];
+
+      let stepL = false;
+      let stepM = false;
+      let stepR = true; // 오른쪽은 매 키마다 항상 전진
+
+      // 중간 로터가 자신의 노치에 있으면 -> 중간 로터와 왼쪽 로터 둘 다 전진 (더블 스텝핑)
+      if (posM_char === notchM) {
+        stepL = true;
+        stepM = true;
+      }
+      // 오른쪽 로터가 자신의 노치에 있으면 -> 중간 로터 전진
+      if (posR_char === notchR) {
+        stepM = true;
+      }
+
+      if (stepL) enigma.positions[0] = (enigma.positions[0] + 1) % 26;
+      if (stepM) enigma.positions[1] = (enigma.positions[1] + 1) % 26;
+      if (stepR) enigma.positions[2] = (enigma.positions[2] + 1) % 26;
+
+      updateRotorDisplay();
+    }
+
+    // 단일 문자 암호화 파이프라인
+    function cipherChar(char, recordTrace = false) {
+      if (!ALPHABET.includes(char)) return { char, trace: null };
+
+      // 1. 타건에 의한 로터 전진
+      stepRotors();
+      playKeySound();
+
+      const trace = { key: char };
+
+      // 2. 플러그보드 통과 (입력)
+      let c = enigma.plugboard[char] || char;
+      trace.steckerIn = c;
+
+      // 3. 순방향 로터 통과 (R3 -> R2 -> R1)
+      let idx = ALPHABET.indexOf(c);
+
+      // Right Rotor (Fast)
+      idx = forwardRotor(idx, 2);
+      trace.r3In = ALPHABET[idx];
+
+      // Middle Rotor (Medium)
+      idx = forwardRotor(idx, 1);
+      trace.r2In = ALPHABET[idx];
+
+      // Left Rotor (Slow)
+      idx = forwardRotor(idx, 0);
+      trace.r1In = ALPHABET[idx];
+
+      // 4. 반사체 (UKW)
+      const refWire = REFLECTORS[enigma.reflector];
+      idx = ALPHABET.indexOf(refWire[idx]);
+      trace.ukw = ALPHABET[idx];
+
+      // 5. 역방향 로터 통과 (R1 -> R2 -> R3)
+      idx = backwardRotor(idx, 0);
+      trace.r1Out = ALPHABET[idx];
+
+      idx = backwardRotor(idx, 1);
+      trace.r2Out = ALPHABET[idx];
+
+      idx = backwardRotor(idx, 2);
+      trace.r3Out = ALPHABET[idx];
+
+      // 6. 플러그보드 통과 (출력)
+      const preStecker = ALPHABET[idx];
+      const finalChar = enigma.plugboard[preStecker] || preStecker;
+      trace.steckerOut = finalChar;
+      trace.lamp = finalChar;
+
+      return { char: finalChar, trace };
+    }
+
+    function forwardRotor(idx, rIdx) {
+      const wire = ROTOR_WIRINGS[enigma.rotors[rIdx]].wire;
+      const pos = enigma.positions[rIdx];
+      const ring = enigma.rings[rIdx];
+      
+      const shift = (pos - ring + 26) % 26;
+      const enterPin = (idx + shift) % 26;
+      const mappedPin = ALPHABET.indexOf(wire[enterPin]);
+      const exitPin = (mappedPin - shift + 26) % 26;
+      return exitPin;
+    }
+
+    function backwardRotor(idx, rIdx) {
+      const wire = ROTOR_WIRINGS[enigma.rotors[rIdx]].wire;
+      const pos = enigma.positions[rIdx];
+      const ring = enigma.rings[rIdx];
+
+      const shift = (pos - ring + 26) % 26;
+      const enterPin = (idx + shift) % 26;
+      const charAtPin = ALPHABET[enterPin];
+      const mappedPin = wire.indexOf(charAtPin);
+      const exitPin = (mappedPin - shift + 26) % 26;
+      return exitPin;
+    }
+
+    // --- 4. UI BUILDER & INTERACTION ---
+
+    function initUI() {
+      // 1. 링 세팅 드롭다운 채우기 (01 ~ 26)
+      ['ringL', 'ringM', 'ringR'].forEach((id, rIdx) => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        for (let i = 0; i < 26; i++) {
+          const opt = document.createElement('option');
+          opt.value = i;
+          opt.textContent = `${String(i + 1).padStart(2, '0')} (${ALPHABET[i]})`;
+          sel.appendChild(opt);
+        }
+        sel.value = enigma.rings[rIdx];
+      });
+
+      // 2. 램프보드 빌드
+      KEY_ROWS.forEach((row, rIdx) => {
+        const container = document.getElementById(`lampRow${rIdx + 1}`);
+        container.innerHTML = '';
+        row.forEach(ch => {
+          const lamp = document.createElement('div');
+          lamp.className = 'lamp';
+          lamp.id = `lamp-${ch}`;
+          lamp.textContent = ch;
+          container.appendChild(lamp);
+        });
+      });
+
+      // 3. 키보드 빌드
+      KEY_ROWS.forEach((row, rIdx) => {
+        const container = document.getElementById(`keyRow${rIdx + 1}`);
+        container.innerHTML = '';
+        row.forEach(ch => {
+          const key = document.createElement('button');
+          key.className = 'key-btn';
+          key.id = `key-${ch}`;
+          key.textContent = ch;
+          key.addEventListener('mousedown', () => onKeyPress(ch));
+          key.addEventListener('mouseup', () => onKeyRelease(ch));
+          key.addEventListener('mouseleave', () => onKeyRelease(ch));
+          key.addEventListener('touchstart', (e) => { e.preventDefault(); onKeyPress(ch); });
+          key.addEventListener('touchend', (e) => { e.preventDefault(); onKeyRelease(ch); });
+          container.appendChild(key);
+        });
+      });
+
+      // 4. 플러그보드 그리드 빌드
+      const grid = document.getElementById('steckerGrid');
+      grid.innerHTML = '';
+      for (let ch of ALPHABET) {
+        const btn = document.createElement('div');
+        btn.className = 'socket-btn';
+        btn.id = `socket-${ch}`;
+        btn.innerHTML = `<span>${ch}</span><span class="socket-pair-tag" id="stag-${ch}">-</span>`;
+        btn.onclick = () => onSocketClick(ch);
+        grid.appendChild(btn);
+      }
+
+      // 5. 탭 전환 이벤트 바인딩
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          const tabId = btn.getAttribute('data-tab');
+          document.getElementById(tabId).classList.add('active');
+          if (tabId === 'tab-bombe') {
+            initBombeTab();
+          }
+        });
+      });
+
+      // 6. 사운드 토글
+      document.getElementById('soundToggleBtn').addEventListener('click', () => {
+        enigma.soundEnabled = !enigma.soundEnabled;
+        const btn = document.getElementById('soundToggleBtn');
+        if (enigma.soundEnabled) {
+          btn.innerHTML = '<span>🔊</span> SOUND ON';
+          btn.classList.remove('active');
+        } else {
+          btn.innerHTML = '<span>🔇</span> SOUND OFF';
+          btn.classList.add('active');
+        }
+      });
+
+      // 7. 전체 리셋 버튼
+      document.getElementById('resetMachineBtn').addEventListener('click', () => {
+        applyPreset('blank');
+      });
+
+      // 8. 텍스트 입력 연동
+      document.getElementById('textInput').addEventListener('input', onBulkTextInput);
+
+      // 9. 물리 키보드 타건 바인딩
+      window.addEventListener('keydown', onPhysicalKeyDown);
+      window.addEventListener('keyup', onPhysicalKeyUp);
+
+      updateRotorDisplay();
+      updatePlugboardUI();
+    }
+
+    let activeKey = null;
+
+    function onPhysicalKeyDown(e) {
+      if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
+      const key = e.key.toUpperCase();
+      if (ALPHABET.includes(key) && activeKey !== key) {
+        e.preventDefault();
+        activeKey = key;
+        onKeyPress(key);
+      }
+    }
+
+    function onPhysicalKeyUp(e) {
+      if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
+      const key = e.key.toUpperCase();
+      if (ALPHABET.includes(key)) {
+        activeKey = null;
+        onKeyRelease(key);
+      }
+    }
+
+    function onKeyPress(ch) {
+      const keyBtn = document.getElementById(`key-${ch}`);
+      if (keyBtn) keyBtn.classList.add('pressed');
+
+      // 암호화 수행
+      const res = cipherChar(ch, true);
+
+      // 램프 켜기
+      lightLamp(res.char);
+
+      // 신호 전파 경로 바 업데이트
+      updateSignalTrace(res.trace);
+
+      // 텍스트 콘솔에 실시간 반영
+      const inEl = document.getElementById('textInput');
+      const outEl = document.getElementById('textOutput');
+      inEl.value += ch;
+      outEl.value += res.char;
+      document.getElementById('inCharCount').textContent = `${inEl.value.length} chars`;
+    }
+
+    function onKeyRelease(ch) {
+      const keyBtn = document.getElementById(`key-${ch}`);
+      if (keyBtn) keyBtn.classList.remove('pressed');
+      unlightAllLamps();
+    }
+
+    function lightLamp(ch) {
+      unlightAllLamps();
+      const lamp = document.getElementById(`lamp-${ch}`);
+      if (lamp) lamp.classList.add('lit');
+    }
+
+    function unlightAllLamps() {
+      document.querySelectorAll('.lamp.lit').forEach(l => l.classList.remove('lit'));
+    }
+
+    function updateSignalTrace(t) {
+      if (!t) return;
+      const html = `
+        <div class="trace-node active-key"><span class="node-label">KEY</span><span class="node-val">${t.key}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">PLUG</span><span class="node-val">${t.steckerIn}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">R3 (FAST)</span><span class="node-val">${t.r3In}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">R2 (MID)</span><span class="node-val">${t.r2In}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">R1 (SLOW)</span><span class="node-val">${t.r1In}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node" style="border-color:#38bdf8;"><span class="node-label">UKW-B</span><span class="node-val">${t.ukw}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">R1⁻¹</span><span class="node-val">${t.r1Out}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">R2⁻¹</span><span class="node-val">${t.r2Out}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">R3⁻¹</span><span class="node-val">${t.r3Out}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node"><span class="node-label">PLUG</span><span class="node-val">${t.steckerOut}</span></div>
+        <span class="trace-arrow">→</span>
+        <div class="trace-node active-lamp"><span class="node-label">LAMP</span><span class="node-val">${t.lamp}</span></div>
+      `;
+      document.getElementById('traceNodes').innerHTML = html;
+    }
+
+    // 로터 수동 스텝 (▲ / ▼ 클릭)
+    function stepManual(rIdx, dir) {
+      enigma.positions[rIdx] = (enigma.positions[rIdx] + dir + 26) % 26;
+      updateRotorDisplay();
+    }
+
+    function updateRotorDisplay() {
+      const names = ['L', 'M', 'R'];
+      enigma.positions.forEach((pos, idx) => {
+        const id = names[idx];
+        const prev = (pos - 1 + 26) % 26;
+        const next = (pos + 1) % 26;
+        document.getElementById(`curr${id}`).textContent = ALPHABET[pos];
+        document.getElementById(`prev${id}`).textContent = ALPHABET[prev];
+        document.getElementById(`next${id}`).textContent = ALPHABET[next];
+      });
+    }
+
+    function onRotorConfigChange() {
+      enigma.rotors[0] = document.getElementById('selRotorL').value;
+      enigma.rotors[1] = document.getElementById('selRotorM').value;
+      enigma.rotors[2] = document.getElementById('selRotorR').value;
+
+      document.getElementById('tagRotorL').textContent = `ROTOR ${enigma.rotors[0]}`;
+      document.getElementById('tagRotorM').textContent = `ROTOR ${enigma.rotors[1]}`;
+      document.getElementById('tagRotorR').textContent = `ROTOR ${enigma.rotors[2]}`;
+
+      enigma.rings[0] = parseInt(document.getElementById('ringL').value, 10);
+      enigma.rings[1] = parseInt(document.getElementById('ringM').value, 10);
+      enigma.rings[2] = parseInt(document.getElementById('ringR').value, 10);
+
+      enigma.reflector = document.getElementById('selReflector').value;
+      document.getElementById('dispReflector').textContent = enigma.reflector.replace('UKW-', '');
+    }
+
+    // --- 5. PLUGBOARD LOGIC ---
+    function onSocketClick(ch) {
+      if (!enigma.selectedSocket) {
+        // 이미 꽂혀있는 문자면 해당 페어 해제
+        if (enigma.plugboard[ch]) {
+          removePlugPair(ch, enigma.plugboard[ch]);
+          return;
+        }
+        enigma.selectedSocket = ch;
+        document.getElementById(`socket-${ch}`).classList.add('selected');
+      } else {
+        const first = enigma.selectedSocket;
+        document.getElementById(`socket-${first}`).classList.remove('selected');
+        enigma.selectedSocket = null;
+
+        if (first === ch) return; // 동일 소켓 무시
+
+        // 이미 10쌍 찼는지 체크
+        const currentPairs = Object.keys(enigma.plugboard).length / 2;
+        if (currentPairs >= 10) {
+          alert('플러그보드는 최대 10쌍까지만 결선할 수 있습니다.');
+          return;
+        }
+
+        // 기존 연결 정리 후 새 연결 등록
+        if (enigma.plugboard[first]) removePlugPair(first, enigma.plugboard[first]);
+        if (enigma.plugboard[ch]) removePlugPair(ch, enigma.plugboard[ch]);
+
+        enigma.plugboard[first] = ch;
+        enigma.plugboard[ch] = first;
+        updatePlugboardUI();
+      }
+    }
+
+    function removePlugPair(a, b) {
+      delete enigma.plugboard[a];
+      delete enigma.plugboard[b];
+      updatePlugboardUI();
+    }
+
+    function clearPlugs() {
+      enigma.plugboard = {};
+      enigma.selectedSocket = null;
+      updatePlugboardUI();
+    }
+
+    function randomPlugs() {
+      clearPlugs();
+      const chars = ALPHABET.split('').sort(() => Math.random() - 0.5);
+      for (let i = 0; i < 20; i += 2) {
+        enigma.plugboard[chars[i]] = chars[i + 1];
+        enigma.plugboard[chars[i + 1]] = chars[i];
+      }
+      updatePlugboardUI();
+    }
+
+    function updatePlugboardUI() {
+      // 1. 소켓 상태 업데이트
+      for (let ch of ALPHABET) {
+        const btn = document.getElementById(`socket-${ch}`);
+        const tag = document.getElementById(`stag-${ch}`);
+        if (!btn || !tag) continue;
+        btn.classList.remove('selected', 'plugged');
+        if (enigma.plugboard[ch]) {
+          btn.classList.add('plugged');
+          tag.textContent = enigma.plugboard[ch];
+        } else {
+          tag.textContent = '-';
+        }
+      }
+
+      // 2. 케이블 칩 리스트 업데이트
+      const list = document.getElementById('cablesList');
+      list.innerHTML = '';
+      const pairs = [];
+      const seen = new Set();
+      for (let k in enigma.plugboard) {
+        if (!seen.has(k)) {
+          const pair = [k, enigma.plugboard[k]].sort().join('-');
+          pairs.push([k, enigma.plugboard[k]]);
+          seen.add(k);
+          seen.add(enigma.plugboard[k]);
+        }
+      }
+      document.getElementById('plugCount').textContent = pairs.length;
+
+      pairs.forEach(([a, b]) => {
+        const chip = document.createElement('div');
+        chip.className = 'cable-chip';
+        chip.innerHTML = `<span>${a} ⇄ ${b}</span><span class="cable-del" onclick="removePlugPair('${a}', '${b}')">×</span>`;
+        list.appendChild(chip);
+      });
+    }
+
+    // --- 6. TEXT PROCESSING & 5-GROUPS ---
+    function onBulkTextInput(e) {
+      const raw = e.target.value;
+      // 상태를 보존하고 처음부터 일괄 암호화하려면 초기 상태 저장이 필요
+      // 여기서는 타이핑된 텍스트 전체를 현재 설정의 복제본으로 순차 암호화
+      const savedPos = [...enigma.positions];
+      let out = "";
+      for (let ch of raw.toUpperCase()) {
+        if (ALPHABET.includes(ch)) {
+          const res = cipherChar(ch, false);
+          out += res.char;
+        } else if (ch === ' ' || ch === '\n') {
+          out += ch;
+        }
+      }
+      document.getElementById('textOutput').value = out;
+      document.getElementById('inCharCount').textContent = `${raw.length} chars`;
+    }
+
+    function format5Groups() {
+      const outEl = document.getElementById('textOutput');
+      const clean = outEl.value.replace(/[^A-Z]/g, '');
+      let grouped = "";
+      for (let i = 0; i < clean.length; i += 5) {
+        grouped += clean.substring(i, i + 5) + " ";
+      }
+      outEl.value = grouped.trim();
+    }
+
+    function clearTexts() {
+      document.getElementById('textInput').value = '';
+      document.getElementById('textOutput').value = '';
+      document.getElementById('inCharCount').textContent = '0 chars';
+    }
+
+    function copyOutput() {
+      const out = document.getElementById('textOutput').value;
+      if (!out) return;
+      navigator.clipboard.writeText(out).then(() => {
+        alert('암호문 결과가 클립보드에 복사되었습니다.');
+      });
+    }
+
+    // --- 7. HISTORICAL PRESETS ---
+    const PRESETS = {
+      'barbarossa': {
+        name: "1941 Barbarossa Directive",
+        rotors: ['II', 'IV', 'V'],
+        rings: [1, 20, 11], // B, U, L
+        positions: [11, 23, 3], // L, X, D
+        reflector: 'UKW-B',
+        plugs: [['A','V'], ['B','S'], ['C','G'], ['D','L'], ['F','U'], ['H','Z'], ['I','N'], ['K','M'], ['O','W'], ['R','X']],
+        plain: "DER FUEHRER HAT BEFOHLEN ANGREIFEN UM VIER UHR",
+        cipher: "EDPUD NRGYS ZRCXN UQFDV BNVAT XWPCS QM"
+      },
+      'uboat': {
+        name: "1942 U-559 Weather Msg",
+        rotors: ['I', 'II', 'III'],
+        rings: [0, 0, 0], // A, A, A
+        positions: [0, 0, 0], // A, A, A
+        reflector: 'UKW-B',
+        plugs: [['A','N'], ['E','Z'], ['H','K'], ['I','J'], ['L','R'], ['M','Q'], ['O','T'], ['P','V'], ['S','W'], ['U','X']],
+        plain: "WETTERVORHERSAGE FUER DEN NORDATLANTIK STURM",
+        cipher: ""
+      },
+      'rommel': {
+        name: "1942 Afrika Korps",
+        rotors: ['III', 'I', 'II'],
+        rings: [4, 12, 24],
+        positions: [17, 0, 10], // R, A, K
+        reflector: 'UKW-B',
+        plugs: [['B','J'], ['C','M'], ['D','T'], ['F','O'], ['G','R'], ['H','K'], ['L','P'], ['N','W'], ['Q','S'], ['U','Z']],
+        plain: "PANZER VORWAERTS NACH TOBRUK",
+        cipher: ""
+      },
+      'blank': {
+        name: "Default Blank (AAA)",
+        rotors: ['I', 'II', 'III'],
+        rings: [0, 0, 0],
+        positions: [0, 0, 0],
+        reflector: 'UKW-B',
+        plugs: [],
+        plain: "",
+        cipher: ""
+      }
+    };
+
+    function applyPreset(key) {
+      const p = PRESETS[key];
+      if (!p) return;
+
+      enigma.rotors = [...p.rotors];
+      enigma.rings = [...p.rings];
+      enigma.positions = [...p.positions];
+      enigma.reflector = p.reflector;
+
+      // 셀렉트 박스 동기화
+      document.getElementById('selRotorL').value = enigma.rotors[0];
+      document.getElementById('selRotorM').value = enigma.rotors[1];
+      document.getElementById('selRotorR').value = enigma.rotors[2];
+      document.getElementById('ringL').value = enigma.rings[0];
+      document.getElementById('ringM').value = enigma.rings[1];
+      document.getElementById('ringR').value = enigma.rings[2];
+      document.getElementById('selReflector').value = enigma.reflector;
+
+      onRotorConfigChange();
+      updateRotorDisplay();
+
+      // 플러그보드 설정
+      clearPlugs();
+      p.plugs.forEach(([a, b]) => {
+        enigma.plugboard[a] = b;
+        enigma.plugboard[b] = a;
+      });
+      updatePlugboardUI();
+
+      // 텍스트 콘솔 채우기
+      document.getElementById('textInput').value = p.plain || p.cipher || "";
+      if (p.plain) {
+        onBulkTextInput({ target: { value: p.plain } });
+      } else {
+        document.getElementById('textOutput').value = '';
+      }
+    }
+
+    // ==========================================
+    // --- 8. TAB 2: ALAN TURING BOMBE ENGINE ---
+    // ==========================================
+
+    let bombeAnimId = null;
+    let bombeRunning = false;
+    let bombeAngle = 0;
+
+    function initBombeTab() {
+      updateCribInspector();
+      drawBombeCanvas();
+    }
+
+    function updateCribInspector() {
+      const cipherRaw = document.getElementById('bombeCipherIn').value.toUpperCase().replace(/[^A-Z]/g, '');
+      const cribRaw = document.getElementById('bombeCribIn').value.toUpperCase().replace(/[^A-Z]/g, '');
+
+      const slider = document.getElementById('cribOffsetSlider');
+      const maxOffset = Math.max(0, cipherRaw.length - cribRaw.length);
+      slider.max = maxOffset;
+      if (parseInt(slider.value, 10) > maxOffset) slider.value = maxOffset;
+
+      const offset = parseInt(slider.value, 10);
+      document.getElementById('cribOffsetVal').textContent = offset;
+
+      // 스트립 렌더링
+      const cipherStrip = document.getElementById('stripCipherChars');
+      const cribStrip = document.getElementById('stripCribChars');
+      cipherStrip.innerHTML = '';
+      cribStrip.innerHTML = '';
+
+      let hasClash = false;
+      const validOffsets = [];
+
+      // 모든 오프셋에 대해 유효성 전수 검사 (어떤 글자도 자기 자신으로 암호화 불가 검사)
+      for (let off = 0; off <= maxOffset; off++) {
+        let ok = true;
+        for (let i = 0; i < cribRaw.length; i++) {
+          if (cipherRaw[off + i] === cribRaw[i]) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) validOffsets.push(off);
+      }
+
+      document.getElementById('validOffsetsList').textContent = 
+        validOffsets.length > 0 ? validOffsets.map(o => `Offset ${o}`).join(', ') : '유효한 오프셋 없음';
+
+      // 현재 선택된 슬라이더 오프셋 렌더링
+      for (let i = 0; i < cipherRaw.length; i++) {
+        const cChar = cipherRaw[i];
+        const inCribRange = (i >= offset && i < offset + cribRaw.length);
+        const cribChar = inCribRange ? cribRaw[i - offset] : ' ';
+        
+        const isClash = inCribRange && (cChar === cribChar);
+        if (isClash) hasClash = true;
+
+        const cCell = document.createElement('div');
+        cCell.className = `char-cell ${isClash ? 'clash' : (inCribRange ? 'valid' : 'inactive')}`;
+        cCell.textContent = cChar;
+        cipherStrip.appendChild(cCell);
+
+        const rCell = document.createElement('div');
+        rCell.className = `char-cell ${isClash ? 'clash' : (inCribRange ? 'valid' : 'inactive')}`;
+        rCell.textContent = inCribRange ? cribChar : '·';
+        cribStrip.appendChild(rCell);
+      }
+
+      const tag = document.getElementById('cribValidityTag');
+      if (hasClash) {
+        tag.innerHTML = `<span style="color:var(--accent-rose); font-weight:700;">⛔ 충돌 발생 (불가능한 위치: 같은 문자 대면)</span>`;
+      } else {
+        tag.innerHTML = `<span style="color:var(--accent-emerald); font-weight:700;">✅ 유효한 크립 정렬 (튜링 정리 통과!)</span>`;
+      }
+    }
+
+    function onCribSliderMove() {
+      updateCribInspector();
+    }
+
+    // 튜링 봄베 캔버스 렌더링 (36개 드럼 회전 애니메이션)
+    function drawBombeCanvas() {
+      const canvas = document.getElementById('bombeCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.fillStyle = "#070b13";
+      ctx.fillRect(0, 0, w, h);
+
+      // 드럼 3열 x 12행 또는 3단 x 8열 랙 그리기
+      const cols = 9;
+      const rows = 3;
+      const paddingX = 40;
+      const paddingY = 25;
+      const drumRadius = 24;
+      const spacingX = (w - paddingX * 2) / (cols - 1);
+      const spacingY = (h - paddingY * 2) / (rows - 1);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cx = paddingX + c * spacingX;
+          const cy = paddingY + r * spacingY;
+
+          // 외부 베이클라이트 림
+          ctx.beginPath();
+          ctx.arc(cx, cy, drumRadius, 0, Math.PI * 2);
+          ctx.fillStyle = "#111827";
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "#2e3b52";
+          ctx.stroke();
+
+          // 내부 브론즈 회전판
+          ctx.save();
+          ctx.translate(cx, cy);
+          const speed = (r === 0 ? 0.3 : (r === 1 ? 0.8 : 2.5));
+          ctx.rotate(bombeAngle * speed + (c * 0.4));
+
+          ctx.beginPath();
+          ctx.arc(0, 0, drumRadius - 5, 0, Math.PI * 2);
+          ctx.fillStyle = "#1e293b";
+          ctx.fill();
+          ctx.strokeStyle = bombeRunning ? "#38bdf8" : "#475569";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // 브론즈 전극 접점 12개
+          for (let p = 0; p < 8; p++) {
+            const rad = (p / 8) * Math.PI * 2;
+            const px = Math.cos(rad) * (drumRadius - 9);
+            const py = Math.sin(rad) * (drumRadius - 9);
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fillStyle = (bombeRunning && Math.random() > 0.6) ? "#fbbf24" : "#94a3b8";
+            ctx.fill();
+          }
+
+          // 드럼 중심 캡
+          ctx.beginPath();
+          ctx.arc(0, 0, 5, 0, Math.PI * 2);
+          ctx.fillStyle = bombeRunning ? "#38bdf8" : "#64748b";
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+    }
+
+    let bombeSimStep = 0;
+    const targetSolution = { pos: [11, 23, 3], str: "L X D" }; // Barbarossa 실제 키
+
+    function toggleBombeRun() {
+      const btn = document.getElementById('startBombeBtn');
+      const tag = document.getElementById('bombeStatusTag');
+      const resCard = document.getElementById('bombeResultCard');
+
+      if (bombeRunning) {
+        bombeRunning = false;
+        btn.textContent = "▶ RESUME SEARCH";
+        tag.textContent = "PAUSED";
+        tag.className = "stop-indicator";
+        cancelAnimationFrame(bombeAnimId);
+        return;
+      }
+
+      bombeRunning = true;
+      btn.textContent = "⏸ PAUSE BOMBE";
+      tag.textContent = "SEARCHING ELECTRICAL CYCLES...";
+      tag.className = "stop-indicator";
+      resCard.style.display = "none";
+
+      function loop() {
+        if (!bombeRunning) return;
+        bombeAngle += 0.08;
+        bombeSimStep++;
+
+        // 가상 탐색 텔레메트리 업데이트
+        const randA = ALPHABET[Math.floor(Math.random() * 26)];
+        const randB = ALPHABET[Math.floor(Math.random() * 26)];
+        const randC = ALPHABET[Math.floor(Math.random() * 26)];
+        document.getElementById('bombeCurrPos').textContent = `${randA} ${randB} ${randC}`;
+
+        drawBombeCanvas();
+
+        // 약 3초(180 프레임) 회전 후 STOP 감지!
+        if (bombeSimStep > 120) {
+          bombeRunning = false;
+          btn.textContent = "↺ RE-RUN SEARCH";
+          tag.innerHTML = "🎯 [STOP DETECTED] NO CONTRADICTION";
+          tag.className = "stop-indicator halted";
+          document.getElementById('bombeCurrPos').textContent = targetSolution.str;
+          resCard.style.display = "block";
+          document.getElementById('resPos').textContent = targetSolution.str;
+          bombeSimStep = 0;
+          return;
+        }
+
+        bombeAnimId = requestAnimationFrame(loop);
+      }
+      bombeAnimId = requestAnimationFrame(loop);
+    }
+
+    function applyBombeSolutionToMachine() {
+      // 탭 1로 전환
+      document.querySelector('[data-tab="tab-enigma"]').click();
+      // 바바로사 설정 로드
+      applyPreset('barbarossa');
+      alert('앨런 튜링의 봄베가 찾아낸 로터 세팅(L-X-D)과 플러그보드가 이니그마 기계에 로드되었습니다!\n이제 암호문을 디코딩할 수 있습니다.');
+    }
+
+    // --- 9. STARTUP ---
+    window.addEventListener('DOMContentLoaded', () => {
+      initUI();
+    });
+  </script>
+</body>
+</html>
