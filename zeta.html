@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Marsko lab tool — Riemann zeta spiral ζ(σ + it) interactive complex plane visualization.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/marsko-hud.css">
+  <meta name="theme-color" content="#030407">
+  <title>Zeta Spiral · ζ(σ + it) // marsko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #030407;
+      --panel-bg: rgba(8, 11, 18, 0.82);
+      --border: rgba(255, 255, 255, 0.09);
+      --gold: #fbbf24;
+      --amber: #f59e0b;
+      --orange: #f97316;
+      --white: #fefce8;
+      --muted: #94a3b8;
+      --dim: #64748b;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      user-select: none;
+    }
+
+    .app {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(245, 158, 11, 0.045) 0%, rgba(3, 4, 7, 0) 60%),
+        #030407;
+    }
+
+    /* 메인 복소평면 뷰포트 */
+    .stage {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+    }
+
+    #spiralCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    #spiralCanvas:active { cursor: grabbing; }
+
+    /* 상단 좌측 HUD */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      pointer-events: none;
+    }
+
+    .home-link {
+      pointer-events: auto;
+    }
+    .home-link:hover {
+      color: var(--gold);
+      border-color: rgba(251, 191, 36, 0.45);
+    }
+
+    h1 {
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.96rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #fef9c3;
+      text-shadow: 0 0 16px rgba(251, 191, 36, 0.28);
+    }
+
+    .hud-meta {
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.66rem;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+    }
+
+    /* 상단 우측 텔레메트리 (모바일에서도 σ, t, |ζ| 표시) */
+    .telemetry-card {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.69rem;
+      color: var(--muted);
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      line-height: 1.55;
+      text-align: right;
+      z-index: 10;
+      font-variant-numeric: tabular-nums;
+      min-width: 188px;
+    }
+    .telemetry-card strong {
+      color: #fde68a;
+      font-weight: 600;
+    }
+    .telemetry-card strong.critical {
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(251, 191, 36, 0.7);
+    }
+    .telemetry-card strong.off-critical {
+      color: #fb923c;
+    }
+    .telemetry-card .zero-badge {
+      margin-top: 2px;
+      padding-top: 3px;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      font-size: 0.64rem;
+      color: var(--dim);
+    }
+    .telemetry-card .zero-badge.hit {
+      color: #fef08a;
+    }
+
+    /* 원점 확대 인셋 뷰 (PIP) */
+    .origin-inset {
+      position: absolute;
+      top: 128px;
+      right: 16px;
+      width: 162px;
+      height: 162px;
+      border-radius: 10px;
+      background: rgba(5, 7, 12, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      overflow: hidden;
+      z-index: 9;
+      pointer-events: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .origin-inset.near-zero {
+      border-color: rgba(251, 191, 36, 0.65);
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.25), 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+    .origin-inset.hit-zero {
+      border-color: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 30px rgba(254, 240, 138, 0.45);
+    }
+    #insetCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .inset-label {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+      color: rgba(226, 232, 240, 0.72);
+      pointer-events: none;
+    }
+    .inset-scale {
+      position: absolute;
+      bottom: 5px;
+      right: 7px;
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.58rem;
+      color: var(--dim);
+      pointer-events: none;
+    }
+
+    /* 하단 영역: |ζ(σ+it)| 그래프 + 컨트롤 독 */
+    .bottom-rack {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      padding: 0 12px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(to top, rgba(3, 4, 7, 0.96) 65%, rgba(3, 4, 7, 0));
+    }
+
+    .mag-panel {
+      position: relative;
+      width: 100%;
+      max-width: 980px;
+      height: 112px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+    #magCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: ew-resize;
+      touch-action: none;
+    }
+    .mag-caption {
+      position: absolute;
+      top: 6px;
+      left: 10px;
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.63rem;
+      color: var(--muted);
+      pointer-events: none;
+      letter-spacing: 0.03em;
+    }
+    .mag-caption span {
+      color: var(--gold);
+    }
+    .mag-hint {
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 0.6rem;
+      color: var(--dim);
+      pointer-events: none;
+    }
+
+    /* marsko-hud.css 의 .control-dock 을 흐름 배치로 덮어쓰기 */
+    .bottom-rack .control-dock {
+      position: static;
+      transform: none;
+      left: auto;
+      bottom: auto;
+      width: 100%;
+      max-width: 980px;
+      background: var(--panel-bg);
+      border-color: var(--border);
+      padding: 8px 12px;
+      gap: 7px 10px;
+    }
+
+    .dock-btn:hover {
+      background: #27272a;
+      color: var(--gold);
+      border-color: rgba(251, 191, 36, 0.35);
+    }
+    .dock-btn.active {
+      background: rgba(245, 158, 11, 0.16);
+      border-color: var(--amber);
+      color: #fde68a;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.22);
+    }
+    .dock-btn.audio-on {
+      background: rgba(249, 115, 22, 0.16);
+      border-color: var(--orange);
+      color: #fed7aa;
+    }
+
+    .slider-group input[type="range"] {
+      accent-color: var(--amber);
+      width: 86px;
+    }
+    .slider-group .val {
+      color: #fde68a;
+      min-width: 3.1em;
+    }
+    .slider-group.t-scrub input[type="range"] {
+      width: 100px;
+    }
+
+    .sigma-presets {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mini-btn {
+      padding: 4px 7px;
+      font-size: 0.68rem;
+    }
+
+    @media (max-width: 640px) {
+      header {
+        top: 10px;
+        left: 10px;
+        gap: 2px;
+      }
+      h1 { font-size: 0.78rem; }
+      .hud-meta { display: none; }
+
+      .telemetry-card {
+        display: block !important;
+        top: 10px;
+        right: 10px;
+        padding: 6px 9px;
+        font-size: 0.62rem;
+        min-width: 146px;
+        line-height: 1.45;
+      }
+      .telemetry-card .hide-sm { display: none; }
+
+      .origin-inset {
+        top: 86px;
+        right: 10px;
+        width: 104px;
+        height: 104px;
+      }
+      .inset-label { font-size: 0.54rem; }
+
+      .bottom-rack { padding: 0 8px 8px; gap: 6px; }
+      .mag-panel { height: 84px; }
+      .mag-hint { display: none; }
+      .bottom-rack .control-dock {
+        width: 100%;
+        max-width: 100%;
+        padding: 6px 8px;
+        gap: 5px 6px;
+      }
+      .slider-group input[type="range"] { width: 64px; }
+      .slider-group.t-scrub input[type="range"] { width: 72px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage">
+    <canvas id="spiralCanvas"></canvas>
+
+    <header>
+      <a href="index.html" class="home-link">← marsko</a>
+      <h1>ZETA SPIRAL · ζ(σ + it)</h1>
+      <div class="hud-meta">RIEMANN CRITICAL STRIP · EULER–MACLAURIN</div>
+    </header>
+
+    <div class="telemetry-card" aria-live="off">
+      <div>σ = <strong id="telSigma" class="critical">0.500</strong> <span class="hide-sm">| Re(s)</span></div>
+      <div>t = <strong id="telT">0.000</strong></div>
+      <div>|ζ| = <strong id="telMag">1.460</strong></div>
+      <div class="hide-sm">ζ = <strong id="telComplex">-1.460 + 0.000i</strong></div>
+      <div class="zero-badge" id="telZero">ZERO t₁ = 14.135</div>
+    </div>
+
+    <div class="origin-inset" id="originInset">
+      <canvas id="insetCanvas"></canvas>
+      <div class="inset-label">ORIGIN ZOOM (0)</div>
+      <div class="inset-scale">r = 0.45</div>
+    </div>
+  </div>
+
+  <div class="bottom-rack">
+    <div class="mag-panel">
+      <canvas id="magCanvas"></canvas>
+      <div class="mag-caption"><span>|ζ(σ + it)|</span> vs t · critical zeros dotted</div>
+      <div class="mag-hint">drag to scrub t</div>
+    </div>
+
+    <div class="control-dock">
+      <button type="button" class="dock-btn active" id="btnPlay">❚❚ Pause</button>
+      <button type="button" class="dock-btn" id="btnReset">↺ Reset</button>
+      <button type="button" class="dock-btn" id="btnNextZero" title="다음 비자명 영점 부근으로 이동">Zero →</button>
+
+      <div class="dock-sep"></div>
+
+      <div class="slider-group">
+        <span>σ</span>
+        <input type="range" id="sigmaRange" min="0.30" max="0.70" step="0.005" value="0.50">
+        <span class="val" id="sigmaVal">0.500</span>
+      </div>
+
+      <div class="sigma-presets">
+        <button type="button" class="dock-btn mini-btn" data-sigma="0.40">0.4</button>
+        <button type="button" class="dock-btn mini-btn active" data-sigma="0.50">½</button>
+        <button type="button" class="dock-btn mini-btn" data-sigma="0.60">0.6</button>
+      </div>
+
+      <div class="dock-sep"></div>
+
+      <div class="slider-group">
+        <span>Speed</span>
+        <input type="range" id="speedRange" min="0.2" max="4.0" step="0.1" value="1.0">
+        <span class="val" id="speedVal">1.0×</span>
+      </div>
+
+      <div class="slider-group t-scrub">
+        <span>t</span>
+        <input type="range" id="tRange" min="0" max="60" step="0.02" value="0">
+        <span class="val" id="tVal">0.00</span>
+      </div>
+
+      <button type="button" class="dock-btn" id="btnCenter" title="복소평면 시점 초기화">◎ Center</button>
+      <button type="button" class="dock-btn" id="btnAudio" title="영점 통과 사운드 토글">🔊 Sound</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // --- 수학 엔진: 오일러-매클로린 합(Euler-Maclaurin) 기반 ζ(σ + it) ---
+  // σ ∈ [0.30, 0.70], t ∈ [0, 60] 구간에서 ~12~15자리 정밀도 보장
+  const EM_N = 40;
+  const B2K = [
+    1 / 6,
+    -1 / 30,
+    1 / 42,
+    -1 / 30,
+    5 / 66,
+    -691 / 2730,
+    7 / 6,
+    -3617 / 510
+  ];
+
+  // 임계선(σ = 0.5) 위의 비자명 영점 (0 < t < 60)
+  const ZEROS = [
+    14.13472514,
+    21.02203964,
+    25.01085758,
+    30.42487613,
+    32.93506159,
+    37.58617816,
+    40.91871901,
+    43.32707328,
+    48.00515088,
+    49.77383248,
+    52.97032148,
+    56.44624770,
+    59.34704400
+  ];
+
+  const T_MAX = 60.0;
+  const DT = 0.015;
+  const SAMPLES = Math.round(T_MAX / DT) + 1; // 4001 points
+  const TERM_COUNT = EM_N - 1; // 1..39
+
+  const LN_TABLE = new Float64Array(EM_N + 1);
+  for (let n = 1; n <= EM_N; n++) LN_TABLE[n] = Math.log(n);
+
+  // t 고정 그리드에 대한 cos(t * ln n), sin(t * ln n) 캐시 -> σ 변경 시 1ms 내 재계산
+  const COS_TAB = new Float64Array(SAMPLES * TERM_COUNT);
+  const SIN_TAB = new Float64Array(SAMPLES * TERM_COUNT);
+  const LN_N = LN_TABLE[EM_N];
+  const COS_N_TAB = new Float64Array(SAMPLES);
+  const SIN_N_TAB = new Float64Array(SAMPLES);
+
+  for (let j = 0; j < SAMPLES; j++) {
+    const t = j * DT;
+    const base = j * TERM_COUNT;
+    for (let n = 1; n <= TERM_COUNT; n++) {
+      const ang = t * LN_TABLE[n];
+      COS_TAB[base + n - 1] = Math.cos(ang);
+      SIN_TAB[base + n - 1] = Math.sin(ang);
+    }
+    const angN = t * LN_N;
+    COS_N_TAB[j] = Math.cos(angN);
+    SIN_N_TAB[j] = Math.sin(angN);
+  }
+
+  const curveRe = new Float64Array(SAMPLES);
+  const curveIm = new Float64Array(SAMPLES);
+  const curveMag = new Float64Array(SAMPLES);
+  const powTable = new Float64Array(TERM_COUNT + 1);
+  let maxCurveMag = 4.0;
+
+  function evalEulerMaclaurinTail(sigma, t, nsRe, nsIm, outRe, outIm) {
+    // N^(1-s) / (s - 1) = (N * N^(-s)) / ((σ - 1) + i t)
+    const dm1 = sigma - 1.0;
+    const denom = dm1 * dm1 + t * t;
+    const numRe = EM_N * nsRe;
+    const numIm = EM_N * nsIm;
+    let re = (numRe * dm1 + numIm * t) / denom + 0.5 * nsRe;
+    let im = (numIm * dm1 - numRe * t) / denom + 0.5 * nsIm;
+
+    // 첫 베르누이 항 k=1: (B2 / 2!) * s * N^(-(s+1))
+    const invN = 1.0 / EM_N;
+    const invN2 = invN * invN;
+    const nspRe = nsRe * invN;
+    const nspIm = nsIm * invN;
+    let pRe = sigma * nspRe - t * nspIm;
+    let pIm = sigma * nspIm + t * nspRe;
+    let fact = 2.0;
+
+    let c = B2K[0] / fact;
+    re += c * pRe;
+    im += c * pIm;
+
+    for (let k = 2; k <= B2K.length; k++) {
+      const a1 = sigma + (2 * k - 3);
+      const a2 = sigma + (2 * k - 2);
+      // (a1 + i t) * (a2 + i t) = (a1*a2 - t^2) + i * t * (a1 + a2)
+      const qRe = a1 * a2 - t * t;
+      const qIm = t * (a1 + a2);
+      const nextRe = (pRe * qRe - pIm * qIm) * invN2;
+      const nextIm = (pRe * qIm + pIm * qRe) * invN2;
+      pRe = nextRe;
+      pIm = nextIm;
+      fact *= (2 * k - 1) * (2 * k);
+      c = B2K[k - 1] / fact;
+      re += c * pRe;
+      im += c * pIm;
+    }
+
+    return [outRe + re, outIm + im];
+  }
+
+  function recomputeCurve(sigma) {
+    for (let n = 1; n <= TERM_COUNT; n++) {
+      powTable[n] = Math.pow(n, -sigma);
+    }
+    const powN = Math.pow(EM_N, -sigma);
+    let maxM = 2.5;
+
+    for (let j = 0; j < SAMPLES; j++) {
+      const t = j * DT;
+      const base = j * TERM_COUNT;
+      let sumRe = 1.0; // n = 1
+      let sumIm = 0.0;
+
+      for (let n = 2; n <= TERM_COUNT; n++) {
+        const mag = powTable[n];
+        const idx = base + n - 1;
+        sumRe += mag * COS_TAB[idx];
+        sumIm -= mag * SIN_TAB[idx];
+      }
+
+      const nsRe = powN * COS_N_TAB[j];
+      const nsIm = -powN * SIN_N_TAB[j];
+      const [zRe, zIm] = evalEulerMaclaurinTail(sigma, t, nsRe, nsIm, sumRe, sumIm);
+
+      curveRe[j] = zRe;
+      curveIm[j] = zIm;
+      const m = Math.hypot(zRe, zIm);
+      curveMag[j] = m;
+      if (m > maxM) maxM = m;
+    }
+    maxCurveMag = maxM;
+  }
+
+  function evalZetaExact(sigma, t) {
+    let sumRe = 1.0;
+    let sumIm = 0.0;
+    for (let n = 2; n <= TERM_COUNT; n++) {
+      const mag = Math.pow(n, -sigma);
+      const ang = t * LN_TABLE[n];
+      sumRe += mag * Math.cos(ang);
+      sumIm -= mag * Math.sin(ang);
+    }
+    const powN = Math.pow(EM_N, -sigma);
+    const angN = t * LN_N;
+    const nsRe = powN * Math.cos(angN);
+    const nsIm = -powN * Math.sin(angN);
+    const [re, im] = evalEulerMaclaurinTail(sigma, t, nsRe, nsIm, sumRe, sumIm);
+    return { re, im, mag: Math.hypot(re, im) };
+  }
+
+  // --- DOM 요소 ---
+  const spiralCanvas = document.getElementById('spiralCanvas');
+  const insetCanvas = document.getElementById('insetCanvas');
+  const magCanvas = document.getElementById('magCanvas');
+  const spiralCtx = spiralCanvas.getContext('2d');
+  const insetCtx = insetCanvas.getContext('2d');
+  const magCtx = magCanvas.getContext('2d');
+
+  const telSigma = document.getElementById('telSigma');
+  const telT = document.getElementById('telT');
+  const telMag = document.getElementById('telMag');
+  const telComplex = document.getElementById('telComplex');
+  const telZero = document.getElementById('telZero');
+  const originInset = document.getElementById('originInset');
+
+  const btnPlay = document.getElementById('btnPlay');
+  const btnReset = document.getElementById('btnReset');
+  const btnNextZero = document.getElementById('btnNextZero');
+  const btnCenter = document.getElementById('btnCenter');
+  const btnAudio = document.getElementById('btnAudio');
+
+  const sigmaRange = document.getElementById('sigmaRange');
+  const sigmaVal = document.getElementById('sigmaVal');
+  const speedRange = document.getElementById('speedRange');
+  const speedVal = document.getElementById('speedVal');
+  const tRange = document.getElementById('tRange');
+  const tVal = document.getElementById('tVal');
+  const presetBtns = Array.from(document.querySelectorAll('.sigma-presets .mini-btn'));
+
+  // --- 시뮬레이션 상태 ---
+  let sigma = 0.5;
+  let currentT = 0.0;
+  let playing = true;
+  let speed = 1.0;
+
+  // 복소평면 카메라 (pan & zoom)
+  const view = {
+    centerRe: 0.65,
+    centerIm: -0.05,
+    zoom: 1.0, // 1.0 = 기본 스케일
+    baseScale: 90
+  };
+
+  // 원점 통과 리플 효과
+  const ripples = [];
+  let lastZeroHitIndex = -1;
+
+  // --- 선택적 Web Audio 하모닉 사운드 ---
+  let audioCtx = null;
+  let audioMaster = null;
+  let droneOsc = null;
+  let droneGain = null;
+  let audioEnabled = false;
+  let lastChimeTime = 0;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioMaster = audioCtx.createGain();
+    audioMaster.gain.value = 0.14;
+    audioMaster.connect(audioCtx.destination);
+
+    droneOsc = audioCtx.createOscillator();
+    droneOsc.type = 'sine';
+    droneOsc.frequency.value = 174.61;
+    droneGain = audioCtx.createGain();
+    droneGain.gain.value = 0.0;
+    droneOsc.connect(droneGain);
+    droneGain.connect(audioMaster);
+    droneOsc.start();
+  }
+
+  function playZeroChime(zeroIdx) {
+    if (!audioEnabled || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    if (now - lastChimeTime < 0.35) return;
+    lastChimeTime = now;
+
+    // 펜타토닉 비율로 영점마다 맑은 배음 울림
+    const notes = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+    const freq = notes[zeroIdx % notes.length];
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.42, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+
+    osc.connect(gain);
+    gain.connect(audioMaster);
+    osc.start(now);
+    osc.stop(now + 0.95);
+  }
+
+  function updateAudioTone(mag, t) {
+    if (!audioEnabled || !audioCtx || !droneGain) return;
+    const now = audioCtx.currentTime;
+    const amp = playing ? Math.min(0.18, 0.03 + 0.04 * Math.min(mag, 3.0)) : 0.0;
+    const freq = 146.83 + (t / T_MAX) * 146.83 + Math.min(mag, 4.0) * 18.0;
+    droneOsc.frequency.setTargetAtTime(freq, now, 0.05);
+    droneGain.gain.setTargetAtTime(amp, now, 0.06);
+  }
+
+  // --- 컬러 램프: 오렌지 → 옐로우 → 화이트 ---
+  function gradientColor(u, hotBoost) {
+    // u ∈ [0, 1]
+    const b = Math.min(1, u + hotBoost * 0.45);
+    let r, g, bl;
+    if (b < 0.45) {
+      const k = b / 0.45;
+      // deep burnt orange (#ea580c) -> amber (#f59e0b)
+      r = 234 + (245 - 234) * k;
+      g = 88 + (158 - 88) * k;
+      bl = 12 + (11 - 12) * k;
+    } else if (b < 0.82) {
+      const k = (b - 0.45) / 0.37;
+      // amber (#f59e0b) -> radiant yellow (#fef08a)
+      r = 245 + (254 - 245) * k;
+      g = 158 + (240 - 158) * k;
+      bl = 11 + (138 - 11) * k;
+    } else {
+      const k = (b - 0.82) / 0.18;
+      // radiant yellow -> pure white (#ffffff)
+      r = 254 + (255 - 254) * k;
+      g = 240 + (255 - 240) * k;
+      bl = 138 + (255 - 138) * k;
+    }
+    return `${Math.round(r)}, ${Math.round(g)}, ${Math.round(bl)}`;
+  }
+
+  // --- 캔버스 리사이징 (DPR 대응) ---
+  const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
+
+  function resizeCanvases() {
+    const ratio = dpr();
+
+    const sRect = spiralCanvas.parentElement.getBoundingClientRect();
+    spiralCanvas.width = Math.max(1, Math.floor(sRect.width * ratio));
+    spiralCanvas.height = Math.max(1, Math.floor(sRect.height * ratio));
+    view.baseScale = Math.min(sRect.width, sRect.height) * 0.135;
+
+    const iRect = originInset.getBoundingClientRect();
+    insetCanvas.width = Math.max(1, Math.floor(iRect.width * ratio));
+    insetCanvas.height = Math.max(1, Math.floor(iRect.height * ratio));
+
+    const mRect = magCanvas.parentElement.getBoundingClientRect();
+    magCanvas.width = Math.max(1, Math.floor(mRect.width * ratio));
+    magCanvas.height = Math.max(1, Math.floor(mRect.height * ratio));
+  }
+
+  window.addEventListener('resize', resizeCanvases);
+
+  // --- 복소평면 좌표 변환 ---
+  function worldToScreen(re, im, w, h) {
+    const scale = view.baseScale * view.zoom;
+    const x = w * 0.5 + (re - view.centerRe) * scale;
+    const y = h * 0.5 - (im - view.centerIm) * scale;
+    return [x, y];
+  }
+
+  // --- 메인 복소평면 렌더링 ---
+  function renderSpiral(head, dtSec) {
+    const ratio = dpr();
+    const w = spiralCanvas.width / ratio;
+    const h = spiralCanvas.height / ratio;
+    const ctx = spiralCtx;
+
+    ctx.save();
+    ctx.scale(ratio, ratio);
+    ctx.clearRect(0, 0, w, h);
+
+    const scale = view.baseScale * view.zoom;
+    const [ox, oy] = worldToScreen(0, 0, w, h);
+
+    // 1. 미세 동심원 & 복소평면 격자
+    ctx.lineWidth = 1;
+    const radii = [0.5, 1, 2, 3, 4, 5];
+    for (const r of radii) {
+      const pr = r * scale;
+      if (pr < 12 || pr > Math.max(w, h) * 2) continue;
+      ctx.strokeStyle = r === 1 ? 'rgba(255, 255, 255, 0.085)' : 'rgba(255, 255, 255, 0.038)';
+      ctx.beginPath();
+      ctx.arc(ox, oy, pr, 0, Math.PI * 2);
+      ctx.stroke();
+
+      if (r >= 1 && r <= 4 && ox + pr < w - 12 && ox + pr > 12) {
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+        ctx.font = '10px "IBM Plex Mono", monospace';
+        ctx.fillText(String(r), ox + pr + 4, oy - 4);
+      }
+    }
+
+    // Re / Im 축
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.075)';
+    ctx.beginPath();
+    ctx.moveTo(0, oy);
+    ctx.lineTo(w, oy);
+    ctx.moveTo(ox, 0);
+    ctx.lineTo(ox, h);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.38)';
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    ctx.fillText('Re(ζ)', Math.max(12, w - 42), Math.min(h - 12, Math.max(20, oy - 6)));
+    ctx.fillText('Im(ζ)', Math.min(w - 42, Math.max(12, ox + 8)), 22);
+
+    // 2. 원점(0) 강조 + 영점 리플
+    const isNearOrigin = head.mag < 0.18;
+    const isHitOrigin = head.mag < 0.045;
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const rp = ripples[i];
+      rp.r += dtSec * 85;
+      rp.alpha -= dtSec * 1.1;
+      if (rp.alpha <= 0) {
+        ripples.splice(i, 1);
+        continue;
+      }
+      ctx.strokeStyle = `rgba(254, 240, 138, ${rp.alpha * 0.7})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(ox, oy, rp.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 원점 후광
+    const haloR = isHitOrigin ? 34 : (isNearOrigin ? 24 : 18);
+    const haloGrad = ctx.createRadialGradient(ox, oy, 0, ox, oy, haloR);
+    haloGrad.addColorStop(0, isHitOrigin ? 'rgba(255, 255, 255, 0.65)' : 'rgba(251, 191, 36, 0.32)');
+    haloGrad.addColorStop(0.45, 'rgba(245, 158, 11, 0.12)');
+    haloGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    ctx.fillStyle = haloGrad;
+    ctx.beginPath();
+    ctx.arc(ox, oy, haloR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 원점 십자선 & 점
+    ctx.strokeStyle = isHitOrigin ? 'rgba(255, 255, 255, 0.85)' : 'rgba(251, 191, 36, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ox - 10, oy);
+    ctx.lineTo(ox + 10, oy);
+    ctx.moveTo(ox, oy - 10);
+    ctx.lineTo(ox, oy + 10);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ox, oy, isHitOrigin ? 3.5 : 2.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(254, 240, 138, 0.85)';
+    ctx.font = '600 11px "IBM Plex Mono", monospace';
+    ctx.fillText('0', ox + 8, oy + 14);
+
+    // 3. 제타 나선 궤적 (orange -> yellow -> white 그라데이션 세그먼트 배치)
+    const maxIdx = Math.min(SAMPLES - 1, Math.floor(currentT / DT));
+    if (maxIdx >= 1) {
+      const BANDS = 72;
+      const tailWindow = 3.6; // 선단 백열 부스트 구간 (t 단위)
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // 외곽 부드러운 발광 패스 (전체 궤적)
+      for (let b = 0; b < BANDS; b++) {
+        const i0 = Math.floor((b / BANDS) * maxIdx);
+        const i1 = Math.min(maxIdx, Math.ceil(((b + 1) / BANDS) * maxIdx));
+        if (i1 <= i0) continue;
+
+        const tMid = ((i0 + i1) * 0.5) * DT;
+        const u = currentT > 0 ? tMid / Math.max(currentT, 12) : 0;
+        const distFromHead = Math.max(0, currentT - tMid);
+        const hotBoost = Math.max(0, 1 - distFromHead / tailWindow);
+        const rgb = gradientColor(Math.min(1, u), hotBoost);
+
+        // 은은한 글로우 패스
+        ctx.strokeStyle = `rgba(${rgb}, ${0.12 + hotBoost * 0.22})`;
+        ctx.lineWidth = 4.5 + hotBoost * 4.0;
+        ctx.beginPath();
+        for (let idx = i0; idx <= i1; idx++) {
+          const [px, py] = worldToScreen(curveRe[idx], curveIm[idx], w, h);
+          if (idx === i0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        if (b === BANDS - 1) {
+          const [hx, hy] = worldToScreen(head.re, head.im, w, h);
+          ctx.lineTo(hx, hy);
+        }
+        ctx.stroke();
+
+        // 코어 선 패스
+        ctx.strokeStyle = `rgba(${rgb}, ${0.65 + hotBoost * 0.35})`;
+        ctx.lineWidth = 1.45 + hotBoost * 1.15;
+        ctx.stroke();
+      }
+    }
+
+    // 4. 현재 헤드 포인트 + 원점 연결 벡터
+    const [hx, hy] = worldToScreen(head.re, head.im, w, h);
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(hx, hy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const headGlow = ctx.createRadialGradient(hx, hy, 0, hx, hy, 18);
+    headGlow.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+    headGlow.addColorStop(0.35, 'rgba(253, 224, 71, 0.5)');
+    headGlow.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    ctx.fillStyle = headGlow;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(hx, hy, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // --- 원점 확대 인셋 뷰 (PIP) ---
+  function renderInset(head) {
+    const ratio = dpr();
+    const w = insetCanvas.width / ratio;
+    const h = insetCanvas.height / ratio;
+    const ctx = insetCtx;
+
+    ctx.save();
+    ctx.scale(ratio, ratio);
+    ctx.clearRect(0, 0, w, h);
+
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const radiusWorld = 0.45;
+    const scale = (Math.min(w, h) * 0.44) / radiusWorld;
+
+    // 보조 원 (r = 0.1, 0.25, 0.4)
+    ctx.lineWidth = 1;
+    for (const r of [0.1, 0.25, 0.4]) {
+      ctx.strokeStyle = r === 0.1 ? 'rgba(251, 191, 36, 0.16)' : 'rgba(255, 255, 255, 0.06)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 십자축
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(w, cy);
+    ctx.moveTo(cx, 0);
+    ctx.lineTo(cx, h);
+    ctx.stroke();
+
+    // 현재 t 까지의 궤적 (원점 근처가 보이도록 전체 구간 중 화면 근처 통과 부분 포함)
+    const maxIdx = Math.min(SAMPLES - 1, Math.floor(currentT / DT));
+    if (maxIdx >= 1) {
+      // 최근 t 구간(최근 8.0)을 더 선명하게, 이전 지나간 통과 궤적은 은은하게 표시
+      const recentStart = Math.max(0, maxIdx - Math.floor(8.0 / DT));
+
+      // 이전 통과 궤적
+      if (recentStart > 1) {
+        ctx.strokeStyle = 'rgba(249, 115, 22, 0.24)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        let penDown = false;
+        for (let i = 0; i <= recentStart; i++) {
+          const re = curveRe[i];
+          const im = curveIm[i];
+          if (Math.abs(re) < 0.7 && Math.abs(im) < 0.7) {
+            const px = cx + re * scale;
+            const py = cy - im * scale;
+            if (!penDown) { ctx.moveTo(px, py); penDown = true; }
+            else ctx.lineTo(px, py);
+          } else {
+            penDown = false;
+          }
+        }
+        ctx.stroke();
+      }
+
+      // 최근 궤적 (밝은 골드-화이트)
+      ctx.strokeStyle = 'rgba(254, 240, 138, 0.92)';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      let penDown = false;
+      for (let i = recentStart; i <= maxIdx; i++) {
+        const re = curveRe[i];
+        const im = curveIm[i];
+        if (Math.abs(re) < 0.85 && Math.abs(im) < 0.85) {
+          const px = cx + re * scale;
+          const py = cy - im * scale;
+          if (!penDown) { ctx.moveTo(px, py); penDown = true; }
+          else ctx.lineTo(px, py);
+        } else {
+          penDown = false;
+        }
+      }
+      if (Math.abs(head.re) < 0.85 && Math.abs(head.im) < 0.85) {
+        const hx = cx + head.re * scale;
+        const hy = cy - head.im * scale;
+        if (penDown) ctx.lineTo(hx, hy);
+      }
+      ctx.stroke();
+    }
+
+    // 원점 타겟 중심점
+    ctx.fillStyle = head.mag < 0.045 ? '#ffffff' : 'rgba(251, 191, 36, 0.9)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 헤드가 인셋 범위 내면 빛나는 마커
+    if (Math.abs(head.re) <= radiusWorld * 1.15 && Math.abs(head.im) <= radiusWorld * 1.15) {
+      const hx = cx + head.re * scale;
+      const hy = cy - head.im * scale;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 3.0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // --- 하단 |ζ(σ + it)| vs t 그래프 ---
+  function renderMagnitudeGraph(head) {
+    const ratio = dpr();
+    const w = magCanvas.width / ratio;
+    const h = magCanvas.height / ratio;
+    const ctx = magCtx;
+
+    ctx.save();
+    ctx.scale(ratio, ratio);
+    ctx.clearRect(0, 0, w, h);
+
+    const padL = 34;
+    const padR = 14;
+    const padT = 22;
+    const padB = 20;
+    const plotW = Math.max(10, w - padL - padR);
+    const plotH = Math.max(10, h - padT - padB);
+    const yMax = Math.max(3.8, Math.min(5.2, maxCurveMag * 1.08));
+
+    const tToX = (t) => padL + (t / T_MAX) * plotW;
+    const mToY = (m) => padT + plotH - (Math.min(m, yMax) / yMax) * plotH;
+
+    // 가로 눈금 (0, 1, 2, 3)
+    ctx.font = '9px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (const v of [0, 1, 2, 3]) {
+      if (v > yMax) continue;
+      const y = mToY(v);
+      ctx.strokeStyle = v === 0 ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(w - padR, y);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+      ctx.fillText(String(v), padL - 6, y);
+    }
+
+    // 비자명 영점 수직선 & 도트
+    const onCritical = Math.abs(sigma - 0.5) < 0.0015;
+    const yZero = mToY(0);
+    let lastLabelX = -999;
+
+    for (let i = 0; i < ZEROS.length; i++) {
+      const tz = ZEROS[i];
+      const zx = tToX(tz);
+      const passed = currentT >= tz;
+
+      ctx.strokeStyle = onCritical
+        ? (passed ? 'rgba(254, 240, 138, 0.26)' : 'rgba(251, 191, 36, 0.14)')
+        : 'rgba(148, 163, 184, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(zx, padT);
+      ctx.lineTo(zx, yZero);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 영점 도트
+      ctx.beginPath();
+      ctx.arc(zx, yZero, onCritical ? 2.8 : 2.2, 0, Math.PI * 2);
+      if (onCritical) {
+        ctx.fillStyle = passed ? '#ffffff' : 'rgba(251, 191, 36, 0.72)';
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+        ctx.stroke();
+      }
+
+      // 겹치지 않게 t 라벨 표시
+      if (zx - lastLabelX > (w < 540 ? 48 : 38)) {
+        ctx.fillStyle = onCritical ? 'rgba(253, 224, 71, 0.68)' : 'rgba(148, 163, 184, 0.48)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(tz.toFixed(2), zx, yZero + 5);
+        lastLabelX = zx;
+      }
+    }
+
+    // 전체 미리보기 곡선 (희미하게)
+    ctx.strokeStyle = 'rgba(249, 115, 22, 0.22)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    const step = w < 520 ? 3 : 2;
+    for (let j = 0; j < SAMPLES; j += step) {
+      const x = tToX(j * DT);
+      const y = mToY(curveMag[j]);
+      if (j === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // 현재 t까지 진행된 밝은 곡선
+    const maxIdx = Math.min(SAMPLES - 1, Math.floor(currentT / DT));
+    if (maxIdx >= 1) {
+      const grad = ctx.createLinearGradient(padL, 0, tToX(currentT), 0);
+      grad.addColorStop(0, '#ea580c');
+      grad.addColorStop(0.65, '#facc15');
+      grad.addColorStop(1, '#ffffff');
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.9;
+      ctx.beginPath();
+      for (let j = 0; j <= maxIdx; j += step) {
+        const x = tToX(j * DT);
+        const y = mToY(curveMag[j]);
+        if (j === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(tToX(currentT), mToY(head.mag));
+      ctx.stroke();
+    }
+
+    // 현재 플레이헤드 수직선 및 점
+    const curX = tToX(currentT);
+    const curY = mToY(head.mag);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(curX, padT);
+    ctx.lineTo(curX, yZero);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(curX, curY, 3.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // --- HUD 텔레메트리 업데이트 ---
+  function updateTelemetry(head) {
+    const onCritical = Math.abs(sigma - 0.5) < 0.0015;
+    telSigma.textContent = sigma.toFixed(3);
+    telSigma.className = onCritical ? 'critical' : 'off-critical';
+    telT.textContent = currentT.toFixed(3);
+    telMag.textContent = head.mag.toFixed(4);
+
+    const sign = head.im >= 0 ? '+' : '-';
+    telComplex.textContent = `${head.re.toFixed(3)} ${sign} ${Math.abs(head.im).toFixed(3)}i`;
+
+    // 가장 가까운 영점 찾기
+    let nearestIdx = 0;
+    let nearestDist = Infinity;
+    for (let i = 0; i < ZEROS.length; i++) {
+      const d = Math.abs(currentT - ZEROS[i]);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestIdx = i;
+      }
+    }
+
+    const isNear = head.mag < 0.65;
+    const isHit = head.mag < 0.045;
+    originInset.classList.toggle('near-zero', isNear && !isHit);
+    originInset.classList.toggle('hit-zero', isHit);
+
+    if (nearestDist < 0.14 && onCritical) {
+      telZero.textContent = `HIT · t${nearestIdx + 1} = ${ZEROS[nearestIdx].toFixed(3)}`;
+      telZero.className = 'zero-badge hit';
+    } else {
+      let nextIdx = ZEROS.findIndex((z) => z > currentT);
+      if (nextIdx === -1) nextIdx = ZEROS.length - 1;
+      telZero.textContent = `NEXT t${nextIdx + 1} = ${ZEROS[nextIdx].toFixed(3)}`;
+      telZero.className = 'zero-badge';
+    }
+
+    tRange.value = currentT.toFixed(2);
+    tVal.textContent = currentT.toFixed(2);
+  }
+
+  // --- σ 변경 및 프리셋 동기화 ---
+  function setSigma(val) {
+    sigma = Math.max(0.30, Math.min(0.70, val));
+    // 0.5 근처 자석 스냅 (사용자 편의)
+    if (Math.abs(sigma - 0.5) < 0.004) sigma = 0.5;
+    sigmaRange.value = sigma.toFixed(3);
+    sigmaVal.textContent = sigma.toFixed(3);
+    presetBtns.forEach((btn) => {
+      const target = parseFloat(btn.dataset.sigma);
+      btn.classList.toggle('active', Math.abs(sigma - target) < 0.0015);
+    });
+    recomputeCurve(sigma);
+  }
+
+  sigmaRange.addEventListener('input', () => {
+    setSigma(parseFloat(sigmaRange.value));
+  });
+
+  presetBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setSigma(parseFloat(btn.dataset.sigma));
+    });
+  });
+
+  speedRange.addEventListener('input', () => {
+    speed = parseFloat(speedRange.value);
+    speedVal.textContent = speed.toFixed(1) + '×';
+  });
+
+  tRange.addEventListener('input', () => {
+    currentT = parseFloat(tRange.value);
+    lastZeroHitIndex = -1;
+  });
+
+  btnPlay.addEventListener('click', () => {
+    playing = !playing;
+    if (playing && currentT >= T_MAX - 0.01) {
+      currentT = 0;
+      lastZeroHitIndex = -1;
+    }
+    btnPlay.textContent = playing ? '❚❚ Pause' : '▶ Play';
+    btnPlay.classList.toggle('active', playing);
+  });
+
+  btnReset.addEventListener('click', () => {
+    currentT = 0;
+    lastZeroHitIndex = -1;
+    ripples.length = 0;
+    view.centerRe = 0.65;
+    view.centerIm = -0.05;
+    view.zoom = 1.0;
+    playing = true;
+    btnPlay.textContent = '❚❚ Pause';
+    btnPlay.classList.add('active');
+  });
+
+  btnCenter.addEventListener('click', () => {
+    view.centerRe = 0.65;
+    view.centerIm = -0.05;
+    view.zoom = 1.0;
+  });
+
+  btnNextZero.addEventListener('click', () => {
+    let next = ZEROS.find((z) => z > currentT + 0.08);
+    if (next === undefined) next = ZEROS[0];
+    currentT = next;
+    lastZeroHitIndex = -1;
+    ripples.push({ r: 4, alpha: 0.95 });
+  });
+
+  btnAudio.addEventListener('click', () => {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    audioEnabled = !audioEnabled;
+    btnAudio.classList.toggle('audio-on', audioEnabled);
+    btnAudio.textContent = audioEnabled ? '🔊 Sound ON' : '🔊 Sound';
+    if (!audioEnabled && droneGain && audioCtx) {
+      droneGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04);
+    }
+  });
+
+  // --- 복소평면 마우스/터치 팬 & 줌 ---
+  let draggingSpiral = false;
+  let dragLastX = 0;
+  let dragLastY = 0;
+
+  spiralCanvas.addEventListener('pointerdown', (e) => {
+    draggingSpiral = true;
+    dragLastX = e.clientX;
+    dragLastY = e.clientY;
+    spiralCanvas.setPointerCapture(e.pointerId);
+  });
+
+  spiralCanvas.addEventListener('pointermove', (e) => {
+    if (!draggingSpiral) return;
+    const dx = e.clientX - dragLastX;
+    const dy = e.clientY - dragLastY;
+    dragLastX = e.clientX;
+    dragLastY = e.clientY;
+    const scale = view.baseScale * view.zoom;
+    view.centerRe -= dx / scale;
+    view.centerIm += dy / scale;
+  });
+
+  const endSpiralDrag = () => { draggingSpiral = false; };
+  spiralCanvas.addEventListener('pointerup', endSpiralDrag);
+  spiralCanvas.addEventListener('pointercancel', endSpiralDrag);
+
+  spiralCanvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+    view.zoom = Math.max(0.35, Math.min(18, view.zoom * factor));
+  }, { passive: false });
+
+  spiralCanvas.addEventListener('dblclick', () => {
+    view.centerRe = 0;
+    view.centerIm = 0;
+    view.zoom = 2.4;
+  });
+
+  // --- 하단 |ζ| 그래프 클릭/드래그 t 스크러빙 ---
+  let scrubbingMag = false;
+
+  function scrubFromClientX(clientX) {
+    const rect = magCanvas.getBoundingClientRect();
+    const padL = 34;
+    const padR = 14;
+    const plotW = Math.max(10, rect.width - padL - padR);
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left - padL) / plotW));
+    currentT = ratio * T_MAX;
+    lastZeroHitIndex = -1;
+  }
+
+  magCanvas.addEventListener('pointerdown', (e) => {
+    scrubbingMag = true;
+    magCanvas.setPointerCapture(e.pointerId);
+    scrubFromClientX(e.clientX);
+  });
+  magCanvas.addEventListener('pointermove', (e) => {
+    if (scrubbingMag) scrubFromClientX(e.clientX);
+  });
+  const endScrub = () => { scrubbingMag = false; };
+  magCanvas.addEventListener('pointerup', endScrub);
+  magCanvas.addEventListener('pointercancel', endScrub);
+
+  // --- 초기화 및 60fps 루프 ---
+  resizeCanvases();
+  setSigma(0.5);
+
+  let prevTime = performance.now();
+
+  function frame(now) {
+    const dtSec = Math.min(0.05, (now - prevTime) / 1000);
+    prevTime = now;
+
+    if (playing && !scrubbingMag) {
+      const prevT = currentT;
+      currentT += dtSec * 1.45 * speed;
+
+      // 임계선 위에서 영점 통과 시 리플 + 사운드 트리거
+      if (Math.abs(sigma - 0.5) < 0.004) {
+        for (let i = 0; i < ZEROS.length; i++) {
+          const zt = ZEROS[i];
+          if (prevT < zt && currentT >= zt && lastZeroHitIndex !== i) {
+            lastZeroHitIndex = i;
+            ripples.push({ r: 3, alpha: 1.0 });
+            playZeroChime(i);
+            break;
+          }
+        }
+      }
+
+      if (currentT >= T_MAX) {
+        currentT = T_MAX;
+        playing = false;
+        btnPlay.textContent = '▶ Play';
+        btnPlay.classList.remove('active');
+      }
+    }
+
+    const head = evalZetaExact(sigma, currentT);
+    updateAudioTone(head.mag, currentT);
+    updateTelemetry(head);
+    renderSpiral(head, dtSec);
+    renderInset(head);
+    renderMagnitudeGraph(head);
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
