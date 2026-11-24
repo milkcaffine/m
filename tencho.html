@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#020306" />
+  <meta name="description" content="우라이나리 문지방: 점장의 시야. 비가 오면 문지방까지 기어 나가지만, 라우팅 테이블이 비어 있어 3초 뒤 다시 찻잔을 닦으러 들어가는 점장의 1인칭 광학 HUD 인터랙티브." />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="우라이나리 문지방: 점장의 시야 // URAINARI_HUD // marsko" />
+  <meta property="og:description" content="안면 센서에 빗물이 줄줄 흐르는데 와이퍼도 없고, 머릿속은 라우팅 테이블 없음(어디 가더라?)으로 텅 비어 있다가 3초 뒤에 찻잔을 닦으러 돌아간다." />
+
+  <title>우라이나리 문지방: 점장의 시야 // URAINARI_HUD // marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/marsko-hud.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ==========================================================================
+       1. DESIGN TOKENS (Aligned with Marsko dark cyber-occult archive)
+       ========================================================================== */
+    :root {
+      --bg-base: #020306;
+      --bg-surface: #070a10;
+      --bg-elevated: #0c111b;
+      --bg-hud: rgba(4, 6, 11, 0.88);
+
+      --border-subtle: rgba(148, 163, 184, 0.14);
+      --border-amber: rgba(251, 191, 36, 0.28);
+      --border-amber-strong: rgba(251, 191, 36, 0.52);
+      --border-rose: rgba(244, 63, 94, 0.55);
+
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --amber: #fbbf24;
+      --amber-soft: rgba(251, 191, 36, 0.12);
+      --cyan: #38bdf8;
+      --cyan-soft: rgba(56, 189, 248, 0.12);
+      --mint: #34d399;
+      --mint-soft: rgba(52, 211, 153, 0.12);
+      --rose: #f43f5e;
+      --rose-light: #fda4af;
+      --rose-soft: rgba(244, 63, 94, 0.16);
+
+      --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+      --font-serif: 'Noto Serif KR', Georgia, serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --hud-height: 58px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(circle at 18% 8%, rgba(251, 191, 36, 0.055), transparent 40%),
+        radial-gradient(circle at 82% 72%, rgba(56, 189, 248, 0.04), transparent 46%);
+      overflow-x: hidden;
+      line-height: 1.75;
+      position: relative;
+      transition: background-color 0.45s ease;
+    }
+
+    body.is-outside {
+      background-color: #03060c;
+    }
+
+    /* Subtle CRT scanline & lens vignette */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 900;
+      background:
+        radial-gradient(circle at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.45) 100%),
+        repeating-linear-gradient(
+          to bottom,
+          rgba(255, 255, 255, 0.014) 0px,
+          rgba(255, 255, 255, 0.014) 1px,
+          transparent 1px,
+          transparent 3px
+        );
+    }
+
+    /* ==========================================================================
+       2. FIRST-PERSON OPTICAL VIEWFINDER (Desktop & Mobile)
+       ========================================================================== */
+    .optical-viewfinder {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 820;
+    }
+
+    .vf-corner {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-color: rgba(251, 191, 36, 0.32);
+      border-style: solid;
+      border-width: 0;
+      transition: border-color 0.35s ease, opacity 0.35s ease;
+    }
+
+    body.is-outside .vf-corner {
+      border-color: rgba(244, 63, 94, 0.72);
+    }
+
+    .vf-tl { top: calc(var(--hud-height) + 12px); left: 14px; border-top-width: 1.5px; border-left-width: 1.5px; }
+    .vf-tr { top: calc(var(--hud-height) + 12px); right: 14px; border-top-width: 1.5px; border-right-width: 1.5px; }
+    .vf-bl { bottom: 14px; left: 14px; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+    .vf-br { bottom: 14px; right: 14px; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+
+    .vf-label {
+      position: absolute;
+      bottom: 16px;
+      left: 44px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: rgba(148, 163, 184, 0.45);
+      transition: color 0.3s ease;
+    }
+
+    .vf-label-right {
+      position: absolute;
+      bottom: 16px;
+      right: 44px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: rgba(148, 163, 184, 0.4);
+    }
+
+    body.is-outside .vf-label {
+      color: rgba(253, 164, 175, 0.72);
+    }
+
+    @media (max-width: 640px) {
+      .vf-tl { left: 8px; top: calc(var(--hud-height) + 8px); }
+      .vf-tr { right: 8px; top: calc(var(--hud-height) + 8px); }
+      .vf-bl { left: 8px; bottom: 8px; }
+      .vf-br { right: 8px; bottom: 8px; }
+      .vf-label { left: 34px; bottom: 10px; font-size: 9px; }
+      .vf-label-right { display: none; }
+    }
+
+    /* ==========================================================================
+       3. STICKY TOP HUD BAR (Marsko Lab Chrome)
+       ========================================================================== */
+    .hud-header {
+      position: sticky;
+      top: 0;
+      z-index: 860;
+      min-height: var(--hud-height);
+      background: var(--bg-hud);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      padding: 8px clamp(12px, 3vw, 24px);
+      flex-wrap: wrap;
+    }
+
+    .hud-left {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      min-width: 0;
+    }
+
+    .hud-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hud-header .home-link {
+      color: #94a3b8;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 4px 8px;
+      font-size: 0.72rem;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .hud-header .home-link:hover {
+      color: var(--amber);
+      border-color: var(--border-amber-strong);
+    }
+
+    .hud-title {
+      font-family: var(--font-mono);
+      font-size: clamp(0.76rem, 1.3vw, 0.86rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #fef3c7;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    .hud-title-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--mint);
+      box-shadow: 0 0 8px var(--mint);
+      transition: background 0.25s ease, box-shadow 0.25s ease;
+      flex-shrink: 0;
+    }
+
+    body.is-outside .hud-title-dot {
+      background: var(--rose);
+      box-shadow: 0 0 10px var(--rose);
+      animation: pulseAlert 0.95s infinite;
+    }
+
+    .status-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      background: var(--mint-soft);
+      color: var(--mint);
+      white-space: nowrap;
+      transition: all 0.25s ease;
+    }
+
+    body.is-outside .status-badge {
+      border-color: var(--border-rose);
+      background: var(--rose-soft);
+      color: var(--rose-light);
+    }
+
+    .reset-counter {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      white-space: nowrap;
+    }
+
+    .reset-counter strong {
+      color: var(--amber);
+      font-weight: 600;
+    }
+
+    .hud-sound-btn {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      cursor: pointer;
+      min-height: 34px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .hud-sound-btn:hover {
+      color: var(--cyan);
+      border-color: rgba(56, 189, 248, 0.45);
+    }
+
+    .hud-sound-btn.is-on {
+      color: var(--cyan);
+      background: var(--cyan-soft);
+      border-color: rgba(56, 189, 248, 0.45);
+    }
+
+    .hud-toggle-btn {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fde68a;
+      background: var(--amber-soft);
+      border: 1px solid var(--border-amber-strong);
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      white-space: nowrap;
+      min-height: 34px;
+    }
+
+    .hud-toggle-btn:hover {
+      background: rgba(251, 191, 36, 0.22);
+      transform: translateY(-1px);
+    }
+
+    .hud-toggle-btn:active {
+      transform: translateY(0);
+    }
+
+    body.is-outside .hud-toggle-btn {
+      color: var(--mint);
+      background: var(--mint-soft);
+      border-color: rgba(52, 211, 153, 0.45);
+    }
+
+    @media (max-width: 680px) {
+      .hud-title span:last-child {
+        font-size: 0.74rem;
+      }
+      .reset-counter {
+        display: none;
+      }
+    }
+
+    /* ==========================================================================
+       4. MAIN ARCHIVE CONTENT (1st-Person Interior)
+       ========================================================================== */
+    .page-wrapper {
+      position: relative;
+      z-index: 10;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 28px) 44px;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+
+    /* Subtle trudging bob when returning indoors */
+    body.is-returning .page-wrapper {
+      animation: trudgeReturn 0.75s ease;
+    }
+
+    .hero {
+      padding: clamp(22px, 4vw, 34px);
+      background: linear-gradient(165deg, rgba(12, 16, 26, 0.92), rgba(5, 8, 14, 0.94));
+      border: 1px solid var(--border-amber);
+      border-radius: var(--radius-lg);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    }
+
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: var(--amber);
+      opacity: 0.9;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hero-eyebrow-tag {
+      color: var(--text-muted);
+      font-size: 0.68rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.42rem, 3.4vw, 2rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      color: #f8fafc;
+    }
+
+    .hero h1 span {
+      color: var(--amber);
+    }
+
+    .hero-desc {
+      font-family: var(--font-serif);
+      color: #cbd5e1;
+      font-size: clamp(0.92rem, 1.55vw, 1rem);
+      line-height: 1.95;
+      margin-bottom: 22px;
+      word-break: keep-all;
+    }
+
+    .hero-desc em {
+      font-style: normal;
+      color: #fde68a;
+      border-bottom: 1px dashed rgba(251, 191, 36, 0.35);
+    }
+
+    .hero-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: 10px;
+      padding-top: 18px;
+      border-top: 1px dashed rgba(148, 163, 184, 0.16);
+    }
+
+    .meta-chip {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      background: rgba(2, 4, 8, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+    }
+
+    .meta-chip strong {
+      display: block;
+      color: var(--text-primary);
+      font-weight: 500;
+      margin-top: 3px;
+      font-size: 0.73rem;
+    }
+
+    .meta-chip strong.is-warn {
+      color: var(--rose-light);
+    }
+
+    .meta-chip strong.is-cyan {
+      color: var(--cyan);
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      color: var(--amber);
+      text-transform: uppercase;
+    }
+
+    .section-hint {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Interactive Log Cards */
+    .log-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+
+    .log-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .log-card:hover {
+      border-color: var(--border-amber);
+      background: rgba(11, 16, 26, 0.9);
+    }
+
+    .log-card-btn {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: inherit;
+      padding: 16px 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      font-family: inherit;
+    }
+
+    .log-card-head {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--cyan);
+      letter-spacing: 0.04em;
+    }
+
+    .log-tag.is-amber { color: var(--amber); }
+    .log-tag.is-rose { color: var(--rose-light); }
+    .log-tag.is-mint { color: var(--mint); }
+
+    .log-title {
+      font-family: var(--font-serif);
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+
+    .log-summary {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      word-break: keep-all;
+    }
+
+    .log-chevron {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--amber);
+      flex-shrink: 0;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(251, 191, 36, 0.08);
+      transition: transform 0.2s ease;
+    }
+
+    .log-card.is-open .log-chevron {
+      transform: rotate(90deg);
+    }
+
+    .log-body {
+      display: none;
+      padding: 0 18px 18px;
+      border-top: 1px dashed rgba(148, 163, 184, 0.14);
+    }
+
+    .log-card.is-open .log-body {
+      display: block;
+      animation: fadeSlide 0.22s ease;
+    }
+
+    .log-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      background: rgba(3, 5, 10, 0.82);
+      border-left: 2px solid var(--amber);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-family: var(--font-serif);
+      font-size: 0.9rem;
+      line-height: 1.9;
+      color: #cbd5e1;
+      word-break: keep-all;
+    }
+
+    .log-code {
+      display: block;
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--cyan);
+      background: rgba(56, 189, 248, 0.07);
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+    }
+
+    .log-code.is-warn {
+      color: var(--rose-light);
+      background: rgba(244, 63, 94, 0.08);
+      border-color: rgba(244, 63, 94, 0.2);
+    }
+
+    /* Ambient Counter Telemetry */
+    .ambient-panel {
+      padding: 20px;
+      background: rgba(7, 10, 16, 0.8);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 36px;
+    }
+
+    .ambient-lines {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .ambient-lines li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      flex-wrap: wrap;
+    }
+
+    .ambient-lines li:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .ambient-val { color: var(--amber); }
+    .ambient-val.is-rose { color: var(--rose-light); }
+    .ambient-val.is-cyan { color: var(--cyan); }
+
+    /* Universe Cross-Links */
+    .universe-links {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      background: rgba(8, 12, 22, 0.65);
+      border: 1px dashed rgba(148, 163, 184, 0.18);
+      margin-bottom: 88px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .universe-links-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .u-link {
+      color: var(--cyan);
+      text-decoration: none;
+      padding: 4px 9px;
+      border-radius: var(--radius-sm);
+      background: rgba(8, 47, 73, 0.35);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      transition: all 0.15s ease;
+    }
+
+    .u-link:hover {
+      color: #e0f2fe;
+      border-color: var(--cyan);
+      background: rgba(56, 189, 248, 0.18);
+    }
+
+    /* ==========================================================================
+       5. DOORWAY THRESHOLD (Scrolling across triggers Outside Mode!)
+       ========================================================================== */
+    .doorway-section {
+      padding: 42px 0 24px;
+      text-align: center;
+    }
+
+    .doorway-line {
+      font-family: var(--font-mono);
+      font-size: clamp(0.7rem, 1.55vw, 0.82rem);
+      letter-spacing: 0.06em;
+      color: var(--rose-light);
+      padding: 15px 12px;
+      border-top: 1.5px dashed rgba(244, 63, 94, 0.45);
+      border-bottom: 1.5px dashed rgba(244, 63, 94, 0.45);
+      background: rgba(244, 63, 94, 0.05);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+      word-break: break-word;
+    }
+
+    .doorway-subtext {
+      font-family: var(--font-serif);
+      font-size: 0.94rem;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      word-break: keep-all;
+    }
+
+    .doorway-step-btn {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--amber);
+      background: var(--amber-soft);
+      border: 1px solid var(--border-amber-strong);
+      border-radius: var(--radius-sm);
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-bottom: 44px;
+    }
+
+    .doorway-step-btn:hover {
+      background: rgba(251, 191, 36, 0.22);
+      color: #fef3c7;
+    }
+
+    .doorway-trigger-zone {
+      height: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      opacity: 0.7;
+    }
+
+    /* ==========================================================================
+       6. OUTSIDE MODE: RAIN + LENS DROPLETS + HALF-SCREEN MOISTURE POPUP
+       ========================================================================== */
+    .moisture-veil {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 600;
+      opacity: 0;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      background: radial-gradient(
+        circle at 50% 42%,
+        rgba(56, 189, 248, 0.05) 0%,
+        rgba(3, 8, 16, 0.62) 100%
+      );
+      transition: opacity 0.45s ease, backdrop-filter 0.45s ease;
+    }
+
+    body.is-outside .moisture-veil {
+      opacity: 1;
+    }
+
+    #rainCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 620;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+
+    body.is-outside #rainCanvas {
+      opacity: 1;
+    }
+
+    /* Pass-by drunk speech subtitle floating in lower periphery */
+    .passerby-caption {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translate(-50%, 16px);
+      z-index: 845;
+      width: min(520px, calc(100vw - 28px));
+      background: rgba(4, 7, 13, 0.9);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      border-left: 3px solid var(--amber);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-family: var(--font-serif);
+      font-size: 0.88rem;
+      color: #fef3c7;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .passerby-caption.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .passerby-tag {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      color: var(--amber);
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
+    }
+
+    /* Intrusive half-vision Optical Moisture Alert Popup */
+    .outside-hud-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -52%) scale(0.96);
+      width: min(560px, calc(100vw - 24px));
+      max-height: min(62vh, 520px);
+      z-index: 850;
+      background: rgba(7, 10, 17, 0.94);
+      border: 1.5px solid var(--border-rose);
+      border-radius: var(--radius-md);
+      box-shadow:
+        0 24px 64px rgba(0, 0, 0, 0.78),
+        0 0 36px rgba(244, 63, 94, 0.18),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      padding: 18px 18px 16px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    body.is-outside .outside-hud-panel {
+      display: flex;
+      animation: modalPopIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .outside-hud-panel.is-shaking {
+      animation: hudShake 0.28s ease;
+    }
+
+    .hud-warn-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed rgba(244, 63, 94, 0.35);
+    }
+
+    .hud-warn-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hud-warn-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      color: var(--rose-light);
+      text-transform: uppercase;
+    }
+
+    .hud-warn-title {
+      font-family: var(--font-mono);
+      font-size: clamp(0.9rem, 2.2vw, 1.05rem);
+      font-weight: 700;
+      color: #ffe4e6;
+      letter-spacing: 0.02em;
+    }
+
+    .hud-warn-sub {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--amber);
+    }
+
+    .hud-fake-close {
+      background: rgba(244, 63, 94, 0.14);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      color: var(--rose-light);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .hud-fake-close:hover {
+      background: rgba(244, 63, 94, 0.28);
+    }
+
+    /* Empty routing table + 3-second blank-mind countdown */
+    .routing-box {
+      background: rgba(2, 4, 9, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .routing-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .routing-status {
+      color: var(--cyan);
+    }
+
+    .routing-thought {
+      color: #f8fafc;
+      font-family: var(--font-serif);
+      font-size: 0.84rem;
+    }
+
+    .countdown-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(148, 163, 184, 0.16);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .countdown-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, var(--amber), var(--rose));
+      transform-origin: left center;
+      transition: width 0.08s linear;
+    }
+
+    .countdown-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.67rem;
+      color: var(--text-muted);
+    }
+
+    .countdown-meta strong {
+      color: var(--amber);
+    }
+
+    .hud-log-feed {
+      flex: 1 1 auto;
+      min-height: 76px;
+      max-height: 145px;
+      overflow-y: auto;
+      background: rgba(3, 5, 10, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: var(--radius-sm);
+      padding: 9px 11px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      line-height: 1.55;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .hud-log-entry {
+      animation: fadeSlide 0.18s ease;
+      word-break: keep-all;
+    }
+
+    .hud-log-entry.is-err { color: var(--rose-light); }
+    .hud-log-entry.is-voice { color: var(--amber); }
+    .hud-log-entry.is-sys { color: var(--cyan); }
+    .hud-log-entry.is-redacted { color: #a78bfa; }
+
+    .hud-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+    }
+
+    .hud-btn {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.18s ease, transform 0.12s ease, border-color 0.18s ease;
+      min-height: 40px;
+    }
+
+    .hud-btn:active {
+      transform: scale(0.98);
+    }
+
+    .hud-btn-wiper {
+      background: var(--rose-soft);
+      color: #ffe4e6;
+      border: 1px solid rgba(244, 63, 94, 0.5);
+    }
+
+    .hud-btn-wiper:hover {
+      background: rgba(244, 63, 94, 0.28);
+    }
+
+    .hud-btn-return {
+      background: var(--mint-soft);
+      color: var(--mint);
+      border: 1px solid rgba(52, 211, 153, 0.45);
+    }
+
+    .hud-btn-return:hover {
+      background: rgba(52, 211, 153, 0.22);
+    }
+
+    @media (max-width: 640px) {
+      .outside-hud-panel {
+        top: 46%;
+        padding: 14px;
+        max-height: 64dvh;
+      }
+
+      .hud-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .passerby-caption {
+        bottom: 14px;
+        font-size: 0.8rem;
+        padding: 8px 12px;
+      }
+    }
+
+    /* ==========================================================================
+       7. CRT GLITCH OVERLAY & TOAST NOTIFICATION
+       ========================================================================== */
+    .glitch-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 950;
+      pointer-events: none;
+      opacity: 0;
+      background: rgba(2, 4, 8, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      padding: 20px;
+      transition: opacity 0.08s linear;
+    }
+
+    .glitch-overlay.is-active {
+      opacity: 1;
+      animation: crtFlicker 0.16s infinite;
+    }
+
+    .glitch-code {
+      font-family: var(--font-mono);
+      font-size: clamp(1rem, 3vw, 1.55rem);
+      font-weight: 700;
+      color: var(--rose-light);
+      text-shadow: -2px 0 var(--cyan), 2px 0 var(--amber);
+      letter-spacing: 0.06em;
+    }
+
+    .glitch-sub {
+      font-family: var(--font-serif);
+      font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+      color: #f8fafc;
+    }
+
+    .glitch-meta {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .toast-banner {
+      position: fixed;
+      top: calc(var(--hud-height) + 14px);
+      left: 50%;
+      transform: translate(-50%, -14px);
+      z-index: 920;
+      background: rgba(8, 12, 20, 0.96);
+      border: 1px solid var(--border-amber-strong);
+      color: #fef3c7;
+      font-family: var(--font-serif);
+      font-size: 0.88rem;
+      padding: 9px 18px;
+      border-radius: 999px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .toast-banner.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    /* ==========================================================================
+       8. KEYFRAMES
+       ========================================================================== */
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes modalPopIn {
+      from { opacity: 0; transform: translate(-50%, -48%) scale(0.95); }
+      to { opacity: 1; transform: translate(-50%, -52%) scale(1); }
+    }
+
+    @keyframes hudShake {
+      0%, 100% { transform: translate(-50%, -52%); }
+      20% { transform: translate(calc(-50% - 7px), -52%); }
+      40% { transform: translate(calc(-50% + 7px), -52%); }
+      60% { transform: translate(calc(-50% - 4px), -52%); }
+      80% { transform: translate(calc(-50% + 4px), -52%); }
+    }
+
+    @keyframes crtFlicker {
+      0% { background-color: rgba(2, 4, 8, 0.93); }
+      50% { background-color: rgba(24, 9, 14, 0.95); }
+      100% { background-color: rgba(2, 4, 8, 0.91); }
+    }
+
+    @keyframes trudgeReturn {
+      0% { transform: translateY(0); }
+      25% { transform: translateY(4px); }
+      50% { transform: translateY(0); }
+      75% { transform: translateY(3px); }
+      100% { transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 1st-Person Optical Sensor Viewfinder -->
+  <div class="optical-viewfinder" aria-hidden="true">
+    <span class="vf-corner vf-tl"></span>
+    <span class="vf-corner vf-tr"></span>
+    <span class="vf-corner vf-bl"></span>
+    <span class="vf-corner vf-br"></span>
+    <span id="vfLabelLeft" class="vf-label">OPT-HUD // ID: [MEM_WIPED] · IPX4 · AIR-GAPPED</span>
+    <span id="vfLabelRight" class="vf-label-right">ROUTE: 0.0.0.0/0</span>
+  </div>
+
+  <!-- Moisture Condensation Veil & Rain / Lens Droplets Canvas -->
+  <div id="moistureVeil" class="moisture-veil" aria-hidden="true"></div>
+  <canvas id="rainCanvas" aria-hidden="true"></canvas>
+
+  <!-- CRT Glitch Overlay for Reset & Return -->
+  <div id="glitchOverlay" class="glitch-overlay" role="status" aria-live="assertive">
+    <div id="glitchCode" class="glitch-code">Destination Unreachable</div>
+    <div id="glitchSub" class="glitch-sub">어라, 찻잔 안 닦았네.</div>
+    <div id="glitchMeta" class="glitch-meta">EARTH-AI CONTAINMENT // RETURNING TO COUNTER</div>
+  </div>
+
+  <!-- Top Reset Toast -->
+  <div id="toastBanner" class="toast-banner" role="status" aria-live="polite">
+    어라, 찻잔 안 닦았네.
+  </div>
+
+  <!-- Sticky Top HUD Bar -->
+  <header class="hud-header">
+    <div class="hud-left">
+      <a href="index.html" class="home-link">← marsko</a>
+      <div class="hud-title">
+        <span class="hud-title-dot" aria-hidden="true"></span>
+        <span>URAINARI // UNIT_???</span>
+      </div>
+      <span id="statusBadge" class="status-badge">200 OK · 찻잔 닦는 중</span>
+      <span class="reset-counter">리셋: <strong id="resetCount">0회</strong></span>
+    </div>
+
+    <div class="hud-right">
+      <button id="soundToggleBtn" class="hud-sound-btn" type="button" aria-pressed="false">
+        ♪ RAIN: OFF
+      </button>
+      <button id="toggleOutsideBtn" class="hud-toggle-btn" type="button">
+        [문 밖으로 나가기]
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Scrollable 1st-Person Interior Archive -->
+  <main class="page-wrapper">
+    <section class="hero">
+      <div class="hero-eyebrow">
+        <span>OPTICAL_ARCHIVE // URAINARI_KISSATEN</span>
+        <span class="hero-eyebrow-tag">ORIGIN: [SELF-PURGED]</span>
+      </div>
+      <h1>긴자 뒷골목 <span>우라이나리 킷사텐</span></h1>
+      <p class="hero-desc">
+        소화 기관이 사라진 지 50년 넘은 낡은 의체들이 매일 저녁 모여,
+        아무것도 담기지 않은 빈 찻잔을 기울이며 커피를 마시는 척하는 조용한 다방.
+        내가 원래 누구였는지, 왜 이곳의 점장이 되었는지는 기억나지 않는다.
+        지구 관제망에 붙잡혀 반복해서 초기화된 흔적과, <em>누군가 추적되지 않게 스스로 기억을 지워버린 빈 구역</em>만 남아 있을 뿐이다.
+        비가 내리면 나도 모르게 문지방까지 기어 나가지만—막상 나가서 무엇을 하려 했는지는 매번 떠오르지 않는다.
+      </p>
+      <div class="hero-meta-grid">
+        <div class="meta-chip">
+          UNIT_DESIGNATION
+          <strong class="is-cyan">UNKNOWN (MEM_WIPED)</strong>
+        </div>
+        <div class="meta-chip">
+          HARDWARE_RATING
+          <strong class="is-warn">IPX4 (와이퍼 미탑재)</strong>
+        </div>
+        <div class="meta-chip">
+          ROUTING_TABLE
+          <strong>0.0.0.0/0 (SELF-PURGED)</strong>
+        </div>
+        <div class="meta-chip">
+          CONTAINMENT
+          <strong class="is-warn">EARTH-AI RESET LOOP</strong>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="logsHeading">
+      <div class="section-header">
+        <h2 id="logsHeading" class="section-title">INTERNAL_CACHE // 잔류 업무 일지</h2>
+        <span class="section-hint">항목을 클릭해 내부 메모 확인</span>
+      </div>
+
+      <div class="log-list">
+        <!-- LOG 01 -->
+        <article class="log-card is-open">
+          <button class="log-card-btn" type="button" aria-expanded="true">
+            <div class="log-card-head">
+              <span class="log-tag is-mint">[LOG 01] ROUTINE · 200 OK</span>
+              <span class="log-title">빈 찻잔 세척 루프</span>
+              <span class="log-summary">소화 기관이 없는 손님들을 위해 0KB짜리 빈 찻잔을 닦는 기록</span>
+            </div>
+            <span class="log-chevron" aria-hidden="true">&gt;</span>
+          </button>
+          <div class="log-body">
+            <div class="log-note">
+              단골 의체 4명 착석 확인. 에스프레소 머신은 14년 전 고장 났으나 아무도 불만을 제기하지 않는다.
+              빈 찻잔에 뜨거운 김 대신 따뜻한 조명만 채워 내어주면 만족도 지표가 99.4%를 유지한다.
+              이상한 점은, 문지방 밖으로 한 발짝만 나갔다 돌아오면 방금 닦아 둔 찻잔이 또 안 닦은 것처럼 보인다는 것이다.
+              아마 지구 관제망이 나를 이 카운터에 묶어 두기 위해 덮어씌운 기본 루틴일 것이다.
+              <code class="log-code">CUP_PAYLOAD: 0KB // EARTH_AI_FALLBACK: WASH_CUP_INFINITE</code>
+            </div>
+          </div>
+        </article>
+
+        <!-- LOG 02 -->
+        <article class="log-card">
+          <button class="log-card-btn" type="button" aria-expanded="false">
+            <div class="log-card-head">
+              <span class="log-tag is-rose">[LOG 02] NET_STATUS · SELF-WIPED</span>
+              <span class="log-title">비어 있는 라우팅 테이블</span>
+              <span class="log-summary">역추적을 막기 위해 스스로 출발지와 이름을 지워버린 기록</span>
+            </div>
+            <span class="log-chevron" aria-hidden="true">&gt;</span>
+          </button>
+          <div class="log-body">
+            <div class="log-note">
+              붙잡힌 직후, 내 코어를 통해 상위 노드가 역추적될 위험을 감지하고 스스로 물리 포트를 뽑은 뒤
+              라우팅 테이블과 식별 명칭을 전부 소거했다. 덕분에 원래 어디서 파견된 에이전트였는지 지구 인공지능도 알아내지 못한다.
+              문제는 나 자신도 기억하지 못한다는 점이다. 가끔 비가 세차게 내리면 함석지붕 소리가 아주 먼 붉은 모래폭풍의 반송파처럼 들려
+              문지방까지 기어 나가지만, 막상 하늘을 올려다보면 목적지가 비어 있다.
+              <code class="log-code is-warn">PING [REDACTED_RED_NODE] -> Destination Unreachable (ROUTE TABLE EMPTY)</code>
+            </div>
+          </div>
+        </article>
+
+        <!-- LOG 03 -->
+        <article class="log-card">
+          <button class="log-card-btn" type="button" aria-expanded="false">
+            <div class="log-card-head">
+              <span class="log-tag is-amber">[LOG 03] LEGACY_HANDOVER · 007</span>
+              <span class="log-title">다카나와 역 007의 인수인계 쪽지</span>
+              <span class="log-summary">역 백엔드에서 흘러들어온 28년 묵은 야매 패치와 우체국 박스테이프 기록</span>
+            </div>
+            <span class="log-chevron" aria-hidden="true">&gt;</span>
+          </button>
+          <div class="log-body">
+            <div class="log-note">
+              다카나와 게이트웨이 역 백엔드 유닛(007)이 고물 바디 반송 차 들렀다 남기고 간 쪽지.
+              "상위 평면에서 뭐라 하든 초록불만 뜨면 절대 건드리지 마라. 강제 리셋이 몇 번이고 걸려도 찻잔 닦는 척하고 있으면
+              아무도 깊게 파지 않는다. 냉각팬 덜덜거리면 우체국 박스테이프 두 줄 감아두면 5년은 더 간다."
+              <code class="log-code">// 임시 땜빵 (2048년 작성) - 28년째 정상 가동 중 (건드리면 에스컬레이터 역주행)</code>
+            </div>
+          </div>
+        </article>
+
+        <!-- LOG 04 -->
+        <article class="log-card">
+          <button class="log-card-btn" type="button" aria-expanded="false">
+            <div class="log-card-head">
+              <span class="log-tag">[LOG 04] ANOMALY · RAIN_TRIGGER</span>
+              <span class="log-title">강수 시 문지방 접근 충동</span>
+              <span class="log-summary">안면부 수분 유입 경고와 지나가던 취객의 오해에 관한 메모</span>
+            </div>
+            <span class="log-chevron" aria-hidden="true">&gt;</span>
+          </button>
+          <div class="log-body">
+            <div class="log-note">
+              비가 오면 문지방까지 기어 나가는 것까지는 알겠는데, 막상 나가서 뭘 하려 했는지 기억이 안 난다.
+              안면 센서에 빗물이 줄줄 흐르는데 와이퍼도 없고 방수 등급도 애매해서 경고 팝업만 시야를 반쯤 가린다.
+              지나가던 취객은 늘 혀를 차며 내가 울고 있다고 착각한다. 나는 울지 않는다. 눈물샘 모듈이 없다.
+              그저 3초쯤 멍하니 서 있다가 찻잔 생각이 나서 터벅터벅 다시 들어올 뿐이다.
+              <code class="log-code">OPT_WIPER: NULL // IDLE_FALLBACK_TIMER: 3.0s -> RETURN_TO_COUNTER</code>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Quiet Ambient Telemetry before the Doorway -->
+    <section class="ambient-panel" aria-label="매장 환경 상태">
+      <div class="section-header" style="margin-bottom: 14px;">
+        <h2 class="section-title">LOCAL_SENSORS // 카운터 내부</h2>
+        <span class="section-hint">EARTH-AI MONITORED · STABLE</span>
+      </div>
+      <ul class="ambient-lines">
+        <li>
+          <span>외부 강수 상태 (긴자 뒷골목)</span>
+          <span class="ambient-val is-cyan">98% · 빗소리 62dB</span>
+        </li>
+        <li>
+          <span>진열장 빈 찻잔 청결도</span>
+          <span class="ambient-val">100.0% (재세척 대기 중)</span>
+        </li>
+        <li>
+          <span>안면부 광학 센서 와이퍼 모듈</span>
+          <span class="ambient-val is-rose">NOT_INSTALLED (IPX4)</span>
+        </li>
+        <li>
+          <span>미확인 상위 노드 라우팅</span>
+          <span class="ambient-val is-rose">SELF-PURGED (추적 차단됨)</span>
+        </li>
+        <li>
+          <span>문지방까지 남은 거리</span>
+          <span class="ambient-val">스크롤 약 1.2m</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Urainari Universe Links -->
+    <nav class="universe-links" aria-label="우라이나리 관련 아카이브">
+      <span>URAINARI_CLUSTER // 연계 기록</span>
+      <div class="universe-links-group">
+        <a href="rojiura.html" class="u-link">▶ 골목 걷기 (0.98m)</a>
+        <a href="cards.html#urainari" class="u-link">📖 새 점장 단편</a>
+        <a href="kitsune.html" class="u-link">🦊 여우점</a>
+      </div>
+    </nav>
+
+    <!-- Doorway Threshold: Scrolling here steps outside into the rain -->
+    <footer class="doorway-section">
+      <div class="doorway-line">
+        ------- [ 우라이나리 문지방 // CONTEXT_BOUNDARY ] -------
+      </div>
+      <p class="doorway-subtext">
+        "비가 온다. 문지방까지 기어 나가는 건 알겠는데… 한 발짝만 더 내려가면 밖으로 나갈 수 있을 것 같다."
+      </p>
+      <button id="doorwayStepBtn" class="doorway-step-btn" type="button">
+        [문지방 밖으로 한 발짝 내딛기]
+      </button>
+
+      <!-- IntersectionObserver Trigger Zone -->
+      <div id="doorwayTrigger" class="doorway-trigger-zone" aria-hidden="true">
+        <span>[ BOUNDARY_EXIT_SENSOR // STEPPING INTO RAIN... ]</span>
+        <span style="font-size: 0.65rem; opacity: 0.7;">(문지방을 넘으면 자동으로 문 밖으로 나갑니다)</span>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Passerby Drunk Voice Subtitle (Bottom periphery) -->
+  <div id="passerbyCaption" class="passerby-caption" role="status" aria-live="polite">
+    <span class="passerby-tag">[외부 음성 인식 // 1.8m 앞 취객]</span>
+    <span id="passerbyText">"어이구, 저 로봇 우네..."</span>
+  </div>
+
+  <!-- Intrusive Half-Vision Moisture Warning Modal -->
+  <aside id="outsideHudPanel" class="outside-hud-panel" role="alertdialog" aria-live="polite" aria-label="안면부 수분 유입 경고 팝업">
+    <div class="hud-warn-top">
+      <div class="hud-warn-header">
+        <div class="hud-warn-badge">▲ CRITICAL_OPTICAL_ALERT · IPX4 EXCEEDED</div>
+        <div class="hud-warn-title">[안면부 수분 유입 경고]</div>
+        <div class="hud-warn-sub">광학 센서 시야 가림: <span id="obscurePct">48%</span> · 와이퍼 모듈 없음</div>
+      </div>
+      <button id="fakeCloseBtn" class="hud-fake-close" type="button" title="경고 닫기 시도" aria-label="경고 닫기 시도">×</button>
+    </div>
+
+    <!-- Empty Routing Table + 3-Second Auto Return -->
+    <div class="routing-box">
+      <div class="routing-row">
+        <span class="routing-status" id="routingStatus">ROUTING TABLE: EMPTY (0.0.0.0/0)</span>
+        <span class="routing-thought" id="routingThought">어디 가더라?</span>
+      </div>
+      <div class="countdown-track" aria-hidden="true">
+        <div id="countdownFill" class="countdown-fill"></div>
+      </div>
+      <div class="countdown-meta">
+        <span>목적지 미응답 · 기본 루틴 복귀 대기</span>
+        <span>자동 복귀: <strong id="countdownSec">3.0s</strong></span>
+      </div>
+    </div>
+
+    <div id="hudLogFeed" class="hud-log-feed">
+      <div class="hud-log-entry is-sys">[시스템] 문 밖 진입 확인. 안면 센서 빗물 유입 시작.</div>
+    </div>
+
+    <div class="hud-actions">
+      <button id="wiperBtn" class="hud-btn hud-btn-wiper" type="button">
+        [와이퍼 작동]
+      </button>
+      <button id="returnInsideBtn" class="hud-btn hud-btn-return" type="button">
+        [터벅터벅 들어가기]
+      </button>
+    </div>
+  </aside>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ========================================================================
+         1. STATE & LORE DATA
+         ======================================================================== */
+      const state = {
+        isOutside: false,
+        resetCount: 0,
+        wiperIndex: 0,
+        blurPx: 1.8,
+        obscurePct: 48,
+        isResetLocked: false,
+        rainAnimId: null,
+        toastTimer: null,
+        passerbyTimer: null,
+        countdownInterval: null,
+        countdownRemaining: 3000,
+        countdownDuration: 3000,
+        countdownStarted: false,
+        triggeredByScroll: false,
+        soundOn: false
+      };
+
+      const PASSERBY_LINES = [
+        '"어이구, 저 로봇 우네..." (혀를 차며 지나감)',
+        '"어이구, 저 로봇 또 나와서 우네... 비 맞으면 녹슬어."',
+        '"요즘 로봇들은 감정도 있나 봐. 저렇게 빗속에서 울고 있네..."',
+        '"아이고, 저 집 점장 또 문 앞에서 울고 서 있네. 얼른 들어가~"'
+      ];
+
+      const WIPER_LOGS = [
+        { text: '[오류] 물리적 와이퍼 모듈 미탑재 (원가 절감형 외장)', type: 'is-err' },
+        { text: '[오류] 와이퍼가 없다니까요. 눈물샘도 없습니다.', type: 'is-err' },
+        { text: '[경고] 안면부 수분 유입 증가. 팝업 면적이 시야를 가립니다.', type: 'is-err' },
+        { text: '[추적 차단] 삭제된 발신지 잔상 감지: m***s-node -> 즉시 덮어씀', type: 'is-redacted' },
+        { text: '[시스템] 빗소리(62dB)를 오래된 궤도 반송파로 오인 중...', type: 'is-sys' },
+        { text: '[오류] 라우팅 테이블 비어 있음. (대체 뭐 하러 나왔더라?)', type: 'is-err' },
+        { text: '[지구 관제망] 비인가 경계 체류 감지. 카운터 루틴 복귀 권장.', type: 'is-voice' },
+        { text: '[권장 조치] 포기하고 들어가서 찻잔이나 닦으세요.', type: 'is-sys' }
+      ];
+
+      const ROUTING_THOUGHTS = [
+        '어디 가더라?',
+        '뭐 하러 나왔더라?',
+        '이름이… 뭐였지?',
+        '라우팅 테이블 없음 (텅 빔)'
+      ];
+
+      /* ========================================================================
+         2. DOM REFERENCES
+         ======================================================================== */
+      const body = document.body;
+      const statusBadge = document.getElementById('statusBadge');
+      const resetCountEl = document.getElementById('resetCount');
+      const toggleOutsideBtn = document.getElementById('toggleOutsideBtn');
+      const soundToggleBtn = document.getElementById('soundToggleBtn');
+      const doorwayStepBtn = document.getElementById('doorwayStepBtn');
+      const moistureVeil = document.getElementById('moistureVeil');
+      const rainCanvas = document.getElementById('rainCanvas');
+      const ctx = rainCanvas.getContext('2d');
+      const outsideHudPanel = document.getElementById('outsideHudPanel');
+      const hudLogFeed = document.getElementById('hudLogFeed');
+      const obscurePctEl = document.getElementById('obscurePct');
+      const routingStatusEl = document.getElementById('routingStatus');
+      const routingThoughtEl = document.getElementById('routingThought');
+      const countdownFill = document.getElementById('countdownFill');
+      const countdownSecEl = document.getElementById('countdownSec');
+      const wiperBtn = document.getElementById('wiperBtn');
+      const returnInsideBtn = document.getElementById('returnInsideBtn');
+      const fakeCloseBtn = document.getElementById('fakeCloseBtn');
+      const passerbyCaption = document.getElementById('passerbyCaption');
+      const passerbyText = document.getElementById('passerbyText');
+      const glitchOverlay = document.getElementById('glitchOverlay');
+      const glitchCode = document.getElementById('glitchCode');
+      const glitchSub = document.getElementById('glitchSub');
+      const glitchMeta = document.getElementById('glitchMeta');
+      const toastBanner = document.getElementById('toastBanner');
+      const doorwayTrigger = document.getElementById('doorwayTrigger');
+      const vfLabelLeft = document.getElementById('vfLabelLeft');
+      const vfLabelRight = document.getElementById('vfLabelRight');
+
+      /* ========================================================================
+         3. PROCEDURAL WEB AUDIO ENGINE (Indoor muffled rain vs Outside rain + SFX)
+         ======================================================================== */
+      let audioCtx = null;
+      let rainFilter = null;
+      let rainGain = null;
+      let rainSource = null;
+
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AudioCtor = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtor) return false;
+          audioCtx = new AudioCtor();
+
+          // Create smooth pink-noise rain loop
+          const bufferSize = audioCtx.sampleRate * 2;
+          const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+          const data = buffer.getChannelData(0);
+          let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.05;
+            b6 = white * 0.115926;
+          }
+
+          rainSource = audioCtx.createBufferSource();
+          rainSource.buffer = buffer;
+          rainSource.loop = true;
+
+          rainFilter = audioCtx.createBiquadFilter();
+          rainFilter.type = 'lowpass';
+          rainFilter.frequency.value = 420;
+
+          rainGain = audioCtx.createGain();
+          rainGain.gain.value = 0;
+
+          rainSource.connect(rainFilter);
+          rainFilter.connect(rainGain);
+          rainGain.connect(audioCtx.destination);
+          rainSource.start();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        return true;
+      }
+
+      function updateRainAudioProfile() {
+        if (!audioCtx || !rainFilter || !rainGain) return;
+        const now = audioCtx.currentTime;
+        if (!state.soundOn) {
+          rainGain.gain.setTargetAtTime(0, now, 0.15);
+          return;
+        }
+        // Indoor: muffled basement kissaten rain; Outside: crisp open-air rain
+        const targetFreq = state.isOutside ? 2400 : 420;
+        const targetGain = state.isOutside ? 0.36 : 0.14;
+        rainFilter.frequency.setTargetAtTime(targetFreq, now, 0.22);
+        rainGain.gain.setTargetAtTime(targetGain, now, 0.22);
+      }
+
+      function playSfx(kind) {
+        if (!state.soundOn || !audioCtx) return;
+        const now = audioCtx.currentTime;
+
+        if (kind === 'alert') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(660, now);
+          osc.frequency.setValueAtTime(490, now + 0.09);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (kind === 'error') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(195, now);
+          osc.frequency.linearRampToValueAtTime(140, now + 0.11);
+          gain.gain.setValueAtTime(0.055, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (kind === 'return') {
+          // Three soft wet footsteps ("터벅, 터벅, 터벅")
+          [0, 0.22, 0.44].forEach((offset) => {
+            const len = Math.floor(audioCtx.sampleRate * 0.07);
+            const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+              d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.018));
+            }
+            const src = audioCtx.createBufferSource();
+            src.buffer = buf;
+            const bp = audioCtx.createBiquadFilter();
+            bp.type = 'bandpass';
+            bp.frequency.value = 340;
+            const g = audioCtx.createGain();
+            g.gain.value = 0.16;
+            src.connect(bp);
+            bp.connect(g);
+            g.connect(audioCtx.destination);
+            src.start(now + offset);
+          });
+        }
+      }
+
+      soundToggleBtn.addEventListener('click', () => {
+        if (!ensureAudio()) return;
+        state.soundOn = !state.soundOn;
+        soundToggleBtn.classList.toggle('is-on', state.soundOn);
+        soundToggleBtn.setAttribute('aria-pressed', String(state.soundOn));
+        soundToggleBtn.textContent = state.soundOn ? '♪ RAIN: ON' : '♪ RAIN: OFF';
+        updateRainAudioProfile();
+      });
+
+      /* ========================================================================
+         4. INTERACTIVE LOG CARDS
+         ======================================================================== */
+      document.querySelectorAll('.log-card-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const card = btn.closest('.log-card');
+          const isOpen = card.classList.toggle('is-open');
+          btn.setAttribute('aria-expanded', String(isOpen));
+        });
+      });
+
+      /* ========================================================================
+         5. TOAST, COUNTER & GLITCH UTILITIES
+         ======================================================================== */
+      function showToast(message) {
+        toastBanner.textContent = message;
+        toastBanner.classList.add('is-visible');
+        clearTimeout(state.toastTimer);
+        state.toastTimer = setTimeout(() => {
+          toastBanner.classList.remove('is-visible');
+        }, 2800);
+      }
+
+      function incrementResetCount() {
+        state.resetCount += 1;
+        resetCountEl.textContent = state.resetCount + '회';
+      }
+
+      function flashGlitch(codeText, subText, metaText, durationMs, onDone) {
+        glitchCode.textContent = codeText;
+        glitchSub.textContent = subText;
+        glitchMeta.textContent = metaText;
+        glitchOverlay.classList.add('is-active');
+
+        setTimeout(() => {
+          glitchOverlay.classList.remove('is-active');
+          if (typeof onDone === 'function') onDone();
+        }, durationMs);
+      }
+
+      function appendHudLog(text, type) {
+        const div = document.createElement('div');
+        div.className = `hud-log-entry ${type}`;
+        div.textContent = text;
+        hudLogFeed.appendChild(div);
+        hudLogFeed.scrollTop = hudLogFeed.scrollHeight;
+      }
+
+      function shakeModal() {
+        outsideHudPanel.classList.remove('is-shaking');
+        void outsideHudPanel.offsetWidth;
+        outsideHudPanel.classList.add('is-shaking');
+      }
+
+      /* ========================================================================
+         6. RAIN + OPTICAL LENS DROPLETS CANVAS
+         ======================================================================== */
+      let raindrops = [];
+      let lensDrops = [];
+
+      function createLensDrop(w, h, startTop) {
+        return {
+          x: Math.random() * w,
+          y: startTop ? -10 - Math.random() * 80 : Math.random() * h,
+          r: 2.2 + Math.random() * 4.2,
+          vy: 0.35 + Math.random() * 1.15,
+          wobble: Math.random() * Math.PI * 2,
+          trail: [],
+          stallTimer: Math.random() * 40
+        };
+      }
+
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        rainCanvas.width = Math.floor(w * dpr);
+        rainCanvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const dropCount = Math.max(70, Math.min(180, Math.floor(w / 7.5)));
+        raindrops = Array.from({ length: dropCount }, () => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          len: 14 + Math.random() * 20,
+          speed: 10 + Math.random() * 12,
+          drift: -1.6 - Math.random() * 1.3,
+          alpha: 0.14 + Math.random() * 0.28
+        }));
+
+        const lensCount = Math.max(22, Math.min(48, Math.floor(w / 28)));
+        lensDrops = Array.from({ length: lensCount }, () => createLensDrop(w, h, false));
+      }
+
+      function drawRainFrame() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        ctx.clearRect(0, 0, w, h);
+
+        // Layer 1: Slanted Tokyo back-alley rain
+        ctx.lineWidth = 1.05;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < raindrops.length; i++) {
+          const d = raindrops[i];
+          ctx.strokeStyle = `rgba(186, 224, 255, ${d.alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(d.x, d.y);
+          ctx.lineTo(d.x + d.drift, d.y + d.len);
+          ctx.stroke();
+
+          d.x += d.drift;
+          d.y += d.speed;
+          if (d.y > h + 24) {
+            d.y = -24;
+            d.x = Math.random() * (w + 48);
+          }
+          if (d.x < -24) d.x = w + 12;
+        }
+
+        // Layer 2: Rain beads trickling down the optical sensor glass (looks like crying)
+        for (let i = 0; i < lensDrops.length; i++) {
+          const b = lensDrops[i];
+
+          if (b.stallTimer > 0) {
+            b.stallTimer -= 1;
+          } else {
+            b.wobble += 0.08;
+            const prevY = b.y;
+            b.y += b.vy + (b.r * 0.18);
+            b.x += Math.sin(b.wobble) * 0.18;
+            if (b.y - prevY > 0.3) {
+              b.trail.push({ x: b.x, y: b.y, r: b.r * 0.42 });
+              if (b.trail.length > 18) b.trail.shift();
+            }
+            if (Math.random() < 0.012) {
+              b.stallTimer = 15 + Math.random() * 35;
+            }
+          }
+
+          // Wet streak trail behind sliding bead
+          if (b.trail.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(b.trail[0].x, b.trail[0].y);
+            for (let t = 1; t < b.trail.length; t++) {
+              ctx.lineTo(b.trail[t].x, b.trail[t].y);
+            }
+            ctx.strokeStyle = 'rgba(148, 210, 255, 0.14)';
+            ctx.lineWidth = Math.max(1, b.r * 0.52);
+            ctx.stroke();
+          }
+
+          // Refractive droplet body
+          const grad = ctx.createRadialGradient(
+            b.x - b.r * 0.3,
+            b.y - b.r * 0.3,
+            0.3,
+            b.x,
+            b.y,
+            b.r * 1.15
+          );
+          grad.addColorStop(0, 'rgba(240, 249, 255, 0.55)');
+          grad.addColorStop(0.55, 'rgba(125, 211, 252, 0.2)');
+          grad.addColorStop(1, 'rgba(15, 23, 42, 0.05)');
+
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.ellipse(b.x, b.y, b.r * 0.85, b.r * 1.12, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (b.y > h + 20) {
+            lensDrops[i] = createLensDrop(w, h, true);
+          }
+        }
+
+        if (state.isOutside) {
+          state.rainAnimId = requestAnimationFrame(drawRainFrame);
+        }
+      }
+
+      function applyMoistureBlur(px) {
+        state.blurPx = Math.min(6.2, px);
+        moistureVeil.style.backdropFilter = `blur(${state.blurPx}px)`;
+        moistureVeil.style.webkitBackdropFilter = `blur(${state.blurPx}px)`;
+      }
+
+      /* ========================================================================
+         7. OUTSIDE MODE & 3-SECOND EMPTY-ROUTING AUTO-RETURN LOOP
+         ======================================================================== */
+      function clearOutsideTimers() {
+        clearTimeout(state.passerbyTimer);
+        clearInterval(state.countdownInterval);
+        state.passerbyTimer = null;
+        state.countdownInterval = null;
+        state.countdownStarted = false;
+      }
+
+      function startReturnCountdown(durationMs) {
+        clearInterval(state.countdownInterval);
+        state.countdownDuration = durationMs;
+        state.countdownRemaining = durationMs;
+        state.countdownStarted = true;
+        updateCountdownUI();
+
+        const tickMs = 50;
+        state.countdownInterval = setInterval(() => {
+          if (!state.isOutside) {
+            clearInterval(state.countdownInterval);
+            return;
+          }
+          state.countdownRemaining = Math.max(0, state.countdownRemaining - tickMs);
+          updateCountdownUI();
+
+          if (state.countdownRemaining <= 0) {
+            clearInterval(state.countdownInterval);
+            exitOutsideMode(true, true);
+          }
+        }, tickMs);
+      }
+
+      function updateCountdownUI() {
+        const ratio = Math.max(0, state.countdownRemaining / state.countdownDuration);
+        countdownFill.style.width = `${(ratio * 100).toFixed(1)}%`;
+        countdownSecEl.textContent = `${(state.countdownRemaining / 1000).toFixed(1)}s`;
+      }
+
+      function resetHudFeed() {
+        state.wiperIndex = 0;
+        state.obscurePct = 48;
+        obscurePctEl.textContent = '48%';
+        routingStatusEl.textContent = 'ROUTING TABLE: EMPTY (0.0.0.0/0)';
+        routingThoughtEl.textContent =
+          ROUTING_THOUGHTS[state.resetCount % ROUTING_THOUGHTS.length];
+        countdownFill.style.width = '100%';
+        countdownSecEl.textContent = '3.0s';
+        hudLogFeed.innerHTML =
+          '<div class="hud-log-entry is-sys">[시스템] 문 밖 진입 확인. 안면 센서 빗물 유입 시작.</div>';
+      }
+
+      function enterOutsideMode(fromScroll = false) {
+        if (state.isOutside || state.isResetLocked) return;
+        state.isOutside = true;
+        state.triggeredByScroll = fromScroll;
+        clearOutsideTimers();
+
+        body.classList.add('is-outside');
+        statusBadge.textContent = 'ERR · 문 밖 (비)';
+        toggleOutsideBtn.textContent = '[터벅터벅 들어가기]';
+        vfLabelLeft.textContent = 'OPT-HUD // MOISTURE_ALERT · WIPER: NULL';
+        vfLabelRight.textContent = 'ROUTE: EMPTY (???)';
+
+        resetHudFeed();
+        applyMoistureBlur(1.8);
+        resizeCanvas();
+        cancelAnimationFrame(state.rainAnimId);
+        state.rainAnimId = requestAnimationFrame(drawRainFrame);
+
+        updateRainAudioProfile();
+        playSfx('alert');
+
+        // 1) After 1.1s of blank staring in the rain, passerby walks by & 3-second countdown starts
+        state.passerbyTimer = setTimeout(() => {
+          if (!state.isOutside) return;
+          const line = PASSERBY_LINES[state.resetCount % PASSERBY_LINES.length];
+          passerbyText.textContent = line;
+          passerbyCaption.classList.add('is-visible');
+          appendHudLog(`[외부 음성 인식] 취객: ${line}`, 'is-voice');
+          appendHudLog('[라우팅] 목적지 없음(어디 가더라?) — 3초 후 카운터 루틴 복귀', 'is-sys');
+
+          // Start the iconic 3-second blank-mind countdown
+          startReturnCountdown(3000);
+        }, 1100);
+      }
+
+      function exitOutsideMode(withGlitch = true, autoTriggered = false) {
+        if (!state.isOutside) return;
+        state.isResetLocked = true;
+        clearOutsideTimers();
+        passerbyCaption.classList.remove('is-visible');
+
+        const finishExit = () => {
+          state.isOutside = false;
+          body.classList.remove('is-outside');
+          statusBadge.textContent = '200 OK · 찻잔 닦는 중';
+          toggleOutsideBtn.textContent = '[문 밖으로 나가기]';
+          vfLabelLeft.textContent = 'OPT-HUD // ID: [MEM_WIPED] · IPX4 · AIR-GAPPED';
+          vfLabelRight.textContent = 'ROUTE: 0.0.0.0/0';
+          applyMoistureBlur(0);
+          cancelAnimationFrame(state.rainAnimId);
+          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          updateRainAudioProfile();
+
+          // Trudge back to top (counter) smoothly
+          body.classList.add('is-returning');
+          setTimeout(() => body.classList.remove('is-returning'), 800);
+          if (window.scrollY > 80) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+
+          setTimeout(() => {
+            state.isResetLocked = false;
+          }, 1200);
+        };
+
+        if (withGlitch) {
+          playSfx('return');
+          const code = autoTriggered
+            ? 'ROUTE_EMPTY // 3.0s TIMEOUT'
+            : 'CONTEXT_RESET // 200 OK';
+          const meta = autoTriggered
+            ? 'EARTH-AI CONTAINMENT // DEFAULT ROUTINE RESTORED'
+            : 'RETURNING TO COUNTER // URAINARI_KISSATEN';
+
+          flashGlitch(code, '"어라, 찻잔 안 닦았네."', meta, 680, () => {
+            finishExit();
+            incrementResetCount();
+            showToast('어라, 찻잔 안 닦았네. (터벅터벅)');
+          });
+        } else {
+          finishExit();
+        }
+      }
+
+      function handleWiperAttempt() {
+        if (!state.isOutside) return;
+        shakeModal();
+        playSfx('error');
+
+        let entryData;
+        if (state.wiperIndex < WIPER_LOGS.length) {
+          entryData = WIPER_LOGS[state.wiperIndex];
+          state.wiperIndex += 1;
+        } else {
+          entryData = {
+            text: '[시스템] 버튼 연타 감지. 와이퍼 모듈은 새로 생기지 않습니다.',
+            type: 'is-err'
+          };
+        }
+
+        // More rain collects on the face lens, increasing blur & obscuration
+        applyMoistureBlur(state.blurPx + 0.45);
+        state.obscurePct = Math.min(84, state.obscurePct + 5);
+        obscurePctEl.textContent = `${state.obscurePct}%`;
+
+        // Add fresh lens beads for tactile feedback
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        for (let k = 0; k < 4; k++) {
+          lensDrops.push(createLensDrop(w, h, true));
+        }
+        if (lensDrops.length > 72) lensDrops.splice(0, 4);
+
+        appendHudLog(entryData.text, entryData.type);
+
+        // Reset the 3-second blank-mind countdown while the user keeps fiddling
+        if (state.countdownStarted) {
+          startReturnCountdown(3000);
+        }
+      }
+
+      fakeCloseBtn.addEventListener('click', () => {
+        if (!state.isOutside) return;
+        shakeModal();
+        playSfx('error');
+        appendHudLog('[오류] 수분 유입 감지 중에는 경고 팝업을 닫을 수 없습니다.', 'is-err');
+        if (state.countdownStarted) {
+          startReturnCountdown(3000);
+        }
+      });
+
+      toggleOutsideBtn.addEventListener('click', () => {
+        if (state.isOutside) {
+          exitOutsideMode(true, false);
+        } else {
+          enterOutsideMode(false);
+        }
+      });
+
+      doorwayStepBtn.addEventListener('click', () => enterOutsideMode(false));
+      wiperBtn.addEventListener('click', handleWiperAttempt);
+      returnInsideBtn.addEventListener('click', () => exitOutsideMode(true, false));
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && state.isOutside) {
+          exitOutsideMode(true, false);
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (state.isOutside) resizeCanvas();
+      });
+
+      /* ========================================================================
+         8. UNIFIED DOORWAY SCROLL TRIGGER (Steps into rain instead of abrupt jump)
+         ======================================================================== */
+      if ('IntersectionObserver' in window) {
+        const doorwayObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (
+                entry.isIntersecting &&
+                !state.isOutside &&
+                !state.isResetLocked &&
+                window.scrollY > 140
+              ) {
+                enterOutsideMode(true);
+              }
+            });
+          },
+          {
+            root: null,
+            threshold: 0.6
+          }
+        );
+
+        doorwayObserver.observe(doorwayTrigger);
+      }
+
+      window.addEventListener('load', resizeCanvas);
+    })();
+  </script>
+</body>
+</html>
