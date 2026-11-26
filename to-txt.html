@@ -1,0 +1,2535 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HTML·PDF·HWP·HWPX·DOCX·EPUB·RTF·EML·자막 등 다양한 포맷을 브라우저에서 TXT로 일괄 변환 — 서버 업로드 없음.">
+  <meta name="theme-color" content="#09090b">
+  <title>to-txt — Marsko</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #e4e4e7;
+      min-height: 100vh;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .back a {
+      color: #71717a;
+      text-decoration: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.75rem;
+      padding: 3px 7px;
+      border: 1px solid #27272a;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .back a:hover { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    h1 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    .badge {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.68rem;
+      color: #71717a;
+      background: #09090b;
+      border: 1px solid #27272a;
+      padding: 2px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      background: #27272a;
+      color: #e4e4e7;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      padding: 6px 11px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { border-color: #38bdf8; color: #7dd3fc; }
+    .btn.primary {
+      background: #e4e4e7;
+      color: #09090b;
+      border-color: #e4e4e7;
+    }
+    .btn.primary:hover:not(:disabled) { background: #fafafa; color: #09090b; border-color: #fafafa; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .hidden { display: none !important; }
+    input[type="file"] { display: none; }
+
+    .options-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 14px;
+      background: #111114;
+      border-bottom: 1px solid #27272a;
+      font-size: 0.78rem;
+      color: #a1a1aa;
+      flex-wrap: wrap;
+    }
+    .opts-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .opt-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .opt-check input {
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+    .opt-select-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .opt-select-wrap select {
+      background: #18181b;
+      color: #e4e4e7;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 0.76rem;
+      outline: none;
+    }
+    .opt-select-wrap select:focus { border-color: #38bdf8; }
+    .global-status {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: #7dd3fc;
+    }
+
+    .main-shell {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-shell.dragover::after {
+      content: '여기에 파일을 놓아 TXT로 변환';
+      position: absolute;
+      inset: 12px;
+      border: 2px dashed #38bdf8;
+      border-radius: 14px;
+      background: rgba(9, 9, 11, 0.85);
+      color: #7dd3fc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .empty-view {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .drop-card {
+      width: 100%;
+      max-width: 600px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 16px;
+      padding: 24px 20px;
+    }
+    .dropzone {
+      border: 1px dashed #3f3f46;
+      background: #09090b;
+      border-radius: 12px;
+      padding: 36px 16px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone:hover, .dropzone:focus-visible {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.05);
+      outline: none;
+    }
+    .dropzone strong { font-size: 1rem; color: #e4e4e7; }
+    .dropzone span { font-size: 0.8rem; color: #71717a; }
+    .format-groups {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .format-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 0.74rem;
+    }
+    .format-label {
+      color: #71717a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      min-width: 66px;
+      flex-shrink: 0;
+    }
+    .format-chip {
+      background: #09090b;
+      border: 1px solid #27272a;
+      color: #a1a1aa;
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.7rem;
+    }
+    .limit-note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #27272a;
+      font-size: 0.73rem;
+      color: #71717a;
+      line-height: 1.5;
+    }
+
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+    }
+    @media (max-width: 800px) {
+      .workspace {
+        grid-template-columns: 1fr;
+        grid-template-rows: 220px 1fr;
+      }
+    }
+
+    .queue-pane {
+      background: #141417;
+      border-right: 1px solid #27272a;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    @media (max-width: 800px) {
+      .queue-pane { border-right: none; border-bottom: 1px solid #27272a; }
+    }
+    .pane-head {
+      padding: 9px 12px;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .queue-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .queue-item {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 9px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .queue-item:hover { border-color: #3f3f46; }
+    .queue-item.active {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.07);
+    }
+    .queue-item.error { border-color: #7f1d1d; }
+    .queue-meta { min-width: 0; flex: 1; }
+    .queue-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #e4e4e7;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .queue-sub {
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      color: #71717a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .fmt-tag {
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #7dd3fc;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+    }
+    .fmt-tag.warn { color: #fbbf24; border-color: rgba(251, 191, 36, 0.35); }
+    .fmt-tag.err { color: #f87171; border-color: rgba(248, 113, 113, 0.35); }
+    .queue-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .mini-btn {
+      background: #18181b;
+      color: #7dd3fc;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mini-btn:hover { border-color: #38bdf8; }
+
+    .preview-pane {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #09090b;
+    }
+    .preview-toolbar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 14px;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      flex-wrap: wrap;
+    }
+    .preview-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+    .preview-filename {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #e4e4e7;
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .preview-stats {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: #71717a;
+    }
+    .preview-actions { display: flex; align-items: center; gap: 6px; }
+    .banner {
+      flex-shrink: 0;
+      padding: 8px 14px;
+      font-size: 0.78rem;
+      border-bottom: 1px solid #27272a;
+      line-height: 1.45;
+    }
+    .banner.warn {
+      background: rgba(251, 191, 36, 0.08);
+      color: #fde68a;
+      border-bottom-color: rgba(251, 191, 36, 0.25);
+    }
+    .banner.error {
+      background: rgba(248, 113, 113, 0.09);
+      color: #fca5a5;
+      border-bottom-color: rgba(248, 113, 113, 0.25);
+    }
+    #previewText {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      background: #09090b;
+      color: #e4e4e7;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, "Apple SD Gothic Neo", monospace;
+      font-size: 0.84rem;
+      line-height: 1.65;
+      tab-size: 4;
+    }
+    #previewText.sans {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="back"><a href="index.html">← marsko</a></div>
+      <h1>to-txt</h1>
+      <span class="badge">로컬 변환 · 업로드 없음</span>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn" id="addBtn">파일 추가</button>
+      <button type="button" class="btn hidden" id="mergeBtn">모두 합쳐 받기</button>
+      <button type="button" class="btn primary hidden" id="zipBtn">ZIP 저장</button>
+      <button type="button" class="btn hidden" id="clearBtn">초기화</button>
+      <input type="file" id="fileInput" multiple accept=".html,.htm,.xhtml,.mhtml,.mht,.pdf,.hwp,.hwpx,.docx,.pptx,.xlsx,.odt,.ods,.odp,.epub,.rtf,.eml,.srt,.vtt,.ass,.ssa,.smi,.sami,.md,.markdown,.xml,.rss,.atom,.tex,.latex,.csv,.tsv,.json,.txt,.log">
+    </div>
+  </header>
+
+  <div class="options-bar">
+    <div class="opts-left">
+      <label class="opt-check"><input type="checkbox" id="optClean" checked> 빈 줄 정리</label>
+      <label class="opt-check"><input type="checkbox" id="optSeparators" checked> 페이지·시트 구분선</label>
+      <label class="opt-select-wrap">
+        <span>인코딩</span>
+        <select id="optEncoding">
+          <option value="auto">자동 (UTF-8 / EUC-KR / Shift_JIS)</option>
+          <option value="utf-8">UTF-8</option>
+          <option value="euc-kr">EUC-KR (CP949)</option>
+          <option value="shift_jis">Shift_JIS</option>
+          <option value="utf-16le">UTF-16LE</option>
+        </select>
+      </label>
+    </div>
+    <div class="global-status" id="globalStatus"></div>
+  </div>
+
+  <div class="main-shell" id="mainShell">
+    <div class="empty-view" id="emptyView">
+      <div class="drop-card">
+        <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="변환할 파일 선택 또는 끌어다 놓기">
+          <strong>문서·웹·자막 파일을 여기에 끌어다 놓으세요</strong>
+          <span>여러 파일 동시 선택 가능 · 브라우저 안에서 100% 정적으로 TXT 추출</span>
+        </div>
+        <div class="format-groups">
+          <div class="format-row">
+            <span class="format-label">웹/마크업</span>
+            <span class="format-chip">HTML</span>
+            <span class="format-chip">MHTML</span>
+            <span class="format-chip">XML · RSS · Atom</span>
+            <span class="format-chip">Markdown</span>
+          </div>
+          <div class="format-row">
+            <span class="format-label">문서/오피스</span>
+            <span class="format-chip">PDF</span>
+            <span class="format-chip">HWP 5.0</span>
+            <span class="format-chip">HWPX</span>
+            <span class="format-chip">DOCX · PPTX · XLSX</span>
+            <span class="format-chip">ODT · ODS · ODP</span>
+            <span class="format-chip">EPUB</span>
+            <span class="format-chip">RTF</span>
+          </div>
+          <div class="format-row">
+            <span class="format-label">메일/자막/기타</span>
+            <span class="format-chip">EML</span>
+            <span class="format-chip">SRT · VTT · ASS · SMI</span>
+            <span class="format-chip">LaTeX (.tex)</span>
+            <span class="format-chip">CSV · TSV · JSON</span>
+            <span class="format-chip">레거시 인코딩 TXT</span>
+          </div>
+        </div>
+        <div class="limit-note">
+          서버로 파일을 전송하지 않습니다. 단, 텍스트 레이어 없는 이미지 스캔 PDF(OCR 필요), 암호가 걸린 HWP/PDF, 구버전 HWP 3.0 바이너리는 브라우저 단독 추출이 제한됩니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="workspace hidden" id="workspace">
+      <aside class="queue-pane">
+        <div class="pane-head">
+          <span>Files (<span id="queueCount">0</span>)</span>
+          <span id="doneCount">0 done</span>
+        </div>
+        <div class="queue-list" id="queueList"></div>
+      </aside>
+      <section class="preview-pane">
+        <div class="preview-toolbar">
+          <div class="preview-info">
+            <span class="preview-filename" id="previewName">선택된 파일 없음</span>
+            <span class="fmt-tag hidden" id="previewFmt"></span>
+            <span class="preview-stats" id="previewStats"></span>
+          </div>
+          <div class="preview-actions">
+            <button type="button" class="btn" id="fontToggleBtn">고정폭/본문체</button>
+            <button type="button" class="btn" id="copyBtn" disabled>복사</button>
+            <button type="button" class="btn primary" id="saveOneBtn" disabled>.txt 저장</button>
+          </div>
+        </div>
+        <div class="banner warn hidden" id="previewBanner"></div>
+        <textarea id="previewText" spellcheck="false" placeholder="변환된 텍스트가 여기에 표시됩니다."></textarea>
+      </section>
+    </div>
+  </div>
+
+<script>
+(function (root) {
+  'use strict';
+
+  const CDN = {
+    jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+    pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+    pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+    pdfCmaps: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+    pdfStdFonts: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/',
+    cfb: 'https://cdn.jsdelivr.net/npm/cfb@1.2.2/dist/cfb.min.js',
+    pako: 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js'
+  };
+
+  const scriptCache = new Map();
+
+  function loadScript(url) {
+    if (scriptCache.has(url)) return scriptCache.get(url);
+    const promise = new Promise((resolve, reject) => {
+      if (typeof document === 'undefined') {
+        reject(new Error('No DOM document available'));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = url;
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => {
+        scriptCache.delete(url);
+        reject(new Error('외부 파서 라이브러리를 불러오지 못했습니다: ' + url));
+      };
+      document.head.appendChild(s);
+    });
+    scriptCache.set(url, promise);
+    return promise;
+  }
+
+  async function ensureLib(name, setStatus) {
+    if (name === 'jszip') {
+      if (root.JSZip) return root.JSZip;
+      if (setStatus) setStatus('JSZip 라이브러리 로드 중...');
+      await loadScript(CDN.jszip);
+      return root.JSZip;
+    }
+    if (name === 'pdfjs') {
+      if (root.pdfjsLib) return root.pdfjsLib;
+      if (setStatus) setStatus('PDF.js 라이브러리 로드 중...');
+      await loadScript(CDN.pdfjs);
+      if (root.pdfjsLib && root.pdfjsLib.GlobalWorkerOptions) {
+        root.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN.pdfWorker;
+      }
+      return root.pdfjsLib;
+    }
+    if (name === 'hwp') {
+      const tasks = [];
+      if (!root.CFB) tasks.push(loadScript(CDN.cfb));
+      if (!root.pako) tasks.push(loadScript(CDN.pako));
+      if (tasks.length) {
+        if (setStatus) setStatus('HWP 파서(CFB·pako) 로드 중...');
+        await Promise.all(tasks);
+      }
+      return { CFB: root.CFB, pako: root.pako };
+    }
+    throw new Error('Unknown library: ' + name);
+  }
+
+  function toUint8(data) {
+    if (data instanceof Uint8Array) return data;
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (Array.isArray(data)) return Uint8Array.from(data);
+    if (data && data.buffer) return new Uint8Array(data.buffer, data.byteOffset || 0, data.byteLength);
+    return new Uint8Array(0);
+  }
+
+  function asciiPrefix(uint8, maxLen) {
+    const len = Math.min(uint8.length, maxLen || 64);
+    let out = '';
+    for (let i = 0; i < len; i++) {
+      out += String.fromCharCode(uint8[i]);
+    }
+    return out;
+  }
+
+  function normalizeCharset(cs) {
+    if (!cs) return null;
+    const c = String(cs).trim().toLowerCase().replace(/^["']|["']$/g, '');
+    if (c === 'utf8' || c === 'utf-8') return 'utf-8';
+    if (c === 'euc-kr' || c === 'euckr' || c === 'ks_c_5601-1987' || c === 'ks_c_5601' || c === 'cp949' || c === 'ms949' || c === 'x-windows-949' || c === 'korean') return 'euc-kr';
+    if (c === 'shift_jis' || c === 'shift-jis' || c === 'sjis' || c === 'ms932' || c === 'cp932' || c === 'windows-31j') return 'shift_jis';
+    if (c === 'utf-16' || c === 'utf-16le' || c === 'utf16le') return 'utf-16le';
+    if (c === 'utf-16be' || c === 'utf16be') return 'utf-16be';
+    if (c === 'iso-8859-1' || c === 'latin1' || c === 'windows-1252' || c === 'cp1252') return 'windows-1252';
+    if (c === 'gbk' || c === 'gb2312' || c === 'gb18030') return 'gb18030';
+    if (c === 'big5') return 'big5';
+    return c;
+  }
+
+  function tryTextDecoder(encoding, uint8, fatal) {
+    try {
+      return new TextDecoder(encoding, { fatal: !!fatal }).decode(uint8);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function scoreDecodedText(str) {
+    if (str == null) return -1e9;
+    let hangul = 0;
+    let kana = 0;
+    let cjk = 0;
+    let fffd = 0;
+    let ctrl = 0;
+    const limit = Math.min(str.length, 30000);
+    for (let i = 0; i < limit; i++) {
+      const ch = str.charCodeAt(i);
+      if (ch === 0xFFFD) fffd++;
+      else if ((ch >= 0xAC00 && ch <= 0xD7A3) || (ch >= 0x3131 && ch <= 0x318E)) hangul++;
+      else if (ch >= 0x3040 && ch <= 0x30FF) kana++;
+      else if (ch >= 0x4E00 && ch <= 0x9FFF) cjk++;
+      else if (ch < 32 && ch !== 9 && ch !== 10 && ch !== 13) ctrl++;
+    }
+    return (hangul * 3 + kana * 3 + cjk) - (fffd * 50) - (ctrl * 10);
+  }
+
+  function decodeBytes(raw, forcedEncoding, hintCharset) {
+    const uint8 = toUint8(raw);
+    if (uint8.length === 0) return '';
+
+    if (uint8.length >= 3 && uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF) {
+      const res = tryTextDecoder('utf-8', uint8.subarray(3), false);
+      if (res !== null) return res;
+    }
+    if (uint8.length >= 2 && uint8[0] === 0xFF && uint8[1] === 0xFE) {
+      const res = tryTextDecoder('utf-16le', uint8.subarray(2), false);
+      if (res !== null) return res;
+    }
+    if (uint8.length >= 2 && uint8[0] === 0xFE && uint8[1] === 0xFF) {
+      const res = tryTextDecoder('utf-16be', uint8.subarray(2), false);
+      if (res !== null) return res;
+    }
+
+    const forced = forcedEncoding && forcedEncoding !== 'auto' ? normalizeCharset(forcedEncoding) : null;
+    if (forced) {
+      const res = tryTextDecoder(forced, uint8, false);
+      if (res !== null) return res;
+    }
+
+    const hint = normalizeCharset(hintCharset);
+    if (hint) {
+      if (hint === 'utf-8') {
+        const res = tryTextDecoder('utf-8', uint8, true);
+        if (res !== null) return res;
+      } else {
+        const res = tryTextDecoder(hint, uint8, false);
+        if (res !== null && !res.includes('\uFFFD')) return res;
+      }
+    }
+
+    const utf8 = tryTextDecoder('utf-8', uint8, true);
+    if (utf8 !== null) return utf8;
+
+    const candidates = ['euc-kr', 'shift_jis', 'windows-1252'];
+    if (hint && !candidates.includes(hint)) candidates.unshift(hint);
+
+    let bestText = null;
+    let bestScore = -1e9;
+    for (const enc of candidates) {
+      const decoded = tryTextDecoder(enc, uint8, false);
+      if (decoded === null) continue;
+      const sc = scoreDecodedText(decoded);
+      if (sc > bestScore) {
+        bestScore = sc;
+        bestText = decoded;
+      }
+    }
+    if (bestText !== null) return bestText;
+    return new TextDecoder('utf-8', { fatal: false }).decode(uint8);
+  }
+
+  function decodeBase64ToBytes(b64) {
+    const clean = b64.replace(/[\r\n\s]+/g, '');
+    if (typeof atob === 'function') {
+      const bin = atob(clean);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+    if (typeof Buffer !== 'undefined') {
+      return new Uint8Array(Buffer.from(clean, 'base64'));
+    }
+    throw new Error('Base64 decoder unavailable');
+  }
+
+  function decodeQuotedPrintableToBytes(str) {
+    const cleaned = str.replace(/=\r?\n/g, '');
+    const bytes = [];
+    for (let i = 0; i < cleaned.length; i++) {
+      const ch = cleaned.charCodeAt(i);
+      if (ch === 61 && i + 2 < cleaned.length) { // '='
+        const hex = cleaned.slice(i + 1, i + 3);
+        if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+          bytes.push(parseInt(hex, 16));
+          i += 2;
+          continue;
+        }
+      }
+      bytes.push(ch & 0xFF);
+    }
+    return new Uint8Array(bytes);
+  }
+
+  function decodeHtmlEntities(str) {
+    if (!str || !str.includes('&')) return str;
+    return str
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+      .replace(/&#([0-9]+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
+  }
+
+  function parseXml(xmlText) {
+    const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    return doc;
+  }
+
+  function localTag(node) {
+    if (!node) return '';
+    return (node.localName || node.nodeName || '').replace(/^.*:/, '');
+  }
+
+  // --- HTML Parser ---
+  const HTML_BLOCK_BREAK = new Set([
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'blockquote',
+    'section', 'article', 'main', 'header', 'footer', 'nav', 'aside',
+    'figure', 'figcaption', 'ul', 'ol', 'dl', 'div', 'dt', 'dd', 'address'
+  ]);
+  const HTML_DOUBLE_BREAK = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'blockquote', 'ul', 'ol', 'dl', 'figure']);
+
+  function extractHtmlTable(tableEl) {
+    const rows = [];
+    const trs = Array.from(tableEl.querySelectorAll('tr')).filter((tr) => {
+      let p = tr.parentNode;
+      while (p && p !== tableEl) {
+        if (p.nodeType === 1 && p.tagName.toLowerCase() === 'table') return false;
+        p = p.parentNode;
+      }
+      return true;
+    });
+    for (const tr of trs) {
+      const cells = [];
+      for (const child of Array.from(tr.children)) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'td' || tag === 'th') {
+          const cellTxt = extractHtmlNode(child, false).replace(/\s*\n+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+          cells.push(cellTxt);
+        }
+      }
+      if (cells.length) rows.push(cells.join('\t'));
+    }
+    return rows.length ? '\n\n' + rows.join('\n') + '\n\n' : '';
+  }
+
+  function extractHtmlNode(node, inPre) {
+    if (!node) return '';
+    if (node.nodeType === 3) {
+      const val = node.nodeValue || '';
+      return inPre ? val : val.replace(/[\s\u00A0]+/g, ' ');
+    }
+    if (node.nodeType !== 1) return '';
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'script' || tag === 'style' || tag === 'noscript' || tag === 'template' || tag === 'svg' || tag === 'canvas' || tag === 'iframe' || tag === 'head' || tag === 'meta' || tag === 'link') {
+      return '';
+    }
+    if (tag === 'br') return '\n';
+    if (tag === 'hr') return '\n---\n';
+    if (tag === 'table') return extractHtmlTable(node);
+    if (tag === 'pre') {
+      let inner = '';
+      for (const ch of Array.from(node.childNodes)) inner += extractHtmlNode(ch, true);
+      return '\n\n' + inner.replace(/^\n+|\n+$/g, '') + '\n\n';
+    }
+    let inner = '';
+    for (const ch of Array.from(node.childNodes)) {
+      inner += extractHtmlNode(ch, inPre);
+    }
+    if (tag === 'li') {
+      const trimmed = inner.replace(/^\s+|\s+$/g, '');
+      return trimmed ? '\n• ' + trimmed : '';
+    }
+    if (HTML_BLOCK_BREAK.has(tag)) {
+      const trimmed = inner.replace(/^[ \t]+|[ \t]+$/g, '');
+      if (!trimmed) return '';
+      const pad = HTML_DOUBLE_BREAK.has(tag) ? '\n\n' : '\n';
+      return pad + trimmed + pad;
+    }
+    return inner;
+  }
+
+  function detectHtmlCharsetHint(uint8) {
+    const head = asciiPrefix(uint8, 4096);
+    const m1 = head.match(/<meta[^>]+charset\s*=\s*["']?\s*([a-zA-Z0-9_-]+)/i);
+    if (m1) return m1[1];
+    const m2 = head.match(/charset\s*=\s*["']?\s*([a-zA-Z0-9_-]+)/i);
+    if (m2) return m2[1];
+    const m3 = head.match(/<\?xml[^>]+encoding\s*=\s*["']([a-zA-Z0-9_-]+)["']/i);
+    if (m3) return m3[1];
+    return null;
+  }
+
+  function parseHtml(uint8, opts) {
+    const hint = detectHtmlCharsetHint(uint8);
+    const htmlStr = decodeBytes(uint8, opts.encoding, hint);
+    const doc = new DOMParser().parseFromString(htmlStr, 'text/html');
+    const removeSelectors = 'script, style, noscript, template, svg, canvas, iframe, head, meta, link';
+    Array.from(doc.querySelectorAll(removeSelectors)).forEach((el) => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+    const rootNode = doc.body || doc.documentElement;
+    let text = rootNode ? extractHtmlNode(rootNode, false) : '';
+    if (!text.trim() && doc.documentElement && doc.documentElement !== rootNode) {
+      text = extractHtmlNode(doc.documentElement, false);
+    }
+    return { text, format: 'HTML' };
+  }
+
+  // --- MIME / EML / MHTML helpers ---
+  function parseRawHeaders(headerStr) {
+    const unfolded = headerStr.replace(/\r?\n([ \t]+)/g, ' ');
+    const headers = {};
+    for (const line of unfolded.split(/\r?\n/)) {
+      const idx = line.indexOf(':');
+      if (idx <= 0) continue;
+      const key = line.slice(0, idx).trim().toLowerCase();
+      const val = line.slice(idx + 1).trim();
+      if (!headers[key]) headers[key] = val;
+      else headers[key] += ', ' + val;
+    }
+    return headers;
+  }
+
+  function decodeRfc2047(str) {
+    if (!str) return '';
+    const joined = str.replace(/\?=\s+=\?/g, '?==?');
+    return joined.replace(/=\?([^?]+)\?([BQbq])\?([^?]*)\?=/g, (_, charset, enc, payload) => {
+      try {
+        let bytes;
+        if (enc.toUpperCase() === 'B') {
+          bytes = decodeBase64ToBytes(payload);
+        } else {
+          const qp = payload.replace(/_/g, ' ');
+          bytes = decodeQuotedPrintableToBytes(qp);
+        }
+        return decodeBytes(bytes, 'auto', charset);
+      } catch (e) {
+        return _;
+      }
+    });
+  }
+
+  function extractMimeParts(rawLatin1) {
+    const splitMatch = rawLatin1.match(/\r?\n\r?\n/);
+    if (!splitMatch) return { headers: {}, body: rawLatin1, parts: null };
+    const hdrEnd = splitMatch.index;
+    const bodyStart = hdrEnd + splitMatch[0].length;
+    const headers = parseRawHeaders(rawLatin1.slice(0, hdrEnd));
+    const body = rawLatin1.slice(bodyStart);
+    const ct = headers['content-type'] || 'text/plain';
+    const bMatch = ct.match(/boundary\s*=\s*(?:"([^"]+)"|([^\s;]+))/i);
+    if (!bMatch) return { headers, body, parts: null };
+    const boundary = bMatch[1] || bMatch[2];
+    const delim = '--' + boundary;
+    const rawChunks = body.split(delim);
+    const parts = [];
+    for (let i = 1; i < rawChunks.length; i++) {
+      let chunk = rawChunks[i];
+      if (chunk.startsWith('--')) break;
+      chunk = chunk.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
+      if (!chunk) continue;
+      parts.push(extractMimeParts(chunk));
+    }
+    return { headers, body, parts };
+  }
+
+  function decodeMimePayloadBytes(part) {
+    const cte = (part.headers['content-transfer-encoding'] || '').trim().toLowerCase();
+    if (cte === 'base64') return decodeBase64ToBytes(part.body);
+    if (cte === 'quoted-printable') return decodeQuotedPrintableToBytes(part.body);
+    const out = new Uint8Array(part.body.length);
+    for (let i = 0; i < part.body.length; i++) out[i] = part.body.charCodeAt(i) & 0xFF;
+    return out;
+  }
+
+  function collectMimeLeaves(node, out) {
+    if (node.parts && node.parts.length) {
+      for (const p of node.parts) collectMimeLeaves(p, out);
+      return;
+    }
+    const ct = (node.headers['content-type'] || 'text/plain').toLowerCase();
+    const csMatch = (node.headers['content-type'] || '').match(/charset\s*=\s*(?:"([^"]+)"|([^\s;]+))/i);
+    const charset = csMatch ? (csMatch[1] || csMatch[2]) : null;
+    const disp = (node.headers['content-disposition'] || '').toLowerCase();
+    out.push({ ct, charset, disp, node });
+  }
+
+  function bytesToLatin1(uint8) {
+    let out = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < uint8.length; i += chunk) {
+      out += String.fromCharCode.apply(null, uint8.subarray(i, i + chunk));
+    }
+    return out;
+  }
+
+  function parseMhtml(uint8, opts) {
+    const raw = bytesToLatin1(toUint8(uint8));
+    const parsed = extractMimeParts(raw);
+    const leaves = [];
+    collectMimeLeaves(parsed, leaves);
+    const htmlLeaf = leaves.find((l) => l.ct.includes('text/html'));
+    if (htmlLeaf) {
+      const payload = decodeMimePayloadBytes(htmlLeaf.node);
+      const htmlRes = parseHtml(payload, { ...opts, encoding: opts.encoding === 'auto' && htmlLeaf.charset ? htmlLeaf.charset : opts.encoding });
+      return { text: htmlRes.text, format: 'MHTML' };
+    }
+    const textLeaf = leaves.find((l) => l.ct.includes('text/plain'));
+    if (textLeaf) {
+      const payload = decodeMimePayloadBytes(textLeaf.node);
+      return { text: decodeBytes(payload, opts.encoding, textLeaf.charset), format: 'MHTML' };
+    }
+    throw new Error('MHTML에서 추출 가능한 본문(HTML/텍스트)을 찾지 못했습니다.');
+  }
+
+  function parseEml(uint8, opts) {
+    const raw = bytesToLatin1(toUint8(uint8));
+    const parsed = extractMimeParts(raw);
+    const leaves = [];
+    collectMimeLeaves(parsed, leaves);
+
+    const h = parsed.headers;
+    const headerLines = [];
+    if (h.subject) headerLines.push('Subject: ' + decodeRfc2047(h.subject));
+    if (h.from) headerLines.push('From: ' + decodeRfc2047(h.from));
+    if (h.to) headerLines.push('To: ' + decodeRfc2047(h.to));
+    if (h.date) headerLines.push('Date: ' + h.date);
+
+    let bodyText = '';
+    const plainLeaf = leaves.find((l) => l.ct.includes('text/plain') && !l.disp.includes('attachment'));
+    const htmlLeaf = leaves.find((l) => l.ct.includes('text/html') && !l.disp.includes('attachment'));
+    if (plainLeaf) {
+      const bytes = decodeMimePayloadBytes(plainLeaf.node);
+      bodyText = decodeBytes(bytes, opts.encoding, plainLeaf.charset);
+    } else if (htmlLeaf) {
+      const bytes = decodeMimePayloadBytes(htmlLeaf.node);
+      bodyText = parseHtml(bytes, { ...opts, encoding: opts.encoding === 'auto' && htmlLeaf.charset ? htmlLeaf.charset : opts.encoding }).text;
+    } else {
+      bodyText = decodeBytes(uint8, opts.encoding, null);
+    }
+
+    const prefix = headerLines.length ? headerLines.join('\n') + '\n\n' : '';
+    return { text: prefix + bodyText, format: 'EML' };
+  }
+
+  // --- PDF Parser ---
+  async function parsePdf(uint8, opts, setStatus) {
+    const pdfjsLib = await ensureLib('pdfjs', setStatus);
+    const dataCopy = new Uint8Array(uint8);
+    let doc;
+    try {
+      doc = await pdfjsLib.getDocument({
+        data: dataCopy,
+        cMapUrl: CDN.pdfCmaps,
+        cMapPacked: true,
+        standardFontDataUrl: CDN.pdfStdFonts,
+        isEvalSupported: false
+      }).promise;
+    } catch (err) {
+      if (err && (err.name === 'PasswordException' || /password/i.test(err.message || ''))) {
+        throw new Error('암호가 걸린 PDF는 변환할 수 없습니다.');
+      }
+      try {
+        doc = await pdfjsLib.getDocument({
+          data: new Uint8Array(uint8),
+          cMapUrl: CDN.pdfCmaps,
+          cMapPacked: true,
+          standardFontDataUrl: CDN.pdfStdFonts,
+          isEvalSupported: false,
+          disableWorker: true
+        }).promise;
+      } catch (err2) {
+        if (err2 && (err2.name === 'PasswordException' || /password/i.test(err2.message || ''))) {
+          throw new Error('암호가 걸린 PDF는 변환할 수 없습니다.');
+        }
+        throw err2;
+      }
+    }
+
+    const pages = [];
+    let nonEmptyChars = 0;
+    for (let p = 1; p <= doc.numPages; p++) {
+      if (setStatus) setStatus(`PDF 페이지 추출 중 (${p}/${doc.numPages})...`);
+      const page = await doc.getPage(p);
+      const content = await page.getTextContent();
+      const items = (content && content.items) || [];
+      let pageOut = '';
+      let prevY = null;
+      let prevEndX = null;
+      let prevHadSpace = true;
+      let prevEOL = false;
+
+      for (const item of items) {
+        if (typeof item.str !== 'string') continue;
+        const tr = item.transform || [12, 0, 0, 12, 0, 0];
+        const x = tr[4] || 0;
+        const y = tr[5] || 0;
+        const h = Math.abs(tr[3]) || Math.abs(tr[0]) || 12;
+        const w = item.width || 0;
+
+        if (prevY !== null) {
+          const dy = prevY - y;
+          if (prevEOL || Math.abs(dy) > Math.max(h * 0.55, 4)) {
+            pageOut += dy > h * 1.65 ? '\n\n' : '\n';
+            prevHadSpace = true;
+          } else if (prevEndX !== null && (x - prevEndX) > h * 0.2 && !prevHadSpace && !/^\s/.test(item.str)) {
+            pageOut += ' ';
+          }
+        }
+        pageOut += item.str;
+        prevY = y;
+        prevEndX = x + w;
+        prevHadSpace = /\s$/.test(item.str);
+        prevEOL = !!item.hasEOL;
+      }
+      const trimmedPage = pageOut.trim();
+      nonEmptyChars += trimmedPage.replace(/\s+/g, '').length;
+      if (opts.separators && doc.numPages > 1) {
+        pages.push(`--- Page ${p} ---\n` + trimmedPage);
+      } else {
+        pages.push(trimmedPage);
+      }
+    }
+
+    const text = pages.join('\n\n');
+    const result = { text, format: 'PDF' };
+    if (nonEmptyChars === 0) {
+      result.warning = '텍스트 레이어가 감지되지 않았습니다. 이미지로 스캔된 PDF는 별도의 OCR이 필요합니다.';
+    }
+    return result;
+  }
+
+  // --- HWP 5.0 Parser ---
+  const HWP_8UNIT_CTRL = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
+
+  function decodeHwpParaText(bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const len = Math.floor(bytes.byteLength / 2);
+    let out = '';
+    for (let i = 0; i < len; i++) {
+      const code = dv.getUint16(i * 2, true);
+      if (code === 0) continue;
+      if (HWP_8UNIT_CTRL.has(code)) {
+        if (code === 9) out += '\t';
+        i += 7;
+        continue;
+      }
+      if (code === 10 || code === 13) {
+        out += '\n';
+      } else if (code === 24) {
+        out += '-';
+      } else if (code === 30 || code === 31) {
+        out += ' ';
+      } else if (code >= 32) {
+        out += String.fromCharCode(code);
+      }
+    }
+    return out;
+  }
+
+  function extractHwpSectionRecords(sectionBytes) {
+    const dv = new DataView(sectionBytes.buffer, sectionBytes.byteOffset, sectionBytes.byteLength);
+    let offset = 0;
+    let out = '';
+    while (offset + 4 <= sectionBytes.byteLength) {
+      const header = dv.getUint32(offset, true);
+      offset += 4;
+      const tagId = header & 0x3FF;
+      let size = (header >>> 20) & 0xFFF;
+      if (size === 0xFFF) {
+        if (offset + 4 > sectionBytes.byteLength) break;
+        size = dv.getUint32(offset, true);
+        offset += 4;
+      }
+      if (offset + size > sectionBytes.byteLength) break;
+      if (tagId === 67) {
+        const rec = decodeHwpParaText(sectionBytes.subarray(offset, offset + size));
+        out += rec;
+        if (!rec.endsWith('\n')) out += '\n';
+      }
+      offset += size;
+    }
+    return out;
+  }
+
+  function readCfbPrvText(CFB, cfb) {
+    const prv = CFB.find(cfb, 'PrvText') || CFB.find(cfb, '/PrvText');
+    if (!prv || !prv.content) return '';
+    const bytes = toUint8(prv.content);
+    return new TextDecoder('utf-16le', { fatal: false }).decode(bytes).replace(/\u0000+$/g, '');
+  }
+
+  async function parseHwp(uint8, opts, setStatus) {
+    const headAscii = asciiPrefix(uint8, 32);
+    if (headAscii.startsWith('HWP Document File V3.')) {
+      throw new Error('구버전 HWP 3.0 형식은 지원하지 않습니다. HWP 5.0 이상 또는 HWPX로 변환 후 시도해 주세요.');
+    }
+    const { CFB, pako } = await ensureLib('hwp', setStatus);
+    const cfb = CFB.read(uint8, { type: 'array' });
+    const headerEntry = CFB.find(cfb, 'FileHeader') || CFB.find(cfb, '/FileHeader');
+    if (!headerEntry || !headerEntry.content) {
+      throw new Error('유효한 HWP 5.0 문서가 아닙니다 (FileHeader 누락).');
+    }
+    const hdr = toUint8(headerEntry.content);
+    const sig = asciiPrefix(hdr, 17);
+    if (!sig.startsWith('HWP Document File')) {
+      throw new Error('유효한 HWP 5.0 문서 시그니처가 아닙니다.');
+    }
+    const flags = new DataView(hdr.buffer, hdr.byteOffset, hdr.byteLength).getUint32(36, true);
+    const isCompressed = (flags & 0x01) !== 0;
+    const isEncrypted = (flags & 0x02) !== 0;
+    const isDistributed = (flags & 0x04) !== 0;
+
+    if (isEncrypted) {
+      throw new Error('암호화된 HWP 파일은 브라우저에서 변환할 수 없습니다.');
+    }
+    if (isDistributed) {
+      const prvText = readCfbPrvText(CFB, cfb);
+      if (prvText.trim()) {
+        return {
+          text: prvText,
+          format: 'HWP',
+          warning: '배포용(ViewText 암호화) HWP 문서입니다. 내장 미리보기 텍스트(PrvText)만 추출되어 일부 본문이 생략될 수 있습니다.'
+        };
+      }
+      throw new Error('배포용(암호화) HWP 문서는 본문을 복호화할 수 없습니다.');
+    }
+
+    const sectionMatches = [];
+    for (let i = 0; i < cfb.FullPaths.length; i++) {
+      const fullPath = cfb.FullPaths[i] || '';
+      const m = fullPath.match(/(?:^|\/)BodyText\/Section(\d+)$/i);
+      if (m && cfb.FileIndex[i] && cfb.FileIndex[i].content) {
+        sectionMatches.push({ idx: parseInt(m[1], 10), entry: cfb.FileIndex[i] });
+      }
+    }
+    sectionMatches.sort((a, b) => a.idx - b.idx);
+
+    const sections = [];
+    for (let i = 0; i < sectionMatches.length; i++) {
+      const raw = toUint8(sectionMatches[i].entry.content);
+      let inflated = raw;
+      if (isCompressed) {
+        try {
+          inflated = pako.inflateRaw(raw);
+        } catch (e) {
+          inflated = pako.inflate(raw);
+        }
+      }
+      const secText = extractHwpSectionRecords(toUint8(inflated)).trim();
+      if (opts.separators && sectionMatches.length > 1) {
+        sections.push(`--- Section ${sectionMatches[i].idx + 1} ---\n` + secText);
+      } else {
+        sections.push(secText);
+      }
+    }
+
+    const combined = sections.join('\n\n').trim();
+    if (!combined) {
+      const prvText = readCfbPrvText(CFB, cfb);
+      if (prvText.trim()) {
+        return {
+          text: prvText,
+          format: 'HWP',
+          warning: 'BodyText에서 본문을 찾지 못해 내장 미리보기(PrvText)를 추출했습니다.'
+        };
+      }
+    }
+    return { text: combined, format: 'HWP' };
+  }
+
+  // --- HWPX Parser ---
+  function extractHwpxParagraphInline(node, outTables) {
+    let txt = '';
+    for (const ch of Array.from(node.childNodes)) {
+      if (ch.nodeType === 3) continue;
+      if (ch.nodeType !== 1) continue;
+      const name = localTag(ch);
+      if (name === 'tbl') {
+        outTables.push(extractHwpxTable(ch));
+      } else if (name === 't') {
+        txt += ch.textContent || '';
+      } else if (name === 'tab') {
+        txt += '\t';
+      } else if (name === 'lineBreak') {
+        txt += '\n';
+      } else {
+        txt += extractHwpxParagraphInline(ch, outTables);
+      }
+    }
+    return txt;
+  }
+
+  function extractHwpxTable(tblEl) {
+    const rows = [];
+    for (const tr of Array.from(tblEl.children)) {
+      if (localTag(tr) !== 'tr') continue;
+      const cells = [];
+      for (const tc of Array.from(tr.children)) {
+        if (localTag(tc) !== 'tc') continue;
+        const cellParts = [];
+        walkHwpxContainer(tc, cellParts);
+        cells.push(cellParts.join(' ').replace(/\s*\n+\s*/g, ' ').trim());
+      }
+      if (cells.length) rows.push(cells.join('\t'));
+    }
+    return rows.join('\n');
+  }
+
+  function walkHwpxContainer(container, outBlocks) {
+    for (const ch of Array.from(container.children)) {
+      const name = localTag(ch);
+      if (name === 'p') {
+        const nestedTables = [];
+        const pText = extractHwpxParagraphInline(ch, nestedTables).trim();
+        if (pText) outBlocks.push(pText);
+        for (const t of nestedTables) {
+          if (t) outBlocks.push(t);
+        }
+      } else if (name === 'tbl') {
+        const t = extractHwpxTable(ch);
+        if (t) outBlocks.push(t);
+      } else {
+        walkHwpxContainer(ch, outBlocks);
+      }
+    }
+  }
+
+  async function parseHwpx(uint8, opts, setStatus) {
+    const JSZip = await ensureLib('jszip', setStatus);
+    const zip = await JSZip.loadAsync(uint8);
+    const secFiles = Object.keys(zip.files)
+      .map((name) => {
+        const m = name.match(/^Contents\/section(\d+)\.xml$/i);
+        return m ? { idx: parseInt(m[1], 10), name } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.idx - b.idx);
+
+    const sections = [];
+    for (const s of secFiles) {
+      const xml = await zip.file(s.name).async('string');
+      const doc = parseXml(xml);
+      const blocks = [];
+      if (doc.documentElement) walkHwpxContainer(doc.documentElement, blocks);
+      const txt = blocks.join('\n');
+      if (opts.separators && secFiles.length > 1) {
+        sections.push(`--- Section ${s.idx + 1} ---\n` + txt);
+      } else {
+        sections.push(txt);
+      }
+    }
+
+    const joined = sections.join('\n\n').trim();
+    if (!joined && zip.file('Preview/PrvText.txt')) {
+      const prv = await zip.file('Preview/PrvText.txt').async('string');
+      return {
+        text: prv,
+        format: 'HWPX',
+        warning: '섹션 XML에서 본문을 찾지 못해 Preview/PrvText.txt를 추출했습니다.'
+      };
+    }
+    return { text: joined, format: 'HWPX' };
+  }
+
+  // --- DOCX Parser ---
+  function extractDocxParagraphInline(node, outTables) {
+    let txt = '';
+    for (const ch of Array.from(node.childNodes)) {
+      if (ch.nodeType !== 1) continue;
+      const name = localTag(ch);
+      if (name === 'tbl') {
+        outTables.push(extractDocxTable(ch));
+      } else if (name === 't' || name === 'delText' || name === 'instrText') {
+        if (name !== 'instrText') txt += ch.textContent || '';
+      } else if (name === 'tab') {
+        txt += '\t';
+      } else if (name === 'br' || name === 'cr') {
+        txt += '\n';
+      } else {
+        txt += extractDocxParagraphInline(ch, outTables);
+      }
+    }
+    return txt;
+  }
+
+  function extractDocxTable(tblEl) {
+    const rows = [];
+    for (const tr of Array.from(tblEl.children)) {
+      if (localTag(tr) !== 'tr') continue;
+      const cells = [];
+      for (const tc of Array.from(tr.children)) {
+        if (localTag(tc) !== 'tc') continue;
+        const cellParts = [];
+        walkDocxContainer(tc, cellParts);
+        cells.push(cellParts.join(' ').replace(/\s*\n+\s*/g, ' ').trim());
+      }
+      if (cells.length) rows.push(cells.join('\t'));
+    }
+    return rows.join('\n');
+  }
+
+  function walkDocxContainer(container, outBlocks) {
+    for (const ch of Array.from(container.children)) {
+      const name = localTag(ch);
+      if (name === 'p') {
+        const nested = [];
+        const pText = extractDocxParagraphInline(ch, nested);
+        if (pText.trim()) outBlocks.push(pText);
+        for (const t of nested) {
+          if (t) outBlocks.push(t);
+        }
+      } else if (name === 'tbl') {
+        const t = extractDocxTable(ch);
+        if (t) outBlocks.push(t);
+      } else {
+        walkDocxContainer(ch, outBlocks);
+      }
+    }
+  }
+
+  async function parseDocx(uint8, opts, setStatus) {
+    const JSZip = await ensureLib('jszip', setStatus);
+    const zip = await JSZip.loadAsync(uint8);
+    const mainFile = zip.file('word/document.xml');
+    if (!mainFile) throw new Error('DOCX 내부 word/document.xml을 찾을 수 없습니다.');
+    const doc = parseXml(await mainFile.async('string'));
+    const blocks = [];
+    if (doc.documentElement) walkDocxContainer(doc.documentElement, blocks);
+
+    if (zip.file('word/footnotes.xml')) {
+      const fnDoc = parseXml(await zip.file('word/footnotes.xml').async('string'));
+      const fnBlocks = [];
+      if (fnDoc.documentElement) walkDocxContainer(fnDoc.documentElement, fnBlocks);
+      const filtered = fnBlocks.filter((b) => b.trim());
+      if (filtered.length) {
+        blocks.push('\n[Footnotes]\n' + filtered.join('\n'));
+      }
+    }
+    return { text: blocks.join('\n'), format: 'DOCX' };
+  }
+
+  // --- PPTX Parser ---
+  function extractDrawingMlParagraphs(rootEl) {
+    const lines = [];
+    const paras = Array.from(rootEl.getElementsByTagName('*')).filter((el) => localTag(el) === 'p');
+    for (const p of paras) {
+      let line = '';
+      for (const el of Array.from(p.getElementsByTagName('*'))) {
+        const n = localTag(el);
+        if (n === 't') line += el.textContent || '';
+        else if (n === 'br') line += '\n';
+      }
+      if (line.trim()) lines.push(line.trimEnd());
+    }
+    return lines.join('\n');
+  }
+
+  async function parsePptx(uint8, opts, setStatus) {
+    const JSZip = await ensureLib('jszip', setStatus);
+    const zip = await JSZip.loadAsync(uint8);
+    const slides = Object.keys(zip.files)
+      .map((name) => {
+        const m = name.match(/^ppt\/slides\/slide(\d+)\.xml$/i);
+        return m ? { idx: parseInt(m[1], 10), name } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.idx - b.idx);
+
+    const out = [];
+    for (const s of slides) {
+      const xml = await zip.file(s.name).async('string');
+      const doc = parseXml(xml);
+      let slideTxt = doc.documentElement ? extractDrawingMlParagraphs(doc.documentElement) : '';
+
+      const notesPath = `ppt/notesSlides/notesSlide${s.idx}.xml`;
+      if (zip.file(notesPath)) {
+        const nDoc = parseXml(await zip.file(notesPath).async('string'));
+        const nTxt = nDoc.documentElement ? extractDrawingMlParagraphs(nDoc.documentElement) : '';
+        if (nTxt.trim()) {
+          slideTxt += (slideTxt ? '\n\n' : '') + '[Notes]\n' + nTxt;
+        }
+      }
+
+      if (opts.separators) {
+        out.push(`--- Slide ${s.idx} ---\n` + slideTxt);
+      } else {
+        out.push(slideTxt);
+      }
+    }
+    return { text: out.join('\n\n'), format: 'PPTX' };
+  }
+
+  // --- XLSX Parser ---
+  function colRefToIndex(ref) {
+    if (!ref) return -1;
+    const m = ref.match(/^([A-Z]+)/i);
+    if (!m) return -1;
+    const letters = m[1].toUpperCase();
+    let idx = 0;
+    for (let i = 0; i < letters.length; i++) {
+      idx = idx * 26 + (letters.charCodeAt(i) - 64);
+    }
+    return idx - 1;
+  }
+
+  async function parseXlsx(uint8, opts, setStatus) {
+    const JSZip = await ensureLib('jszip', setStatus);
+    const zip = await JSZip.loadAsync(uint8);
+
+    const sharedStrings = [];
+    if (zip.file('xl/sharedStrings.xml')) {
+      const ssDoc = parseXml(await zip.file('xl/sharedStrings.xml').async('string'));
+      const sis = Array.from(ssDoc.getElementsByTagName('*')).filter((el) => localTag(el) === 'si');
+      for (const si of sis) {
+        let s = '';
+        for (const el of Array.from(si.getElementsByTagName('*'))) {
+          if (localTag(el) === 't') s += el.textContent || '';
+        }
+        sharedStrings.push(s);
+      }
+    }
+
+    const sheets = [];
+    if (zip.file('xl/workbook.xml') && zip.file('xl/_rels/workbook.xml.rels')) {
+      const relDoc = parseXml(await zip.file('xl/_rels/workbook.xml.rels').async('string'));
+      const relMap = {};
+      for (const r of Array.from(relDoc.getElementsByTagName('*'))) {
+        if (localTag(r) === 'Relationship') {
+          const id = r.getAttribute('Id');
+          let target = r.getAttribute('Target') || '';
+          if (target.startsWith('/')) target = target.slice(1);
+          else if (!target.startsWith('xl/')) target = 'xl/' + target;
+          if (id) relMap[id] = target;
+        }
+      }
+      const wbDoc = parseXml(await zip.file('xl/workbook.xml').async('string'));
+      for (const sh of Array.from(wbDoc.getElementsByTagName('*'))) {
+        if (localTag(sh) === 'sheet') {
+          const name = sh.getAttribute('name') || 'Sheet';
+          const rid = sh.getAttribute('r:id') || sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+          if (rid && relMap[rid] && zip.file(relMap[rid])) {
+            sheets.push({ name, path: relMap[rid] });
+          }
+        }
+      }
+    }
+
+    if (sheets.length === 0) {
+      Object.keys(zip.files)
+        .map((p) => {
+          const m = p.match(/^xl\/worksheets\/sheet(\d+)\.xml$/i);
+          return m ? { idx: parseInt(m[1], 10), name: `Sheet${m[1]}`, path: p } : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.idx - b.idx)
+        .forEach((s) => sheets.push({ name: s.name, path: s.path }));
+    }
+
+    const out = [];
+    for (const s of sheets) {
+      const xml = await zip.file(s.path).async('string');
+      const doc = parseXml(xml);
+      const rowLines = [];
+      const rows = Array.from(doc.getElementsByTagName('*')).filter((el) => localTag(el) === 'row');
+      for (const r of rows) {
+        const rowCells = [];
+        let fallbackCol = 0;
+        for (const c of Array.from(r.children)) {
+          if (localTag(c) !== 'c') continue;
+          const ref = c.getAttribute('r');
+          const colIdx = ref ? colRefToIndex(ref) : fallbackCol;
+          fallbackCol = colIdx + 1;
+          while (rowCells.length < colIdx) rowCells.push('');
+
+          const t = c.getAttribute('t') || '';
+          let val = '';
+          if (t === 'inlineStr') {
+            for (const el of Array.from(c.getElementsByTagName('*'))) {
+              if (localTag(el) === 't') val += el.textContent || '';
+            }
+          } else {
+            const vEl = Array.from(c.children).find((ch) => localTag(ch) === 'v');
+            const rawV = vEl ? (vEl.textContent || '') : '';
+            if (t === 's') {
+              const idx = parseInt(rawV, 10);
+              val = Number.isFinite(idx) && sharedStrings[idx] !== undefined ? sharedStrings[idx] : '';
+            } else if (t === 'b') {
+              val = rawV === '1' ? 'TRUE' : 'FALSE';
+            } else {
+              val = rawV;
+            }
+          }
+          rowCells[colIdx] = val.replace(/\r?\n/g, ' ');
+        }
+        while (rowCells.length && rowCells[rowCells.length - 1] === '') rowCells.pop();
+        if (rowCells.length) rowLines.push(rowCells.join('\t'));
+      }
+      const body = rowLines.join('\n');
+      if (opts.separators && sheets.length > 1) {
+        out.push(`=== Sheet: ${s.name} ===\n` + body);
+      } else {
+        out.push(body);
+      }
+    }
+    return { text: out.join('\n\n'), format: 'XLSX' };
+  }
+
+  // --- ODF (ODT / ODS / ODP) Parser ---
+  function extractOdfTextInline(node) {
+    let txt = '';
+    for (const ch of Array.from(node.childNodes)) {
+      if (ch.nodeType === 3) {
+        txt += ch.nodeValue || '';
+      } else if (ch.nodeType === 1) {
+        const name = localTag(ch);
+        if (name === 's') {
+          const count = parseInt(ch.getAttribute('text:c') || ch.getAttribute('c') || '1', 10) || 1;
+          txt += ' '.repeat(count);
+        } else if (name === 'tab') {
+          txt += '\t';
+        } else if (name === 'line-break') {
+          txt += '\n';
+        } else {
+          txt += extractOdfTextInline(ch);
+        }
+      }
+    }
+    return txt;
+  }
+
+  function extractOdfTable(tableEl) {
+    const rows = [];
+    for (const rowEl of Array.from(tableEl.children)) {
+      if (localTag(rowEl) !== 'table-row') continue;
+      const cells = [];
+      for (const cellEl of Array.from(rowEl.children)) {
+        const cname = localTag(cellEl);
+        if (cname !== 'table-cell' && cname !== 'covered-table-cell') continue;
+        const paras = [];
+        for (const p of Array.from(cellEl.children)) {
+          if (localTag(p) === 'p') paras.push(extractOdfTextInline(p));
+        }
+        const cellVal = paras.join(' ').replace(/\s*\n+\s*/g, ' ').trim();
+        const rep = parseInt(cellEl.getAttribute('table:number-columns-repeated') || cellEl.getAttribute('number-columns-repeated') || '1', 10) || 1;
+        const safeRep = cellVal ? Math.min(rep, 200) : Math.min(rep, 32);
+        for (let i = 0; i < safeRep; i++) cells.push(cellVal);
+      }
+      while (cells.length && cells[cells.length - 1] === '') cells.pop();
+      if (cells.length) rows.push(cells.join('\t'));
+    }
+    return rows.join('\n');
+  }
+
+  function walkOdfBody(container, outBlocks) {
+    for (const ch of Array.from(container.children)) {
+      const name = localTag(ch);
+      if (name === 'p' || name === 'h') {
+        const t = extractOdfTextInline(ch);
+        if (t.trim()) outBlocks.push(t);
+      } else if (name === 'table') {
+        const t = extractOdfTable(ch);
+        if (t) outBlocks.push(t);
+      } else {
+        walkOdfBody(ch, outBlocks);
+      }
+    }
+  }
+
+  async function parseOdf(uint8, ext, opts, setStatus) {
+    const JSZip = await ensureLib('jszip', setStatus);
+    const zip = await JSZip.loadAsync(uint8);
+    const contentFile = zip.file('content.xml');
+    if (!contentFile) throw new Error('OpenDocument content.xml을 찾을 수 없습니다.');
+    const doc = parseXml(await contentFile.async('string'));
+    const fmt = ext.toUpperCase();
+
+    if (ext === 'ods') {
+      const tables = Array.from(doc.getElementsByTagName('*')).filter((el) => localTag(el) === 'table');
+      const out = [];
+      for (const tbl of tables) {
+        const tName = tbl.getAttribute('table:name') || tbl.getAttribute('name') || 'Sheet';
+        const body = extractOdfTable(tbl);
+        if (opts.separators && tables.length > 1) out.push(`=== Sheet: ${tName} ===\n` + body);
+        else out.push(body);
+      }
+      return { text: out.join('\n\n'), format: fmt };
+    }
+
+    if (ext === 'odp') {
+      const pages = Array.from(doc.getElementsByTagName('*')).filter((el) => localTag(el) === 'page');
+      if (pages.length) {
+        const out = [];
+        pages.forEach((pg, idx) => {
+          const blocks = [];
+          walkOdfBody(pg, blocks);
+          const body = blocks.join('\n');
+          if (opts.separators && pages.length > 1) out.push(`--- Slide ${idx + 1} ---\n` + body);
+          else out.push(body);
+        });
+        return { text: out.join('\n\n'), format: fmt };
+      }
+    }
+
+    const blocks = [];
+    if (doc.documentElement) walkOdfBody(doc.documentElement, blocks);
+    return { text: blocks.join('\n'), format: fmt };
+  }
+
+  // --- EPUB Parser ---
+  function resolveZipPath(baseDir, href) {
+    const cleanHref = href.split('#')[0];
+    const parts = (baseDir ? baseDir.split('/') : []).concat(cleanHref.split('/'));
+    const stack = [];
+    for (const p of parts) {
+      if (!p || p === '.') continue;
+      if (p === '..') stack.pop();
+      else stack.push(p);
+    }
+    return stack.join('/');
+  }
+
+  async function parseEpub(uint8, opts, setStatus) {
+    const JSZip = await ensureLib('jszip', setStatus);
+    const zip = await JSZip.loadAsync(uint8);
+    const containerFile = zip.file('META-INF/container.xml');
+    if (!containerFile) throw new Error('EPUB container.xml을 찾을 수 없습니다.');
+    const cDoc = parseXml(await containerFile.async('string'));
+    const rootfileEl = Array.from(cDoc.getElementsByTagName('*')).find((el) => localTag(el) === 'rootfile');
+    const opfPath = rootfileEl ? rootfileEl.getAttribute('full-path') : null;
+    if (!opfPath || !zip.file(opfPath)) throw new Error('EPUB OPF 패키지를 찾을 수 없습니다.');
+
+    const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/')) : '';
+    const opfDoc = parseXml(await zip.file(opfPath).async('string'));
+    const manifest = {};
+    for (const item of Array.from(opfDoc.getElementsByTagName('*'))) {
+      if (localTag(item) === 'item') {
+        const id = item.getAttribute('id');
+        const href = item.getAttribute('href');
+        if (id && href) manifest[id] = decodeURIComponent(href);
+      }
+    }
+
+    const spinePaths = [];
+    for (const itemref of Array.from(opfDoc.getElementsByTagName('*'))) {
+      if (localTag(itemref) === 'itemref') {
+        const idref = itemref.getAttribute('idref');
+        if (idref && manifest[idref]) {
+          const full = resolveZipPath(opfDir, manifest[idref]);
+          if (zip.file(full)) spinePaths.push(full);
+        }
+      }
+    }
+
+    const chapters = [];
+    for (let i = 0; i < spinePaths.length; i++) {
+      if (setStatus) setStatus(`EPUB 챕터 추출 중 (${i + 1}/${spinePaths.length})...`);
+      const chBytes = await zip.file(spinePaths[i]).async('uint8array');
+      const res = parseHtml(chBytes, { ...opts, encoding: 'auto' });
+      const trimmed = res.text.trim();
+      if (!trimmed) continue;
+      if (opts.separators && spinePaths.length > 1) {
+        chapters.push(`--- Chapter ${chapters.length + 1} ---\n` + trimmed);
+      } else {
+        chapters.push(trimmed);
+      }
+    }
+    return { text: chapters.join('\n\n'), format: 'EPUB' };
+  }
+
+  // --- RTF Parser ---
+  const RTF_SKIP_DEST = new Set([
+    'fonttbl', 'colortbl', 'stylesheet', 'info', 'pict', 'object',
+    'header', 'footer', 'headerl', 'headerr', 'headerf',
+    'footerl', 'footerr', 'footerf', 'listtable', 'listoverridetable',
+    'rsidtbl', 'mmathPr', 'fldinst', 'xmlnstbl', 'datastore', 'themedata',
+    'colorschememapping', 'latentstyles'
+  ]);
+
+  function codepageToEncoding(cp) {
+    const map = {
+      949: 'euc-kr',
+      932: 'shift_jis',
+      936: 'gb18030',
+      950: 'big5',
+      1252: 'windows-1252',
+      65001: 'utf-8'
+    };
+    return map[cp] || 'windows-1252';
+  }
+
+  function parseRtf(uint8, opts) {
+    const src = bytesToLatin1(toUint8(uint8));
+    let out = '';
+    let enc = opts.encoding && opts.encoding !== 'auto' ? normalizeCharset(opts.encoding) : 'windows-1252';
+    const stack = [];
+    let state = { uc: 1, skip: false };
+    let hexBuf = [];
+    let skipChars = 0;
+
+    function flushHex() {
+      if (!hexBuf.length) return;
+      out += decodeBytes(new Uint8Array(hexBuf), enc, enc);
+      hexBuf = [];
+    }
+
+    let i = 0;
+    const n = src.length;
+    while (i < n) {
+      const ch = src[i];
+      if (ch === '{') {
+        flushHex();
+        stack.push({ uc: state.uc, skip: state.skip });
+        i++;
+      } else if (ch === '}') {
+        flushHex();
+        if (stack.length) state = stack.pop();
+        i++;
+      } else if (ch === '\\') {
+        i++;
+        if (i >= n) break;
+        const next = src[i];
+        if (next === '\'' && i + 2 < n) {
+          const hex = src.slice(i + 1, i + 3);
+          if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+            if (!state.skip) {
+              if (skipChars > 0) skipChars--;
+              else hexBuf.push(parseInt(hex, 16));
+            }
+            i += 3;
+            continue;
+          }
+        }
+        flushHex();
+        if (next === '\\' || next === '{' || next === '}') {
+          if (!state.skip) {
+            if (skipChars > 0) skipChars--;
+            else out += next;
+          }
+          i++;
+        } else if (next === '*') {
+          state.skip = true;
+          i++;
+        } else if (next === '~') {
+          if (!state.skip && skipChars === 0) out += ' ';
+          else if (skipChars > 0) skipChars--;
+          i++;
+        } else if (next === '_') {
+          if (!state.skip && skipChars === 0) out += '-';
+          else if (skipChars > 0) skipChars--;
+          i++;
+        } else if (next === '\r' || next === '\n') {
+          if (!state.skip) out += '\n';
+          i++;
+        } else if (/[a-zA-Z]/.test(next)) {
+          let word = '';
+          while (i < n && /[a-zA-Z]/.test(src[i])) word += src[i++];
+          let paramStr = '';
+          if (i < n && (src[i] === '-' || /[0-9]/.test(src[i]))) {
+            if (src[i] === '-') paramStr += src[i++];
+            while (i < n && /[0-9]/.test(src[i])) paramStr += src[i++];
+          }
+          if (i < n && src[i] === ' ') i++;
+          const param = paramStr ? parseInt(paramStr, 10) : null;
+
+          if (word === 'ansicpg' && param !== null && (!opts.encoding || opts.encoding === 'auto')) {
+            enc = codepageToEncoding(param);
+          } else if (word === 'uc' && param !== null) {
+            state.uc = Math.max(0, param);
+          } else if (RTF_SKIP_DEST.has(word)) {
+            state.skip = true;
+          } else if (!state.skip) {
+            if (word === 'u' && param !== null) {
+              const cp = param < 0 ? param + 65536 : param;
+              out += String.fromCharCode(cp);
+              skipChars = state.uc;
+            } else if (word === 'par' || word === 'line') {
+              out += '\n';
+            } else if (word === 'tab') {
+              out += '\t';
+            } else if (word === 'emdash') {
+              out += '—';
+            } else if (word === 'endash') {
+              out += '–';
+            } else if (word === 'lquote' || word === 'rquote') {
+              out += "'";
+            } else if (word === 'ldblquote' || word === 'rdblquote') {
+              out += '"';
+            } else if (word === 'bullet') {
+              out += '•';
+            }
+          }
+        } else {
+          i++;
+        }
+      } else if (ch === '\r' || ch === '\n') {
+        flushHex();
+        i++;
+      } else {
+        flushHex();
+        if (!state.skip) {
+          if (skipChars > 0) skipChars--;
+          else out += ch;
+        }
+        i++;
+      }
+    }
+    flushHex();
+    return { text: out, format: 'RTF' };
+  }
+
+  // --- Subtitles (SRT / VTT / ASS / SSA / SMI) ---
+  function stripSubtitleTags(str) {
+    return decodeHtmlEntities(str.replace(/\{\\[^}]*\}/g, '').replace(/<[^>]+>/g, ''));
+  }
+
+  function parseSubtitle(uint8, ext, opts) {
+    const hint = detectHtmlCharsetHint(uint8);
+    const raw = decodeBytes(uint8, opts.encoding, hint).replace(/\r\n?/g, '\n');
+
+    if (ext === 'srt') {
+      const blocks = raw.split(/\n{2,}/);
+      const lines = [];
+      for (const b of blocks) {
+        const blines = b.split('\n').map((l) => l.trim()).filter(Boolean);
+        if (!blines.length) continue;
+        let idx = 0;
+        if (/^\d+$/.test(blines[0])) idx = 1;
+        if (idx < blines.length && /-->/.test(blines[idx])) idx++;
+        const content = blines.slice(idx).map(stripSubtitleTags).filter(Boolean).join('\n');
+        if (content) lines.push(content);
+      }
+      return { text: lines.join('\n'), format: 'SRT' };
+    }
+
+    if (ext === 'vtt') {
+      const blocks = raw.split(/\n{2,}/);
+      const lines = [];
+      for (const b of blocks) {
+        const trimmed = b.trim();
+        if (!trimmed || /^WEBVTT\b/i.test(trimmed) || /^NOTE\b/i.test(trimmed) || /^STYLE\b/i.test(trimmed) || /^REGION\b/i.test(trimmed)) {
+          continue;
+        }
+        const blines = trimmed.split('\n');
+        const tsIdx = blines.findIndex((l) => /-->/.test(l));
+        const bodyLines = tsIdx >= 0 ? blines.slice(tsIdx + 1) : blines;
+        const content = bodyLines.map((l) => stripSubtitleTags(l.trim())).filter(Boolean).join('\n');
+        if (content) lines.push(content);
+      }
+      return { text: lines.join('\n'), format: 'VTT' };
+    }
+
+    if (ext === 'ass' || ext === 'ssa') {
+      let inEvents = false;
+      let textCol = 9;
+      let colCount = 10;
+      const lines = [];
+      for (const line of raw.split('\n')) {
+        const t = line.trim();
+        if (/^\[.*\]$/.test(t)) {
+          inEvents = /^\[events\]$/i.test(t);
+          continue;
+        }
+        if (!inEvents) continue;
+        if (/^Format\s*:/i.test(t)) {
+          const cols = t.replace(/^Format\s*:/i, '').split(',').map((c) => c.trim().toLowerCase());
+          const idx = cols.indexOf('text');
+          if (idx >= 0) {
+            textCol = idx;
+            colCount = cols.length;
+          }
+        } else if (/^Dialogue\s*:/i.test(t)) {
+          const rest = t.replace(/^Dialogue\s*:/i, '').trimStart();
+          const parts = rest.split(',');
+          const rawText = parts.length >= colCount ? parts.slice(textCol).join(',') : parts[parts.length - 1] || '';
+          const cleaned = rawText
+            .replace(/\\N|\\n/g, '\n')
+            .replace(/\\h/g, ' ')
+            .replace(/\{[^}]*\}/g, '')
+            .trim();
+          if (cleaned) lines.push(cleaned);
+        }
+      }
+      return { text: lines.join('\n'), format: ext.toUpperCase() };
+    }
+
+    // SMI / SAMI
+    const doc = new DOMParser().parseFromString(raw, 'text/html');
+    Array.from(doc.querySelectorAll('style, script, head')).forEach((el) => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+    const pEls = Array.from(doc.querySelectorAll('p'));
+    const lines = [];
+    if (pEls.length) {
+      for (const p of pEls) {
+        const txt = extractHtmlNode(p, false).replace(/\u00A0/g, ' ').trim();
+        if (txt) lines.push(txt);
+      }
+    } else if (doc.body) {
+      lines.push(extractHtmlNode(doc.body, false).trim());
+    }
+    return { text: lines.join('\n'), format: 'SMI' };
+  }
+
+  // --- Markdown / XML / LaTeX / CSV / JSON / Plain ---
+  function parseMarkdown(uint8, opts) {
+    let md = decodeBytes(uint8, opts.encoding, null).replace(/\r\n?/g, '\n');
+    md = md.replace(/^---\n[\s\S]*?\n---\n?/, '');
+    md = md.replace(/```[^\n]*\n([\s\S]*?)```/g, '$1');
+    md = md.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+    md = md.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    md = md.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+    md = md.replace(/^\s{0,3}>\s?/gm, '');
+    md = md.replace(/^\s*[-*_]{3,}\s*$/gm, '---');
+    md = md.replace(/(\*\*|__)(.*?)\1/g, '$2');
+    md = md.replace(/(\*|_)(.*?)\1/g, '$2');
+    md = md.replace(/~~(.*?)~~/g, '$1');
+    md = md.replace(/`([^`]+)`/g, '$1');
+    md = md.replace(/<[^>]+>/g, '');
+    return { text: md, format: 'Markdown' };
+  }
+
+  function parseXmlDoc(uint8, opts) {
+    const hint = detectHtmlCharsetHint(uint8);
+    const xmlStr = decodeBytes(uint8, opts.encoding, hint);
+    const doc = parseXml(xmlStr);
+    const rootEl = doc.documentElement;
+    if (!rootEl) return { text: xmlStr, format: 'XML' };
+    const rootName = localTag(rootEl).toLowerCase();
+
+    if (rootName === 'rss' || rootName === 'feed') {
+      const items = Array.from(rootEl.getElementsByTagName('*')).filter((el) => {
+        const n = localTag(el).toLowerCase();
+        return n === 'item' || n === 'entry';
+      });
+      if (items.length) {
+        const blocks = items.map((item) => {
+          const getFirst = (names) => {
+            for (const ch of Array.from(item.children)) {
+              if (names.includes(localTag(ch).toLowerCase())) return ch.textContent || '';
+            }
+            return '';
+          };
+          const title = decodeHtmlEntities(getFirst(['title']).trim());
+          const date = getFirst(['pubdate', 'updated', 'published']).trim();
+          const rawBody = getFirst(['encoded', 'content', 'description', 'summary']);
+          let body = rawBody;
+          if (/<[a-z][\s\S]*>/i.test(rawBody)) {
+            const tmp = new DOMParser().parseFromString(rawBody, 'text/html');
+            body = extractHtmlNode(tmp.body || tmp.documentElement, false).trim();
+          }
+          return [title, date, body].filter(Boolean).join('\n');
+        });
+        return { text: blocks.join('\n\n---\n\n'), format: rootName === 'rss' ? 'RSS' : 'Atom' };
+      }
+    }
+
+    const lines = [];
+    function walkXml(node) {
+      if (node.nodeType === 3) {
+        const t = (node.nodeValue || '').trim();
+        if (t) lines.push(t);
+        return;
+      }
+      if (node.nodeType === 1) {
+        for (const ch of Array.from(node.childNodes)) walkXml(ch);
+      }
+    }
+    walkXml(rootEl);
+    return { text: lines.join('\n'), format: 'XML' };
+  }
+
+  function parseLatex(uint8, opts) {
+    let tex = decodeBytes(uint8, opts.encoding, null).replace(/\r\n?/g, '\n');
+    const docMatch = tex.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+    if (docMatch) tex = docMatch[1];
+    tex = tex.replace(/(^|[^\\])%.*$/gm, '$1');
+    tex = tex.replace(/\\(part|chapter|section|subsection|subsubsection|paragraph)\*?\{([^{}]*)\}/g, '\n\n$2\n');
+    tex = tex.replace(/\\(textbf|textit|emph|underline|texttt|textrm|textsc|text)\{([^{}]*)\}/g, '$2');
+    tex = tex.replace(/\\item\b/g, '\n• ');
+    tex = tex.replace(/\\\\(\[[^\]]*\])?/g, '\n');
+    tex = tex.replace(/\\(begin|end)\{[^}]*\}(\[[^\]]*\])?/g, '\n');
+    tex = tex.replace(/\\([%$&#_{}])/g, '$1');
+    tex = tex.replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?/g, ' ');
+    tex = tex.replace(/[{}]/g, '');
+    return { text: tex, format: 'LaTeX' };
+  }
+
+  function parseCsv(uint8, ext, opts) {
+    const raw = decodeBytes(uint8, opts.encoding, null).replace(/\r\n?/g, '\n');
+    if (ext === 'tsv') return { text: raw, format: 'TSV' };
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let inQuotes = false;
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (raw[i + 1] === '"') { cell += '"'; i++; }
+          else inQuotes = false;
+        } else {
+          cell += ch;
+        }
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === ',') { row.push(cell); cell = ''; }
+        else if (ch === '\n') { row.push(cell); rows.push(row.join('\t')); row = []; cell = ''; }
+        else cell += ch;
+      }
+    }
+    if (cell.length || row.length) {
+      row.push(cell);
+      rows.push(row.join('\t'));
+    }
+    return { text: rows.join('\n'), format: 'CSV' };
+  }
+
+  function parseJsonDoc(uint8, opts) {
+    const raw = decodeBytes(uint8, opts.encoding, null);
+    try {
+      const parsed = JSON.parse(raw);
+      return { text: JSON.stringify(parsed, null, 2), format: 'JSON' };
+    } catch (e) {
+      return { text: raw, format: 'JSON', warning: 'JSON 구문 파싱에 실패하여 원문 텍스트로 디코딩했습니다.' };
+    }
+  }
+
+  function parsePlain(uint8, opts) {
+    return { text: decodeBytes(uint8, opts.encoding, null), format: 'TXT' };
+  }
+
+  // --- Format Detection & Dispatch ---
+  async function detectFormat(uint8, filename, setStatus) {
+    const extMatch = (filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    let ext = extMatch ? extMatch[1] : '';
+    const head = asciiPrefix(uint8, 32);
+
+    if (head.startsWith('%PDF-')) return 'pdf';
+    if (head.startsWith('{\\rtf')) return 'rtf';
+    if (head.startsWith('HWP Document File V3.')) return 'hwp';
+
+    const isOle2 = uint8.length >= 8 &&
+      uint8[0] === 0xD0 && uint8[1] === 0xCF && uint8[2] === 0x11 && uint8[3] === 0xE0 &&
+      uint8[4] === 0xA1 && uint8[5] === 0xB1 && uint8[6] === 0x1A && uint8[7] === 0xE1;
+    if (isOle2) return 'hwp';
+
+    const isZip = uint8.length >= 4 && uint8[0] === 0x50 && uint8[1] === 0x4B && uint8[2] === 0x03 && uint8[3] === 0x04;
+    if (isZip) {
+      if (['hwpx', 'docx', 'pptx', 'xlsx', 'odt', 'ods', 'odp', 'epub'].includes(ext)) return ext;
+      const JSZip = await ensureLib('jszip', setStatus);
+      const zip = await JSZip.loadAsync(uint8);
+      if (zip.file('Contents/section0.xml')) return 'hwpx';
+      if (zip.file('word/document.xml')) return 'docx';
+      if (Object.keys(zip.files).some((k) => /^ppt\/slides\/slide\d+\.xml$/i.test(k))) return 'pptx';
+      if (zip.file('xl/workbook.xml')) return 'xlsx';
+      if (zip.file('META-INF/container.xml')) return 'epub';
+      if (zip.file('content.xml')) return 'odt';
+    }
+
+    if (ext) return ext;
+    const sniff = head.trimStart().toLowerCase();
+    if (sniff.startsWith('<!doctype html') || sniff.startsWith('<html')) return 'html';
+    if (sniff.startsWith('<?xml')) return 'xml';
+    if (sniff.startsWith('webvtt')) return 'vtt';
+    return 'txt';
+  }
+
+  function cleanText(text, opts) {
+    let out = String(text || '').replace(/\r\n?/g, '\n');
+    if (opts && opts.cleanBlankLines) {
+      out = out
+        .split('\n')
+        .map((line) => line.replace(/[ \t]+$/g, ''))
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/^\n+|\n+$/g, '');
+    }
+    return out;
+  }
+
+  async function convertBytesToText(rawBytes, filename, opts, setStatus) {
+    const uint8 = toUint8(rawBytes);
+    const options = Object.assign({ cleanBlankLines: true, separators: true, encoding: 'auto' }, opts || {});
+    const fmt = await detectFormat(uint8, filename, setStatus);
+    let res;
+
+    if (fmt === 'html' || fmt === 'htm' || fmt === 'xhtml') res = parseHtml(uint8, options);
+    else if (fmt === 'mhtml' || fmt === 'mht') res = parseMhtml(uint8, options);
+    else if (fmt === 'pdf') res = await parsePdf(uint8, options, setStatus);
+    else if (fmt === 'hwp') res = await parseHwp(uint8, options, setStatus);
+    else if (fmt === 'hwpx') res = await parseHwpx(uint8, options, setStatus);
+    else if (fmt === 'docx') res = await parseDocx(uint8, options, setStatus);
+    else if (fmt === 'pptx') res = await parsePptx(uint8, options, setStatus);
+    else if (fmt === 'xlsx') res = await parseXlsx(uint8, options, setStatus);
+    else if (fmt === 'odt' || fmt === 'ods' || fmt === 'odp') res = await parseOdf(uint8, fmt, options, setStatus);
+    else if (fmt === 'epub') res = await parseEpub(uint8, options, setStatus);
+    else if (fmt === 'rtf') res = parseRtf(uint8, options);
+    else if (fmt === 'eml') res = parseEml(uint8, options);
+    else if (fmt === 'srt' || fmt === 'vtt' || fmt === 'ass' || fmt === 'ssa' || fmt === 'smi' || fmt === 'sami') res = parseSubtitle(uint8, fmt === 'sami' ? 'smi' : fmt, options);
+    else if (fmt === 'md' || fmt === 'markdown') res = parseMarkdown(uint8, options);
+    else if (fmt === 'xml' || fmt === 'rss' || fmt === 'atom') res = parseXmlDoc(uint8, options);
+    else if (fmt === 'tex' || fmt === 'latex') res = parseLatex(uint8, options);
+    else if (fmt === 'csv' || fmt === 'tsv') res = parseCsv(uint8, fmt, options);
+    else if (fmt === 'json') res = parseJsonDoc(uint8, options);
+    else res = parsePlain(uint8, options);
+
+    return {
+      text: cleanText(res.text, options),
+      format: res.format,
+      warning: res.warning || ''
+    };
+  }
+
+  root.__toTxtApi = {
+    decodeBytes,
+    convertBytesToText,
+    cleanText
+  };
+
+  if (typeof document === 'undefined' || !document.getElementById('dropzone')) {
+    return;
+  }
+
+  // --- UI State & Wiring ---
+  const mainShell = document.getElementById('mainShell');
+  const emptyView = document.getElementById('emptyView');
+  const workspace = document.getElementById('workspace');
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const addBtn = document.getElementById('addBtn');
+  const mergeBtn = document.getElementById('mergeBtn');
+  const zipBtn = document.getElementById('zipBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const queueCount = document.getElementById('queueCount');
+  const doneCount = document.getElementById('doneCount');
+  const queueList = document.getElementById('queueList');
+  const previewName = document.getElementById('previewName');
+  const previewFmt = document.getElementById('previewFmt');
+  const previewStats = document.getElementById('previewStats');
+  const previewBanner = document.getElementById('previewBanner');
+  const previewText = document.getElementById('previewText');
+  const copyBtn = document.getElementById('copyBtn');
+  const saveOneBtn = document.getElementById('saveOneBtn');
+  const fontToggleBtn = document.getElementById('fontToggleBtn');
+  const optClean = document.getElementById('optClean');
+  const optSeparators = document.getElementById('optSeparators');
+  const optEncoding = document.getElementById('optEncoding');
+  const globalStatus = document.getElementById('globalStatus');
+
+  const items = [];
+  let activeId = null;
+  let nextItemId = 1;
+  let activeUrls = [];
+
+  function currentOpts() {
+    return {
+      cleanBlankLines: optClean.checked,
+      separators: optSeparators.checked,
+      encoding: optEncoding.value
+    };
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function toTxtName(name) {
+    const base = name.replace(/\.[^/.]+$/, '');
+    return (base || name || 'output') + '.txt';
+  }
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    activeUrls.push(url);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function revokeAllUrls() {
+    for (const u of activeUrls) URL.revokeObjectURL(u);
+    activeUrls = [];
+  }
+
+  function syncLayout() {
+    const hasItems = items.length > 0;
+    emptyView.classList.toggle('hidden', hasItems);
+    workspace.classList.toggle('hidden', !hasItems);
+    clearBtn.classList.toggle('hidden', !hasItems);
+
+    const okItems = items.filter((it) => it.status === 'done');
+    queueCount.textContent = String(items.length);
+    doneCount.textContent = `${okItems.length} done`;
+    mergeBtn.classList.toggle('hidden', okItems.length < 2);
+    zipBtn.classList.toggle('hidden', okItems.length < 2);
+  }
+
+  function renderQueue() {
+    queueList.innerHTML = '';
+    for (const it of items) {
+      const row = document.createElement('div');
+      row.className = 'queue-item' + (it.id === activeId ? ' active' : '') + (it.status === 'error' ? ' error' : '');
+      row.addEventListener('click', () => {
+        activeId = it.id;
+        renderQueue();
+        renderPreview();
+      });
+
+      const meta = document.createElement('div');
+      meta.className = 'queue-meta';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'queue-name';
+      nameEl.textContent = it.file.name;
+      nameEl.title = it.file.name;
+      meta.appendChild(nameEl);
+
+      const subEl = document.createElement('div');
+      subEl.className = 'queue-sub';
+      if (it.format) {
+        const tag = document.createElement('span');
+        tag.className = 'fmt-tag' + (it.status === 'error' ? ' err' : it.warning ? ' warn' : '');
+        tag.textContent = it.format;
+        subEl.appendChild(tag);
+      }
+      const statSpan = document.createElement('span');
+      if (it.status === 'pending') statSpan.textContent = '변환 중...';
+      else if (it.status === 'error') statSpan.textContent = '변환 실패';
+      else statSpan.textContent = `${it.text.length.toLocaleString()}자` + (it.warning ? ' · 주의' : '');
+      subEl.appendChild(statSpan);
+      meta.appendChild(subEl);
+      row.appendChild(meta);
+
+      if (it.status === 'done') {
+        const act = document.createElement('div');
+        act.className = 'queue-actions';
+        const dlBtn = document.createElement('button');
+        dlBtn.type = 'button';
+        dlBtn.className = 'mini-btn';
+        dlBtn.textContent = '저장';
+        dlBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          triggerDownload(new Blob([it.text], { type: 'text/plain;charset=utf-8' }), toTxtName(it.file.name));
+        });
+        act.appendChild(dlBtn);
+        row.appendChild(act);
+      }
+      queueList.appendChild(row);
+    }
+  }
+
+  function renderPreview() {
+    const it = items.find((x) => x.id === activeId);
+    if (!it) {
+      previewName.textContent = '선택된 파일 없음';
+      previewFmt.classList.add('hidden');
+      previewStats.textContent = '';
+      previewBanner.classList.add('hidden');
+      previewText.value = '';
+      copyBtn.disabled = true;
+      saveOneBtn.disabled = true;
+      return;
+    }
+
+    previewName.textContent = it.file.name;
+    if (it.format) {
+      previewFmt.textContent = it.format;
+      previewFmt.className = 'fmt-tag' + (it.status === 'error' ? ' err' : it.warning ? ' warn' : '');
+    } else {
+      previewFmt.classList.add('hidden');
+    }
+
+    if (it.status === 'pending') {
+      previewStats.textContent = formatSize(it.file.size) + ' · 변환 중...';
+      previewBanner.classList.add('hidden');
+      previewText.value = '';
+      copyBtn.disabled = true;
+      saveOneBtn.disabled = true;
+      return;
+    }
+
+    if (it.status === 'error') {
+      previewStats.textContent = formatSize(it.file.size);
+      previewBanner.textContent = it.error;
+      previewBanner.className = 'banner error';
+      previewText.value = '';
+      copyBtn.disabled = true;
+      saveOneBtn.disabled = true;
+      return;
+    }
+
+    const lineCount = it.text ? it.text.split('\n').length : 0;
+    previewStats.textContent = `${it.text.length.toLocaleString()}자 · ${lineCount.toLocaleString()}줄 · ${formatSize(it.file.size)}`;
+    if (it.warning) {
+      previewBanner.textContent = it.warning;
+      previewBanner.className = 'banner warn';
+    } else {
+      previewBanner.classList.add('hidden');
+    }
+    previewText.value = it.text;
+    copyBtn.disabled = false;
+    saveOneBtn.disabled = false;
+  }
+
+  async function processItem(it) {
+    it.status = 'pending';
+    it.error = '';
+    it.warning = '';
+    renderQueue();
+    if (it.id === activeId) renderPreview();
+    try {
+      if (!it.bytes) {
+        const buf = await it.file.arrayBuffer();
+        it.bytes = new Uint8Array(buf);
+      }
+      const res = await convertBytesToText(it.bytes, it.file.name, currentOpts(), (msg) => {
+        globalStatus.textContent = msg || '';
+      });
+      it.text = res.text;
+      it.format = res.format;
+      it.warning = res.warning;
+      it.status = 'done';
+    } catch (err) {
+      it.status = 'error';
+      it.error = (err && err.message) ? err.message : '알 수 없는 오류로 변환에 실패했습니다.';
+      if (!it.format) {
+        const m = it.file.name.toLowerCase().match(/\.([a-z0-9]+)$/);
+        if (m) it.format = m[1].toUpperCase();
+      }
+    }
+    globalStatus.textContent = '';
+    syncLayout();
+    renderQueue();
+    if (it.id === activeId) renderPreview();
+  }
+
+  async function addFiles(fileList) {
+    const newItems = [];
+    for (const file of Array.from(fileList || [])) {
+      const it = {
+        id: nextItemId++,
+        file,
+        bytes: null,
+        text: '',
+        format: '',
+        warning: '',
+        error: '',
+        status: 'pending'
+      };
+      items.push(it);
+      newItems.push(it);
+    }
+    if (!newItems.length) return;
+    if (activeId === null) activeId = newItems[0].id;
+    syncLayout();
+    renderQueue();
+    renderPreview();
+    for (const it of newItems) {
+      await processItem(it);
+    }
+  }
+
+  async function reprocessAll() {
+    if (!items.length) return;
+    for (const it of items) {
+      await processItem(it);
+    }
+  }
+
+  function openPicker() { fileInput.click(); }
+  dropzone.addEventListener('click', openPicker);
+  addBtn.addEventListener('click', openPicker);
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPicker();
+    }
+  });
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length) addFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach((ev) => {
+    window.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      mainShell.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach((ev) => {
+    window.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (ev === 'drop' || e.relatedTarget === null) {
+        mainShell.classList.remove('dragover');
+      }
+    });
+  });
+  window.addEventListener('drop', (e) => {
+    mainShell.classList.remove('dragover');
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+      addFiles(e.dataTransfer.files);
+    }
+  });
+
+  [optClean, optSeparators, optEncoding].forEach((el) => {
+    el.addEventListener('change', reprocessAll);
+  });
+
+  previewText.addEventListener('input', () => {
+    const it = items.find((x) => x.id === activeId);
+    if (it && it.status === 'done') {
+      it.text = previewText.value;
+      const lineCount = it.text ? it.text.split('\n').length : 0;
+      previewStats.textContent = `${it.text.length.toLocaleString()}자 · ${lineCount.toLocaleString()}줄 · ${formatSize(it.file.size)}`;
+    }
+  });
+
+  fontToggleBtn.addEventListener('click', () => {
+    previewText.classList.toggle('sans');
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const it = items.find((x) => x.id === activeId);
+    if (!it || it.status !== 'done') return;
+    try {
+      await navigator.clipboard.writeText(it.text);
+      copyBtn.textContent = '복사됨 ✓';
+      setTimeout(() => { copyBtn.textContent = '복사'; }, 1500);
+    } catch (e) {
+      previewText.select();
+      document.execCommand('copy');
+      copyBtn.textContent = '복사됨 ✓';
+      setTimeout(() => { copyBtn.textContent = '복사'; }, 1500);
+    }
+  });
+
+  saveOneBtn.addEventListener('click', () => {
+    const it = items.find((x) => x.id === activeId);
+    if (!it || it.status !== 'done') return;
+    triggerDownload(new Blob([it.text], { type: 'text/plain;charset=utf-8' }), toTxtName(it.file.name));
+  });
+
+  mergeBtn.addEventListener('click', () => {
+    const okItems = items.filter((it) => it.status === 'done');
+    if (!okItems.length) return;
+    const merged = okItems.map((it) => `===== ${it.file.name} =====\n\n${it.text}`).join('\n\n\n');
+    triggerDownload(new Blob([merged], { type: 'text/plain;charset=utf-8' }), `merged_${Date.now()}.txt`);
+  });
+
+  zipBtn.addEventListener('click', async () => {
+    const okItems = items.filter((it) => it.status === 'done');
+    if (!okItems.length) return;
+    zipBtn.disabled = true;
+    const prevText = zipBtn.textContent;
+    zipBtn.textContent = 'ZIP 생성 중...';
+    try {
+      const JSZip = await ensureLib('jszip', (msg) => { globalStatus.textContent = msg; });
+      globalStatus.textContent = '';
+      const zip = new JSZip();
+      const used = new Map();
+      for (const it of okItems) {
+        let outName = toTxtName(it.file.name);
+        if (used.has(outName)) {
+          const cnt = used.get(outName) + 1;
+          used.set(outName, cnt);
+          const stem = outName.slice(0, -4);
+          outName = `${stem} (${cnt}).txt`;
+        } else {
+          used.set(outName, 1);
+        }
+        zip.file(outName, it.text);
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      triggerDownload(blob, `converted_txt_${Date.now()}.zip`);
+    } finally {
+      zipBtn.textContent = prevText;
+      zipBtn.disabled = false;
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    revokeAllUrls();
+    items.length = 0;
+    activeId = null;
+    globalStatus.textContent = '';
+    syncLayout();
+    renderQueue();
+    renderPreview();
+  });
+
+  syncLayout();
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+</body>
+</html>
